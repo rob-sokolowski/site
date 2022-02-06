@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+  shell:
+    image: site-nginx:latest
+    ports:
+      - 80:80
+    networks:
+      - some-network
+    working_dir: /usr/share/nginx/html
+    command: sh
+
+networks:
+  some-network:
+    driver: bridge
+    ipam:
+      driver: default

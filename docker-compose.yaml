@@ -1,0 +1,15 @@
+version: "3.7"
+
+services:
+  site:
+    image: site-nginx:latest
+    ports:
+      - 80:80
+    networks:
+      - some-network
+
+networks:
+  some-network:
+    driver: bridge
+    ipam:
+      driver: default

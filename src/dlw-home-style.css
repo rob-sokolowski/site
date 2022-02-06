@@ -1,0 +1,31 @@
+body {
+    /*width: 35em;*/
+    margin: 0 auto;
+    font-family: Tahoma, Verdana, Arial, sans-serif;
+    background: #fff3e6;
+}
+
+table, th, td {
+    border: 1px solid black;
+}
+
+.grid-container {
+  display: grid;
+  align-content: center;
+  grid-column-gap: 10px;
+  grid-row-gap: 10px;
+  grid-template-columns: 500px auto;
+  background-color: #2196F3;
+  padding: 10px;
+}
+
+.grid-container #selected-table-sample {
+    grid-column: 1 / span 2;
+}
+
+
+.grid-item {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  padding: 20px;
+}
