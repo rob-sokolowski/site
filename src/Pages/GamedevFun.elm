@@ -61,4 +61,4 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    View.placeholder "GamedevFun"
+    View.placeholder "Game dev is fun!"

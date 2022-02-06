@@ -23,12 +23,12 @@ viewElement =
     column [ padding 25, spacing 10 ]
         [ text <| "Hello world, some WIP links.."
         , link [ Font.color blue ]
-            { url = "/game-of-life"
-            , label = text "Game of Life"
-            }
-        , link [ Font.color blue ]
             { url = "/animation"
             , label = text "Animation"
+            }
+        , link [ Font.color blue ]
+            { url = "/gamedev-fun"
+            , label = text "GameDev fun"
             }
         ]
 

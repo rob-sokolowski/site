@@ -1,6 +1,9 @@
 {
-  "dependencies": {
+  "devDependencies": {
     "elm": "^0.19.1-5",
-    "elm-spa": "^6.0.4"
+    "elm-book": "^1.0.1",
+    "elm-format": "^0.8.5",
+    "elm-spa": "^6.0.4",
+    "elm-test": "^0.19.1-revision7"
   }
 }

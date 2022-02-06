@@ -1,4 +1,6 @@
+package-lock.json
 # elm-package generated files
+.elm-spa/
 elm-stuff
 # elm-repl generated files
 repl-temp-*
