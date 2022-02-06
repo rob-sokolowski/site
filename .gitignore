@@ -1,9 +1,8 @@
 package-lock.json
-# elm-package generated files
-.elm-spa/
 elm-stuff
-# elm-repl generated files
 repl-temp-*
 
 node_modules/
 .idea/
+public/    # output of elm-spa build
+.elm-spa/  # output of elm-spa gen, used by "actual" source code
