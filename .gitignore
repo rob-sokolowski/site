@@ -4,5 +4,8 @@ repl-temp-*
 
 node_modules/
 .idea/
-public/    # output of elm-spa build
-.elm-spa/  # output of elm-spa gen, used by "actual" source code
+# output of elm-spa build
+public/
+
+# output of elm-spa gen, used by "actual" source code
+.elm-spa/

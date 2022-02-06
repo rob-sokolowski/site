@@ -26,6 +26,12 @@ docker-compose up
 
 full site should be available at `localhost` (implicit port `80`)
 
+debugging the server can be done via
+```shell script
+docker-compose up -f docker-compose.yaml.dev run shell
+```
+^ this will open a minimalist shell, and you can inspect `nginx`
+
 if things look good, ship it via
 ```shell script
 ./scripts/depoy-to-cloud-run.sh
