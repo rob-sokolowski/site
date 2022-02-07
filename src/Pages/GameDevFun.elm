@@ -1,4 +1,6 @@
-module Pages.GamedevFun exposing (Model, Msg, page)
+module Pages.GameDevFun exposing (Model, Msg, page)
+
+--import Game exposing (svgElements)
 
 import Browser.Events as Events
 import Color
@@ -16,10 +18,8 @@ import Page
 import Request
 import Set
 import Shared
-import TypedSvg as S exposing (circle, rect, svg)
-import TypedSvg.Attributes as SA exposing (cx, cy, fill, height, r, rx, ry, stroke, strokeWidth, viewBox, width, x, y)
-import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types as TT exposing (Paint(..), px)
+import TypedSvg exposing (svg)
+import TypedSvg.Attributes exposing (viewBox)
 import UI
 import View exposing (View)
 
@@ -38,39 +38,13 @@ page shared req =
 -- INIT
 
 
-type Direction
-    = Up
-    | Down
-    | Left
-    | Right
-
-
 type alias Model =
     { downKeys : List String
-    , playerPos : Pos
-    , portals : PortalPair
+    , playerPos : PlayerPos
     }
 
 
-type alias Portal =
-    { pos : Pos
-    , direction : Direction
-    , color : PortalColor
-    }
-
-
-type PortalColor
-    = Red
-    | Blue
-
-
-type alias PortalPair =
-    { a : Portal
-    , b : Portal
-    }
-
-
-type alias Pos =
+type alias PlayerPos =
     { x : Float
     , y : Float
     }
@@ -78,16 +52,8 @@ type alias Pos =
 
 init : ( Model, Effect Msg )
 init =
-    let
-        portalA =
-            { pos = { x = 250, y = 250 }, direction = Left, color = Blue }
-
-        portalB =
-            { pos = { x = 550, y = 250 }, direction = Left, color = Red }
-    in
     ( { downKeys = []
-      , playerPos = { x = 125, y = 350 }
-      , portals = { a = portalA, b = portalB }
+      , playerPos = { x = 0, y = 0 }
       }
     , Effect.none
     )
@@ -119,12 +85,6 @@ mapKeyCodeToAction code =
     else if Set.member code <| Set.fromList [ "s", "S", "ArrowDown" ] then
         Just <| MoveY 10
 
-    else if Set.member code <| Set.fromList [ "a", "A", "ArrowLeft" ] then
-        Just <| MoveX -10
-
-    else if Set.member code <| Set.fromList [ "d", "D", "ArrowRight" ] then
-        Just <| MoveX 10
-
     else
         Nothing
 
@@ -155,7 +115,6 @@ update msg model =
             in
             ( { downKeys = []
               , playerPos = newPlayerPos
-              , portals = model.portals
               }
             , Effect.none
             )
@@ -190,8 +149,8 @@ view model =
     { title = "GameDev Fun"
     , body =
         [ layout
-            [ E.width E.fill
-            , E.height E.fill
+            [ width E.fill
+            , height E.fill
             ]
             (elements model)
         ]
@@ -214,48 +173,6 @@ borderedRow =
         ]
 
 
-svgElements : Model -> List (Svg msg)
-svgElements model =
-    let
-        player : Float -> Float -> Svg msg
-        player x y =
-            circle
-                [ SA.cx (TT.px x)
-                , SA.cy (TT.px y)
-                , SA.r (TT.px 20)
-                , SA.fill <| Paint Color.blue
-                , SA.strokeWidth (TT.px 2)
-                , SA.stroke <| TT.Paint <| Color.rgba 0.8 0 0 0.5
-                ]
-                []
-
-        portal : Portal -> Svg msg
-        portal p =
-            let
-                color =
-                    case p.color of
-                        Red ->
-                            TT.Paint Color.red
-
-                        Blue ->
-                            TT.Paint Color.blue
-            in
-            rect
-                [ SA.x (TT.px p.pos.x)
-                , SA.y (TT.px p.pos.y)
-                , SA.width (TT.px 75)
-                , SA.height (TT.px 150)
-                , SA.fill color
-                , SA.rx (TT.px 15)
-                ]
-                []
-    in
-    [ player model.playerPos.x model.playerPos.y
-    , portal model.portals.a
-    , portal model.portals.b
-    ]
-
-
 content : Model -> Element Msg
 content model =
     let
@@ -265,13 +182,13 @@ content model =
         viewPortHeight =
             700
 
-        svgLayout : { width : Float, height : Float } -> Html msg
-        svgLayout viewPort =
-            svg [ viewBox 0 0 viewPort.width viewPort.height ] <| svgElements model
+        --svgLayout : { width : Float, height : Float } -> Html msg
+        --svgLayout viewPort =
+        --    svg [ viewBox 0 0 viewPort.width viewPort.height ] <| svgElements model
     in
-    column
-        [ E.width <| E.px viewPortWidth
-        , E.height <| E.px viewPortHeight
+    row
+        [ width <| E.px viewPortWidth
+        , height <| E.px viewPortHeight
         , centerX
         , centerY
         , Background.color UI.palette.white
@@ -279,8 +196,8 @@ content model =
         , Border.color UI.palette.lightBlue
         , Border.rounded 3
         ]
-        [ E.text <| "Use the arrow keys to move around"
-        , E.html <| svgLayout { height = viewPortHeight, width = viewPortWidth }
+        [ --E.html <| svgLayout { height = viewPortHeight, width = viewPortWidth }
+          text "Hallo"
         ]
 
 
@@ -290,7 +207,7 @@ elements model =
         header : Element msg
         header =
             row
-                [ E.width E.fill
+                [ width E.fill
                 , padding 10
                 , spacing 10
                 , Background.color UI.palette.lightGrey
@@ -305,8 +222,8 @@ elements model =
         logo : Element msg
         logo =
             el
-                [ E.width <| E.px 80
-                , E.height <| E.px 40
+                [ width <| E.px 80
+                , height <| E.px 40
                 , Border.width 2
                 , Border.rounded 6
                 , Border.color UI.palette.blue
@@ -322,7 +239,7 @@ elements model =
         footer : Element msg
         footer =
             row
-                [ E.width E.fill
+                [ width E.fill
                 , padding 5
                 , Background.color UI.palette.lightGrey
                 , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
@@ -338,8 +255,8 @@ elements model =
                 ]
     in
     E.column
-        [ E.width E.fill
-        , E.height E.fill
+        [ width E.fill
+        , height E.fill
         , Background.color UI.palette.darkCharcoal
         , Font.size 12
         ]
