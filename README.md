@@ -34,5 +34,5 @@ docker-compose up -f docker-compose.yaml.dev run shell
 
 if things look good, ship it via
 ```shell script
-./scripts/depoy-to-cloud-run.sh
+./scripts/deploy-to-cloud-run.sh
 ```
