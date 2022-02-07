@@ -4,8 +4,11 @@ repl-temp-*
 
 node_modules/
 .idea/
-# output of elm-spa build
-public/
+output of elm-spa build
+
 
 # output of elm-spa gen, used by "actual" source code
 .elm-spa/
+
+# output of elm-spa build, note that public/index.html is built via elm-spa init, so should be commited to github
+public/dist/
