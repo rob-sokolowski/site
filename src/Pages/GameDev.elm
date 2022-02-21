@@ -9,17 +9,20 @@ import Element.Border as Border
 import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
-import Gen.Params.GamedevFun exposing (Params)
+import Gen.Params.GameDev exposing (Params)
 import Html exposing (Html)
 import Json.Decode as Decode
 import Page
 import Request
 import Set
 import Shared
-import TypedSvg as S exposing (circle, rect, svg)
+import Simple.Animation as Animation exposing (Animation)
+import Simple.Animation.Animated as Animated
+import Simple.Animation.Property as P
+import TypedSvg as S exposing (..)
 import TypedSvg.Attributes as SA exposing (cx, cy, fill, height, r, rx, ry, stroke, strokeWidth, viewBox, width, x, y)
-import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types as TT exposing (Paint(..), px)
+import TypedSvg.Core as SC exposing (Svg)
+import TypedSvg.Types as ST exposing (Paint(..), px)
 import UI
 import View exposing (View)
 
@@ -198,6 +201,32 @@ view model =
     }
 
 
+flash : Animation
+flash =
+    Animation.steps
+        { startAt = [ P.opacity 0, P.backgroundColor "#0382c8" ]
+        , options = [ Animation.loop ]
+        }
+        [ Animation.step 1000 [ P.opacity 1, P.backgroundColor "rgb(19 228 187)" ]
+        , Animation.step 1000 [ P.opacity 0, P.backgroundColor "#0382c8" ]
+        ]
+
+
+g : Animation -> List (SC.Attribute msg) -> List (SC.Svg msg) -> SC.Svg msg
+g =
+    animatedTypedSvg S.g
+
+
+animatedTypedSvg node animation attributes children =
+    Animated.custom
+        (\className stylesheet ->
+            node
+                (SA.class [ className ] :: attributes)
+                (S.style [] [ SC.text stylesheet ] :: children)
+        )
+        animation
+
+
 borderedRow : List (Element Msg) -> Element Msg
 borderedRow =
     E.row
@@ -220,12 +249,12 @@ svgElements model =
         player : Float -> Float -> Svg msg
         player x y =
             circle
-                [ SA.cx (TT.px x)
-                , SA.cy (TT.px y)
-                , SA.r (TT.px 20)
+                [ SA.cx (ST.px x)
+                , SA.cy (ST.px y)
+                , SA.r (ST.px 20)
                 , SA.fill <| Paint Color.blue
-                , SA.strokeWidth (TT.px 2)
-                , SA.stroke <| TT.Paint <| Color.rgba 0.8 0 0 0.5
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint <| Color.rgba 0.8 0 0 0.5
                 ]
                 []
 
@@ -235,22 +264,22 @@ svgElements model =
                 color =
                     case p.color of
                         Red ->
-                            TT.Paint Color.red
+                            ST.Paint Color.red
 
                         Blue ->
-                            TT.Paint Color.blue
+                            ST.Paint Color.blue
             in
             rect
-                [ SA.x (TT.px p.pos.x)
-                , SA.y (TT.px p.pos.y)
-                , SA.width (TT.px 75)
-                , SA.height (TT.px 150)
+                [ SA.x (ST.px p.pos.x)
+                , SA.y (ST.px p.pos.y)
+                , SA.width (ST.px 75)
+                , SA.height (ST.px 150)
                 , SA.fill color
-                , SA.rx (TT.px 15)
+                , SA.rx (ST.px 15)
                 ]
                 []
     in
-    [ player model.playerPos.x model.playerPos.y
+    [ animatedTypedSvg flash [] [ player model.playerPos.x model.playerPos.y ]
     , portal model.portals.a
     , portal model.portals.b
     ]
