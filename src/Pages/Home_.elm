@@ -27,8 +27,8 @@ viewElement =
             , label = text "Animation"
             }
         , link [ Font.color blue ]
-            { url = "/gamedev-fun"
-            , label = text "GameDev fun"
+            { url = "/game-dev"
+            , label = text "Game Sandbox"
             }
         ]
 
