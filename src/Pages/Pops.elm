@@ -39,7 +39,20 @@ type SimStatus
 
 type alias Model =
     { simStatus : SimStatus
+    , currentTickType : TickType
     , world : World
+    , polygons : Dict PolygonId Polygon
+    , companies : Dict CompanyId Company
+    }
+
+
+type alias CompanyId =
+    String
+
+
+type alias Company =
+    { id : CompanyId
+    , applicantQueue : List PolygonId
     }
 
 
@@ -49,8 +62,12 @@ type alias RunConfig =
     }
 
 
+type alias Year =
+    Float
+
+
 type alias World =
-    { polygons : Dict PolygonId Polygon
+    { currentYear : Year
     }
 
 
@@ -62,9 +79,15 @@ type alias Age =
     Float
 
 
+type EmploymentStatus
+    = Unemployed
+    | Employed
+
+
 type alias Polygon =
     { id : PolygonId
     , gender : Gender
+    , employmentStatus : EmploymentStatus
     , color : Color
     , age : Age
     }
@@ -85,25 +108,28 @@ type Color
 
 resetWorld : World
 resetWorld =
-    { polygons =
-        Dict.fromList
-            [ ( "1", { id = "1", gender = Male, color = Purple, age = 0.0 } )
-            , ( "2", { id = "2", gender = Male, color = Blue, age = 0.0 } )
-            , ( "3", { id = "3", gender = Female, color = Green, age = 0.0 } )
-            , ( "4", { id = "4", gender = Male, color = Purple, age = 0.0 } )
-            , ( "5", { id = "5", gender = Female, color = Pink, age = 0.0 } )
-            , ( "6", { id = "6", gender = Female, color = Blue, age = 0.0 } )
-            , ( "7", { id = "7", gender = Female, color = Purple, age = 0.0 } )
-            , ( "8", { id = "8", gender = Male, color = Pink, age = 0.0 } )
-            , ( "9", { id = "9", gender = Female, color = Gray, age = 0.0 } )
-            ]
+    { currentYear = 0.0
     }
 
 
 init : ( Model, Effect Msg )
 init =
     ( { simStatus = Paused
+      , currentTickType = WorldUpdates
       , world = resetWorld
+      , polygons =
+            Dict.fromList
+                [ ( "p1", { id = "p1", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p2", { id = "p2", gender = Male, color = Blue, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p3", { id = "p3", gender = Female, color = Green, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p4", { id = "p4", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p5", { id = "p5", gender = Female, color = Pink, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p6", { id = "p6", gender = Female, color = Blue, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p7", { id = "p7", gender = Female, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p8", { id = "p8", gender = Male, color = Pink, age = 0.0, employmentStatus = Unemployed } )
+                , ( "p9", { id = "p9", gender = Female, color = Gray, age = 0.0, employmentStatus = Unemployed } )
+                ]
+      , companies = Dict.fromList [ ( "c1", { id = "c1", applicantQueue = [] } ) ]
       }
     , Effect.none
     )
@@ -119,22 +145,112 @@ type Msg
     | Tick Time.Posix
 
 
-handleTick : World -> World
-handleTick world =
+type TickType
+    = WorldUpdates
+    | PolygonUpdates
+    | CompanyUpdates
+
+
+nextTickType : TickType -> TickType
+nextTickType tt =
+    case tt of
+        WorldUpdates ->
+            PolygonUpdates
+
+        PolygonUpdates ->
+            CompanyUpdates
+
+        CompanyUpdates ->
+            WorldUpdates
+
+
+applyToCompany : Polygon -> Company -> Company
+applyToCompany p c =
     let
-        dt : Float
-        dt =
-            -- the number of years per tick
-            1.0
-
-        polygonAge : PolygonId -> Polygon -> Polygon
-        polygonAge pid p =
-            { p | age = p.age + dt }
-
-        newPolygons =
-            Dict.map polygonAge world.polygons
+        newQueue =
+            c.applicantQueue ++ [ p.id ]
     in
-    { world | polygons = newPolygons }
+    { c | applicantQueue = newQueue }
+
+
+dt : Float
+dt =
+    -- the number of years per tick
+    1.0
+
+
+updatePolygons : Model -> Dict PolygonId Polygon
+updatePolygons model =
+    let
+        polygonsAge : PolygonId -> Polygon -> Polygon
+        polygonsAge pid p =
+            { p | age = p.age + dt }
+    in
+    Dict.map polygonsAge model.polygons
+
+
+updateCompanies : Model -> Dict CompanyId Company
+updateCompanies model =
+    let
+        -- TODO: more than 1 company
+        theCompany : Maybe Company
+        theCompany =
+            Dict.get "c1" model.companies
+
+        newCompanies : Dict CompanyId Company
+        newCompanies =
+            case theCompany of
+                Just company ->
+                    let
+                        adultPolygonsApplyForWork : Polygon -> Maybe ( PolygonId, CompanyId )
+                        adultPolygonsApplyForWork p =
+                            case p.employmentStatus of
+                                Unemployed ->
+                                    -- TODO: Must apply to more than 1 company
+                                    if p.age >= 18.0 then
+                                        Just ( p.id, company.id )
+
+                                    else
+                                        Nothing
+
+                                Employed ->
+                                    Nothing
+
+                        applicantList : List (Maybe ( PolygonId, CompanyId ))
+                        applicantList =
+                            List.map adultPolygonsApplyForWork (Dict.values model.polygons)
+
+                        updateCompanyQueue : CompanyId -> Company -> Company
+                        updateCompanyQueue _ c =
+                            let
+                                removeNothingFromList : List (Maybe a) -> List a
+                                removeNothingFromList list =
+                                    List.filterMap identity list
+
+                                applicantList_ =
+                                    removeNothingFromList applicantList
+
+                                companyList : List PolygonId
+                                companyList =
+                                    List.map (\( pid, _ ) -> pid) <| List.filter (\( pid, cid ) -> c.id == cid) applicantList_
+                            in
+                            { c | applicantQueue = c.applicantQueue ++ companyList }
+                    in
+                    Dict.map updateCompanyQueue model.companies
+
+                Nothing ->
+                    model.companies
+    in
+    newCompanies
+
+
+updateWorld : Model -> World
+updateWorld model =
+    let
+        world =
+            model.world
+    in
+    { world | currentYear = model.world.currentYear + dt }
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -154,10 +270,25 @@ update msg model =
 
         Tick _ ->
             let
-                newWorld =
-                    handleTick model.world
+                ( newWorld, newCompanies, newPolygons ) =
+                    case model.currentTickType of
+                        WorldUpdates ->
+                            ( updateWorld model, model.companies, model.polygons )
+
+                        PolygonUpdates ->
+                            ( model.world, model.companies, updatePolygons model )
+
+                        CompanyUpdates ->
+                            ( model.world, updateCompanies model, model.polygons )
             in
-            ( { model | world = newWorld }, Effect.none )
+            ( { model
+                | world = newWorld
+                , companies = newCompanies
+                , polygons = newPolygons
+                , currentTickType = nextTickType model.currentTickType
+              }
+            , Effect.none
+            )
 
         ResetWorld ->
             let
@@ -178,7 +309,7 @@ subscriptions model =
             Sub.none
 
         Running ->
-            Time.every 1000 Tick
+            Time.every 1 Tick
 
 
 
