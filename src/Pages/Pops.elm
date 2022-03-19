@@ -52,7 +52,7 @@ type alias CompanyId =
 
 type alias Company =
     { id : CompanyId
-    , applicantQueue : List PolygonId
+    , applicantQueue : List Polygon
     }
 
 
@@ -81,7 +81,7 @@ type alias Age =
 
 type EmploymentStatus
     = Unemployed
-    | Employed
+    | Employed Company
 
 
 type alias Polygon =
@@ -149,6 +149,7 @@ type TickType
     = WorldUpdates
     | PolygonUpdates
     | CompanyUpdates
+    | CompaniesProcessApplicantQueues
 
 
 nextTickType : TickType -> TickType
@@ -161,16 +162,10 @@ nextTickType tt =
             CompanyUpdates
 
         CompanyUpdates ->
+            CompaniesProcessApplicantQueues
+
+        CompaniesProcessApplicantQueues ->
             WorldUpdates
-
-
-applyToCompany : Polygon -> Company -> Company
-applyToCompany p c =
-    let
-        newQueue =
-            c.applicantQueue ++ [ p.id ]
-    in
-    { c | applicantQueue = newQueue }
 
 
 dt : Float
@@ -189,6 +184,48 @@ updatePolygons model =
     Dict.map polygonsAge model.polygons
 
 
+processApplicants : Model -> ( Dict CompanyId Company, Dict PolygonId Polygon )
+processApplicants model =
+    let
+        applicantQueues : List (List ( Company, Polygon ))
+        applicantQueues =
+            List.map (\c -> List.map (\p_ -> ( c, p_ )) c.applicantQueue) (Dict.values model.companies)
+
+        polygonsToEmploy : List ( Company, Polygon )
+        polygonsToEmploy =
+            List.concat applicantQueues
+
+        employPolygon : ( Company, Polygon ) -> Polygon
+        employPolygon ( c, p ) =
+            { p | employmentStatus = Employed c }
+
+        processPolygons : List Polygon -> List Polygon
+        processPolygons polygons =
+            let
+                psToEmploy =
+                    List.map (\( _, p ) -> p) polygonsToEmploy
+
+                idlePolygons =
+                    List.filter (\p -> not <| List.member p psToEmploy) polygons
+
+                newlyEmployedPolygons =
+                    List.map employPolygon polygonsToEmploy
+            in
+            idlePolygons ++ newlyEmployedPolygons
+
+        newPolygons =
+            processPolygons (Dict.values model.polygons)
+
+        clearQueue : CompanyId -> Company -> Company
+        clearQueue _ c =
+            { c | applicantQueue = [] }
+
+        newCompanies =
+            Dict.map clearQueue model.companies
+    in
+    ( newCompanies, Dict.fromList <| List.map (\p -> ( p.id, p )) newPolygons )
+
+
 updateCompanies : Model -> Dict CompanyId Company
 updateCompanies model =
     let
@@ -202,37 +239,33 @@ updateCompanies model =
             case theCompany of
                 Just company ->
                     let
-                        adultPolygonsApplyForWork : Polygon -> Maybe ( PolygonId, CompanyId )
+                        adultPolygonsApplyForWork : Polygon -> Maybe ( Polygon, CompanyId )
                         adultPolygonsApplyForWork p =
                             case p.employmentStatus of
                                 Unemployed ->
                                     -- TODO: Must apply to more than 1 company
                                     if p.age >= 18.0 then
-                                        Just ( p.id, company.id )
+                                        Just ( p, company.id )
 
                                     else
                                         Nothing
 
-                                Employed ->
+                                Employed _ ->
                                     Nothing
 
-                        applicantList : List (Maybe ( PolygonId, CompanyId ))
+                        applicantList : List (Maybe ( Polygon, CompanyId ))
                         applicantList =
                             List.map adultPolygonsApplyForWork (Dict.values model.polygons)
 
                         updateCompanyQueue : CompanyId -> Company -> Company
                         updateCompanyQueue _ c =
                             let
-                                removeNothingFromList : List (Maybe a) -> List a
-                                removeNothingFromList list =
-                                    List.filterMap identity list
-
                                 applicantList_ =
                                     removeNothingFromList applicantList
 
-                                companyList : List PolygonId
+                                companyList : List Polygon
                                 companyList =
-                                    List.map (\( pid, _ ) -> pid) <| List.filter (\( pid, cid ) -> c.id == cid) applicantList_
+                                    List.map (\( polygon, _ ) -> polygon) <| List.filter (\( _, cid ) -> c.id == cid) applicantList_
                             in
                             { c | applicantQueue = c.applicantQueue ++ companyList }
                     in
@@ -280,6 +313,13 @@ update msg model =
 
                         CompanyUpdates ->
                             ( model.world, updateCompanies model, model.polygons )
+
+                        CompaniesProcessApplicantQueues ->
+                            let
+                                ( newCompanies_, newPolygons_ ) =
+                                    processApplicants model
+                            in
+                            ( model.world, newCompanies_, newPolygons_ )
             in
             ( { model
                 | world = newWorld
@@ -309,7 +349,7 @@ subscriptions model =
             Sub.none
 
         Running ->
-            Time.every 1 Tick
+            Time.every 0 Tick
 
 
 
@@ -436,3 +476,12 @@ elements model =
         , content model
         , footer
         ]
+
+
+
+-- utils
+
+
+removeNothingFromList : List (Maybe a) -> List a
+removeNothingFromList list =
+    List.filterMap identity list
