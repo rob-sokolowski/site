@@ -279,7 +279,7 @@ svgElements model =
                 ]
                 []
     in
-    [ animatedTypedSvg flash [] [ player model.playerPos.x model.playerPos.y ]
+    [ player model.playerPos.x model.playerPos.y
     , portal model.portals.a
     , portal model.portals.b
     ]
