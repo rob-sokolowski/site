@@ -30,6 +30,10 @@ viewElement =
             { url = "/game-dev"
             , label = text "Game Sandbox"
             }
+        , link [ Font.color blue ]
+            { url = "/pops"
+            , label = text "Pops"
+            }
         ]
 
 

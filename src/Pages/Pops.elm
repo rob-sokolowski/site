@@ -43,7 +43,13 @@ type alias Model =
     , world : World
     , polygons : Dict PolygonId Polygon
     , companies : Dict CompanyId Company
+    , currentInspectedEntity : Maybe Entity
     }
+
+
+type Entity
+    = PolygonEntity PolygonId
+    | CompanyEntity CompanyId
 
 
 type alias CompanyId =
@@ -84,6 +90,16 @@ type EmploymentStatus
     | Employed Company
 
 
+toEmploymentStr : EmploymentStatus -> String
+toEmploymentStr es =
+    case es of
+        Unemployed ->
+            "unemployed"
+
+        Employed company ->
+            "employed by: " ++ company.id
+
+
 type alias Polygon =
     { id : PolygonId
     , gender : Gender
@@ -98,6 +114,16 @@ type Gender
     | Female
 
 
+toGenderStr : Gender -> String
+toGenderStr g =
+    case g of
+        Male ->
+            "male"
+
+        Female ->
+            "female"
+
+
 type Color
     = Purple
     | Blue
@@ -106,10 +132,49 @@ type Color
     | Gray
 
 
+toColorStr : Color -> String
+toColorStr c =
+    case c of
+        Purple ->
+            "purple"
+
+        Blue ->
+            "blue"
+
+        Gray ->
+            "gray"
+
+        Green ->
+            "green"
+
+        Pink ->
+            "pink"
+
+
 resetWorld : World
 resetWorld =
     { currentYear = 0.0
     }
+
+
+resetPolygons : Dict PolygonId Polygon
+resetPolygons =
+    Dict.fromList
+        [ ( "p1", { id = "p1", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p2", { id = "p2", gender = Male, color = Blue, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p3", { id = "p3", gender = Female, color = Green, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p4", { id = "p4", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p5", { id = "p5", gender = Female, color = Pink, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p6", { id = "p6", gender = Female, color = Blue, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p7", { id = "p7", gender = Female, color = Purple, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p8", { id = "p8", gender = Male, color = Pink, age = 0.0, employmentStatus = Unemployed } )
+        , ( "p9", { id = "p9", gender = Female, color = Gray, age = 0.0, employmentStatus = Unemployed } )
+        ]
+
+
+resetCompanies : Dict CompanyId Company
+resetCompanies =
+    Dict.fromList [ ( "c1", { id = "c1", applicantQueue = [] } ) ]
 
 
 init : ( Model, Effect Msg )
@@ -117,19 +182,9 @@ init =
     ( { simStatus = Paused
       , currentTickType = WorldUpdates
       , world = resetWorld
-      , polygons =
-            Dict.fromList
-                [ ( "p1", { id = "p1", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p2", { id = "p2", gender = Male, color = Blue, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p3", { id = "p3", gender = Female, color = Green, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p4", { id = "p4", gender = Male, color = Purple, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p5", { id = "p5", gender = Female, color = Pink, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p6", { id = "p6", gender = Female, color = Blue, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p7", { id = "p7", gender = Female, color = Purple, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p8", { id = "p8", gender = Male, color = Pink, age = 0.0, employmentStatus = Unemployed } )
-                , ( "p9", { id = "p9", gender = Female, color = Gray, age = 0.0, employmentStatus = Unemployed } )
-                ]
-      , companies = Dict.fromList [ ( "c1", { id = "c1", applicantQueue = [] } ) ]
+      , polygons = resetPolygons
+      , companies = resetCompanies
+      , currentInspectedEntity = Nothing
       }
     , Effect.none
     )
@@ -141,8 +196,9 @@ init =
 
 type Msg
     = ToggleSimStatus
-    | ResetWorld
+    | ResetSimulation
     | Tick Time.Posix
+    | ClickedInspectPolygon PolygonId
 
 
 type TickType
@@ -330,12 +386,24 @@ update msg model =
             , Effect.none
             )
 
-        ResetWorld ->
+        ResetSimulation ->
             let
                 newWorld =
                     resetWorld
             in
-            ( { model | world = newWorld, simStatus = Paused }, Effect.none )
+            ( { model
+                | world = newWorld
+                , simStatus = Paused
+                , polygons = resetPolygons
+                , companies = resetCompanies
+              }
+            , Effect.none
+            )
+
+        ClickedInspectPolygon pid ->
+            ( { model | currentInspectedEntity = Just (PolygonEntity pid) }
+            , Effect.none
+            )
 
 
 
@@ -367,6 +435,91 @@ view model =
             (elements model)
         ]
     }
+
+
+table : Model -> Element Msg
+table model =
+    E.table
+        [ E.centerX
+        , E.centerY
+        , E.padding 10
+        ]
+        { data = Dict.values model.polygons
+        , columns =
+            [ { header = E.text "id"
+              , width = px 200
+              , view =
+                    \poly ->
+                        el
+                            [ Border.color UI.palette.darkCharcoal
+                            , Border.width 1
+                            , onClick <| ClickedInspectPolygon poly.id
+                            ]
+                            (E.text poly.id)
+              }
+            , { header = E.text "gender"
+              , width = fill
+              , view =
+                    \poly ->
+                        el
+                            [ Border.color UI.palette.darkCharcoal
+                            , Border.width 1
+                            , onClick <| ClickedInspectPolygon poly.id
+                            ]
+                        <|
+                            E.text <|
+                                toGenderStr poly.gender
+              }
+            , { header = E.text "employment"
+              , width = fill
+              , view =
+                    \poly ->
+                        el
+                            [ Border.color UI.palette.darkCharcoal
+                            , Border.width 1
+                            , onClick <| ClickedInspectPolygon poly.id
+                            ]
+                            (E.text <| toEmploymentStr poly.employmentStatus)
+              }
+            , { header = E.text "age"
+              , width = fill
+              , view =
+                    \poly ->
+                        el
+                            [ Border.color UI.palette.darkCharcoal
+                            , Border.width 1
+                            , onClick <| ClickedInspectPolygon poly.id
+                            ]
+                            (E.text <| String.fromFloat poly.age)
+              }
+            , { header = E.text "color"
+              , width = fill
+              , view =
+                    \poly ->
+                        el
+                            [ Border.color UI.palette.darkCharcoal
+                            , Border.width 1
+                            , onClick <| ClickedInspectPolygon poly.id
+                            ]
+                            (E.text <| toColorStr poly.color)
+              }
+            ]
+        }
+
+
+inspectorPanel : Model -> Element Msg
+inspectorPanel model =
+    case model.currentInspectedEntity of
+        Nothing ->
+            E.text "Select an entity to inspect"
+
+        Just v ->
+            case v of
+                PolygonEntity pid ->
+                    E.text <| "You have select polygon " ++ pid
+
+                CompanyEntity cid ->
+                    E.text <| "You have select company " ++ cid
 
 
 content : Model -> Element Msg
@@ -402,16 +555,26 @@ content model =
                 , Border.color UI.palette.blue
                 , Background.color UI.palette.lightBlue
                 ]
-                { onPress = Just ResetWorld
+                { onPress = Just ResetSimulation
                 , label = text "Reset."
                 }
     in
-    row
-        [ padding 10
-        , spacing 5
-        ]
-        [ resetButton
-        , playPauseButton
+    column [ centerX ]
+        [ row
+            [ padding 10
+            , spacing 5
+            ]
+            [ resetButton
+            , playPauseButton
+            ]
+        , el
+            [ Background.color UI.palette.white
+            , Border.width 2
+            , Border.color UI.palette.lightGrey
+            ]
+          <|
+            table model
+        , inspectorPanel model
         ]
 
 
@@ -424,7 +587,7 @@ elements model =
                 [ E.width E.fill
                 , padding 10
                 , spacing 10
-                , Background.color UI.palette.lightGrey
+                , Background.color UI.palette.lightBlue
                 ]
                 [ logo
                 , el [ alignRight ] <| text "Header"
@@ -455,7 +618,7 @@ elements model =
             row
                 [ E.width E.fill
                 , padding 5
-                , Background.color UI.palette.lightGrey
+                , Background.color UI.palette.lightBlue
                 , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
                 , Border.color UI.palette.lightGrey
                 ]
@@ -466,15 +629,17 @@ elements model =
                     ]
                 ]
     in
+    -- TODO: Do I want a footer? If yes, I think I need to grab browser size / resize events to properly float on bottom
     E.column
         [ E.width E.fill
         , E.height E.fill
-        , Background.color UI.palette.darkCharcoal
+        , Background.color UI.palette.lightGrey
         , Font.size 12
         ]
         [ header
         , content model
-        , footer
+
+        --, footer
         ]
 
 
