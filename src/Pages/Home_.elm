@@ -34,6 +34,10 @@ viewElement =
             { url = "/pops"
             , label = text "Pops"
             }
+        , link [ Font.color blue ]
+            { url = "/sheet"
+            , label = text "Sheet"
+            }
         ]
 
 

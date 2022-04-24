@@ -466,9 +466,7 @@ table model =
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
-                        <|
-                            E.text <|
-                                toGenderStr poly.gender
+                            (E.text <| toGenderStr poly.gender)
               }
             , { header = E.text "employment"
               , width = fill
