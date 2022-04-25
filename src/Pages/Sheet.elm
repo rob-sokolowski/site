@@ -191,7 +191,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Pops"
+    { title = "Sheet Demo"
     , body =
         [ layout
             [ E.width E.fill
@@ -222,6 +222,7 @@ sheet model =
                                     [ Border.color UI.palette.darkishGrey
                                     , Border.width 1
                                     , Background.color UI.palette.lightGrey
+                                    , paddingEach { top = 1, bottom = 1, left = 0, right = 0 }
                                     ]
                                     (el [ centerX ] <| E.text <| index2Str r)
                       }
@@ -235,7 +236,8 @@ sheet model =
                 cellAttrs cd =
                     [ Border.color UI.palette.lightGrey
                     , Border.width 1
-                    , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
+
+                    --, paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
 
                 cellContentAttrs : CellData -> List (Attribute msg)
@@ -259,21 +261,22 @@ sheet model =
                                     alignRight
                     in
                     [ alignment
+                    , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
             in
             E.table
-                [ padding 5 ]
+                [ padding 0 ]
                 { data = column.col
                 , columns =
                     [ { header = E.text column.label
-                      , width = px 200
+                      , width = px 80
                       , view =
                             \r -> el (cellAttrs r) (el (cellContentAttrs r) (el (cellContentAttrs r) (E.text (cell2Str r))))
                       }
                     ]
                 }
     in
-    row [] <|
+    row [ padding 5 ] <|
         [ viewSheetIndex model.sheetIdx ]
             ++ (Array.toList <|
                     Array.map (\e -> viewSheetColumns e) model.sheetColumns
