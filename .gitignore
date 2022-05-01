@@ -12,3 +12,4 @@ output of elm-spa build
 
 # output of elm-spa build, note that public/index.html is built via elm-spa init, so should be commited to github
 public/dist/
+.scratch/
