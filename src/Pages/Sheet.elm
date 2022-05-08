@@ -15,7 +15,11 @@ import Gen.Params.Sheet exposing (Params)
 import Json.Decode as Decode
 import Page
 import Request
+import Set exposing (Set)
 import Shared
+import String
+import Task
+import Time
 import UI
 import View exposing (View)
 
@@ -34,14 +38,36 @@ page shared req =
 -- INIT
 
 
+type PromptMode
+    = Idle
+    | PromptInProgress String
+    | UserTextSubmitted ( String, ( RowIx, ColumnLabel ) )
+
+
 type alias Model =
     { sheetIdx : Index
     , sheetColumns : Array.Array ColumnData
     , sheetRowCount : Int
-    , keyDown : Maybe KeyCode
+    , keysDown : Set KeyCode
     , selectedCoords : Maybe ( RowIx, ColumnLabel )
     , selectedValue : Maybe CellData
+    , promptMode : PromptMode
+    , testInput : String
+    , lastSubmission : Maybe ( String, ( RowIx, ColumnLabel ) )
     }
+
+
+prompt2Str : PromptMode -> String
+prompt2Str pm =
+    case pm of
+        Idle ->
+            "Idle"
+
+        PromptInProgress str ->
+            "prompt thus far: " ++ str
+
+        UserTextSubmitted _ ->
+            "text being submitted"
 
 
 type alias RowNumber =
@@ -129,14 +155,17 @@ init =
             Array.fromList [ "A", "B", "C", "D", "E", "F", "G" ]
 
         columns =
-            Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, String_ "Yo!" )) (Array.toList rowIx))) labels
+            Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Float_ 1.23 )) (Array.toList rowIx))) labels
     in
     ( { sheetIdx = tableIndex
       , sheetColumns = columns
       , sheetRowCount = rowCount
-      , keyDown = Nothing
+      , keysDown = Set.empty
       , selectedCoords = Nothing
       , selectedValue = Nothing
+      , promptMode = Idle
+      , testInput = ""
+      , lastSubmission = Nothing
       }
     , Effect.none
     )
@@ -199,20 +228,80 @@ type alias KeyCode =
     String
 
 
+type alias RawPromptSubmission =
+    String
+
+
 type Msg
-    = KeyDowns KeyCode
-    | ClearPressed
+    = KeyWentDown KeyCode
+    | KeyReleased KeyCode
     | ClickedCell ( RowIx, ColumnLabel )
+    | PromptInputChanged String
+    | TestInputTxtChanged String
+    | UserClickedCommit ( RawPromptSubmission, ( RowIx, ColumnLabel ) )
+
+
+
+--| Task_This
+--| NewTime Time.Posix
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        KeyDowns code ->
-            ( { model | keyDown = Just code }, Effect.none )
+        KeyWentDown code ->
+            let
+                newKeys =
+                    Set.insert code model.keysDown
 
-        ClearPressed ->
-            ( { model | keyDown = Nothing }, Effect.none )
+                newPromptMode =
+                    case model.selectedCoords of
+                        Nothing ->
+                            Idle
+
+                        Just ( rix, lbl ) ->
+                            case model.promptMode of
+                                Idle ->
+                                    if code == "Enter" then
+                                        PromptInProgress ""
+
+                                    else
+                                        Idle
+
+                                PromptInProgress v ->
+                                    if code == "Enter" then
+                                        UserTextSubmitted ( model.testInput, ( rix, lbl ) )
+
+                                    else
+                                        PromptInProgress model.testInput
+
+                                UserTextSubmitted _ ->
+                                    -- TODO:
+                                    Idle
+            in
+            ( { model
+                | keysDown = newKeys
+                , promptMode = newPromptMode
+                , lastSubmission =
+                    case newPromptMode of
+                        Idle ->
+                            Nothing
+
+                        PromptInProgress _ ->
+                            Nothing
+
+                        UserTextSubmitted sub ->
+                            Just sub
+              }
+            , Effect.none
+            )
+
+        KeyReleased code ->
+            let
+                newKeys =
+                    Set.remove code model.keysDown
+            in
+            ( { model | keysDown = newKeys }, Effect.none )
 
         ClickedCell ( rix, lbl ) ->
             let
@@ -226,6 +315,37 @@ update msg model =
             , Effect.none
             )
 
+        PromptInputChanged newStr ->
+            case model.promptMode of
+                Idle ->
+                    ( model, Effect.none )
+
+                UserTextSubmitted _ ->
+                    -- TODO: Submit stuff
+                    ( model, Effect.none )
+
+                PromptInProgress _ ->
+                    ( { model
+                        | promptMode = PromptInProgress newStr
+                      }
+                    , Effect.none
+                    )
+
+        TestInputTxtChanged newStr ->
+            ( { model | testInput = newStr }, Effect.none )
+
+        UserClickedCommit ( rawSub, ( rix, lbl ) ) ->
+            let
+                newModel =
+                    setCellValue ( rawSub, ( rix, lbl ) )
+            in
+            ( newModel, Effect.none )
+
+
+setCellValue : Model -> Model
+setCellValue model =
+    model
+
 
 
 -- SUBSCRIPTIONS
@@ -234,8 +354,8 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Events.onKeyDown (Decode.map KeyDowns keyDecoder)
-        , Events.onKeyUp (Decode.succeed ClearPressed)
+        [ Events.onKeyDown (Decode.map KeyWentDown keyDecoder)
+        , Events.onKeyUp (Decode.map KeyReleased keyDecoder)
         ]
 
 
@@ -299,8 +419,34 @@ sheet model =
             let
                 cellAttrs : RowIx -> CellData -> List (Attribute Msg)
                 cellAttrs rix cd =
-                    [ Border.color UI.palette.lightGrey
-                    , Border.width 1
+                    let
+                        shouldHighlightCell : Bool
+                        shouldHighlightCell =
+                            case model.selectedCoords of
+                                Nothing ->
+                                    False
+
+                                Just ( rix_, lbl_ ) ->
+                                    (rix_ == rix) && (lbl_ == column.label)
+
+                        borderWidth =
+                            case shouldHighlightCell of
+                                False ->
+                                    1
+
+                                True ->
+                                    3
+
+                        borderColor =
+                            case shouldHighlightCell of
+                                False ->
+                                    UI.palette.lightGrey
+
+                                True ->
+                                    UI.palette.lightBlue
+                    in
+                    [ Border.color borderColor
+                    , Border.width borderWidth
                     , onClick <| ClickedCell ( rix, column.label )
 
                     --, paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
@@ -329,6 +475,47 @@ sheet model =
                     [ alignment
                     , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
+
+                promptElement : RowIx -> PromptMode -> Element Msg
+                promptElement rix pm =
+                    let
+                        isTargetCell : Bool
+                        isTargetCell =
+                            case model.selectedCoords of
+                                Nothing ->
+                                    False
+
+                                Just ( rix_, lbl_ ) ->
+                                    (rix_ == rix) && (lbl_ == column.label)
+                    in
+                    case pm of
+                        Idle ->
+                            none
+
+                        PromptInProgress _ ->
+                            case isTargetCell of
+                                True ->
+                                    el
+                                        [ moveDown 25
+                                        , width <| px 50
+                                        , height <| px 50
+                                        , centerX
+
+                                        --, Background.color color.blue
+                                        ]
+                                        (Input.text []
+                                            { text = model.testInput
+                                            , onChange = TestInputTxtChanged
+                                            , label = Input.labelHidden ""
+                                            , placeholder = Nothing
+                                            }
+                                        )
+
+                                False ->
+                                    none
+
+                        UserTextSubmitted _ ->
+                            none
             in
             E.table
                 [ padding 0 ]
@@ -337,7 +524,15 @@ sheet model =
                     [ { header = E.text column.label
                       , width = px 80
                       , view =
-                            \( rix, cellValue ) -> el (cellAttrs rix cellValue) (el (cellContentAttrs cellValue) (el (cellContentAttrs cellValue) (E.text (cell2Str cellValue))))
+                            \( rix, cellValue ) ->
+                                el (cellAttrs rix cellValue)
+                                    (el (cellContentAttrs cellValue)
+                                        (E.column (cellContentAttrs cellValue)
+                                            [ E.text (cell2Str cellValue)
+                                            , promptElement rix model.promptMode
+                                            ]
+                                        )
+                                    )
                       }
                     ]
                 }
@@ -352,13 +547,11 @@ sheet model =
 viewDebugPanel : Model -> Element Msg
 viewDebugPanel model =
     let
-        keyString =
-            case model.keyDown of
-                Nothing ->
-                    "No keys down"
+        keysList =
+            Set.toList model.keysDown
 
-                Just key ->
-                    key
+        keyString =
+            String.join "," keysList
 
         selectedCoordsStr =
             case model.selectedCoords of
@@ -375,6 +568,53 @@ viewDebugPanel model =
 
                 Just v ->
                     "Value: " ++ cell2Str v
+
+        promptModeStr =
+            case model.promptMode of
+                Idle ->
+                    "prompt is idle"
+
+                PromptInProgress str ->
+                    "prompt thus far: " ++ str
+
+                UserTextSubmitted _ ->
+                    "just submitted"
+
+        lastSubmissionStr : String
+        lastSubmissionStr =
+            case model.lastSubmission of
+                Nothing ->
+                    "Awaiting submission"
+
+                Just ( sub_, ( rix, lbl ) ) ->
+                    sub_
+
+        testOffsetBox =
+            let
+                inputText =
+                    case model.promptMode of
+                        Idle ->
+                            ""
+
+                        PromptInProgress str ->
+                            str
+
+                        UserTextSubmitted _ ->
+                            ""
+            in
+            Input.text
+                [ moveDown 25
+                , width <| px 50
+                , height <| px 50
+                , centerX
+                , Border.width 3
+                , Background.color UI.palette.black
+                ]
+                { text = inputText
+                , onChange = PromptInputChanged
+                , placeholder = Nothing
+                , label = Input.labelAbove [] <| text ""
+                }
     in
     column
         [ padding 5
@@ -384,14 +624,42 @@ viewDebugPanel model =
         [ text keyString
         , text selectedCoordsStr
         , text selectedValueStr
+        , text promptModeStr
+        , text lastSubmissionStr
+
+        --, testOffsetBox
         ]
+
+
+viewCommitButton : Model -> Element Msg
+viewCommitButton model =
+    let
+        attrs =
+            [ Border.width 2
+            , Border.rounded 2
+            , Border.color UI.palette.darkCharcoal
+            ]
+    in
+    case model.lastSubmission of
+        Nothing ->
+            Input.button attrs { onPress = Nothing, label = text "commit" }
+
+        Just ls ->
+            Input.button attrs { onPress = Just <| UserClickedCommit ls, label = text "commit" }
 
 
 content : Model -> Element Msg
 content model =
-    column []
+    column [ spacing 10, padding 10 ]
         [ sheet model
+        , viewCommitButton model
         , viewDebugPanel model
+        , Input.text []
+            { text = model.testInput
+            , onChange = TestInputTxtChanged
+            , label = Input.labelHidden ""
+            , placeholder = Nothing
+            }
         ]
 
 
