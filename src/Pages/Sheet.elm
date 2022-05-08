@@ -87,7 +87,7 @@ type alias RowIx =
 
 
 type alias ColumnLabel =
-    String
+    Int
 
 
 type alias ColumnData =
@@ -102,6 +102,11 @@ type CellData
     | Float_ Float
     | Int_ Int
     | Bool_ Bool
+
+
+str2Cell : String -> CellData
+str2Cell s =
+    String_ s
 
 
 cell2Str : CellData -> String
@@ -151,8 +156,9 @@ init =
         columnCount =
             7
 
+        labels : Array.Array Int
         labels =
-            Array.fromList [ "A", "B", "C", "D", "E", "F", "G" ]
+            Array.fromList [ 1, 2, 3, 4, 5, 6, 7 ]
 
         columns =
             Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Float_ 1.23 )) (Array.toList rowIx))) labels
@@ -337,14 +343,54 @@ update msg model =
         UserClickedCommit ( rawSub, ( rix, lbl ) ) ->
             let
                 newModel =
-                    setCellValue ( rawSub, ( rix, lbl ) )
+                    setCellValue model (str2Cell rawSub) rix lbl
             in
             ( newModel, Effect.none )
 
 
-setCellValue : Model -> Model
-setCellValue model =
-    model
+setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> Model
+setCellValue model val rix lbl =
+    let
+        col : Maybe ColumnData
+        col =
+            Array.get lbl model.sheetColumns
+
+        row : Array.Array CellData
+        row =
+            case col of
+                Just v ->
+                    Array.map (\( _, cd ) -> cd) (Array.fromList v.col)
+
+                Nothing ->
+                    Array.empty
+
+        row_ : Array.Array CellData
+        row_ =
+            Array.set rix val row
+
+        row__ : ColumnData
+        row__ =
+            let
+                r =
+                    Array.toList row_
+
+                ixs =
+                    List.range 0 (List.length r - 1)
+
+                r_ =
+                    List.map2 (\e ix -> ( ix, e )) r ixs
+            in
+            { label = lbl
+            , col = r_
+            }
+
+        newArr : Array.Array ColumnData
+        newArr =
+            Array.set lbl row__ model.sheetColumns
+    in
+    { model
+        | sheetColumns = newArr
+    }
 
 
 
@@ -521,7 +567,7 @@ sheet model =
                 [ padding 0 ]
                 { data = column.col
                 , columns =
-                    [ { header = E.text column.label
+                    [ { header = E.text <| String.fromInt column.label
                       , width = px 80
                       , view =
                             \( rix, cellValue ) ->
@@ -559,7 +605,7 @@ viewDebugPanel model =
                     "Click a cell to select it"
 
                 Just ( rix, lbl ) ->
-                    "Selection: (" ++ String.fromInt rix ++ ", " ++ lbl ++ ")"
+                    "Selection: (" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
 
         selectedValueStr =
             case model.selectedValue of
