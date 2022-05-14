@@ -680,7 +680,7 @@ content model =
     let
         viewInstructions : Element Msg
         viewInstructions =
-            text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new value for a cell, which will be submitted upon pressing <Enter> a second time"
+            text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new a value for a cell, which will be submitted upon pressing <Enter> a second time"
     in
     column [ spacing 10, padding 10 ]
         [ viewInstructions
