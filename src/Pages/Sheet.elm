@@ -292,14 +292,11 @@ update msg model =
                                         let
                                             newCode =
                                                 -- HACK: only consider "short" keys as potential prompt characters
+                                                --       This bypasses the Element.Input focus issue, but at unacceptable
+                                                --       costs. Backspace, copy-paste, etc do not work
                                                 --       This avoids codes like "ArrowLeft" and "ArrowRight"
-                                                --       This is sufficient for my standard keyboard, but I'm unsure
-                                                --       what would happen if I were typing a language whose characters
-                                                --       require unicode
                                                 --
-                                                -- TODO: It's unclear if this sufficient, if it is, is should be tested
-                                                --       Unfortunately that'd require moving this logic to its own util
-                                                --       module, to facilitate elm-spa Pages expose constraints
+                                                -- TODO: Figure out how to better control focus of Element.Input
                                                 if String.length code == 1 then
                                                     v ++ code
 
