@@ -41,7 +41,6 @@ page shared req =
 type PromptMode
     = Idle
     | PromptInProgress String
-    | UserTextSubmitted ( String, ( RowIx, ColumnLabel ) )
 
 
 type alias Model =
@@ -52,9 +51,24 @@ type alias Model =
     , selectedCoords : Maybe ( RowIx, ColumnLabel )
     , selectedValue : Maybe CellData
     , promptMode : PromptMode
-    , testInput : String
-    , lastSubmission : Maybe ( String, ( RowIx, ColumnLabel ) )
+    , submissionHistory : List RawPrompt
     }
+
+
+type Msg
+    = KeyWentDown KeyCode
+    | KeyReleased KeyCode
+    | ClickedCell ( RowIx, ColumnLabel )
+    | PromptInputChanged String
+    | PromptSubmitted RawPrompt
+
+
+
+-- TODO: Can we save sheet state history here too?
+
+
+type alias RawPrompt =
+    ( RawPromptString, ( RowIx, ColumnLabel ) )
 
 
 prompt2Str : PromptMode -> String
@@ -65,9 +79,6 @@ prompt2Str pm =
 
         PromptInProgress str ->
             "prompt thus far: " ++ str
-
-        UserTextSubmitted _ ->
-            "text being submitted"
 
 
 type alias RowNumber =
@@ -158,7 +169,7 @@ init =
 
         labels : Array.Array Int
         labels =
-            Array.fromList [ 1, 2, 3, 4, 5, 6, 7 ]
+            Array.fromList [ 0, 1, 2, 3, 4, 5, 6 ]
 
         columns =
             Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Float_ 1.23 )) (Array.toList rowIx))) labels
@@ -170,8 +181,7 @@ init =
       , selectedCoords = Nothing
       , selectedValue = Nothing
       , promptMode = Idle
-      , testInput = ""
-      , lastSubmission = Nothing
+      , submissionHistory = []
       }
     , Effect.none
     )
@@ -234,17 +244,8 @@ type alias KeyCode =
     String
 
 
-type alias RawPromptSubmission =
+type alias RawPromptString =
     String
-
-
-type Msg
-    = KeyWentDown KeyCode
-    | KeyReleased KeyCode
-    | ClickedCell ( RowIx, ColumnLabel )
-    | PromptInputChanged String
-    | TestInputTxtChanged String
-    | UserClickedCommit ( RawPromptSubmission, ( RowIx, ColumnLabel ) )
 
 
 
@@ -260,46 +261,32 @@ update msg model =
                 newKeys =
                     Set.insert code model.keysDown
 
-                newPromptMode =
+                ( newPromptMode, cmdToSend ) =
                     case model.selectedCoords of
                         Nothing ->
-                            Idle
+                            ( Idle, Cmd.none )
 
                         Just ( rix, lbl ) ->
                             case model.promptMode of
                                 Idle ->
                                     if code == "Enter" then
-                                        PromptInProgress ""
+                                        ( PromptInProgress "", Cmd.none )
 
                                     else
-                                        Idle
+                                        ( Idle, Cmd.none )
 
                                 PromptInProgress v ->
                                     if code == "Enter" then
-                                        UserTextSubmitted ( model.testInput, ( rix, lbl ) )
+                                        ( Idle, send <| PromptSubmitted ( v, ( rix, lbl ) ) )
 
                                     else
-                                        PromptInProgress model.testInput
-
-                                UserTextSubmitted _ ->
-                                    -- TODO:
-                                    Idle
+                                        ( PromptInProgress v, Cmd.none )
             in
             ( { model
                 | keysDown = newKeys
                 , promptMode = newPromptMode
-                , lastSubmission =
-                    case newPromptMode of
-                        Idle ->
-                            Nothing
-
-                        PromptInProgress _ ->
-                            Nothing
-
-                        UserTextSubmitted sub ->
-                            Just sub
               }
-            , Effect.none
+            , Effect.fromCmd cmdToSend
             )
 
         KeyReleased code ->
@@ -326,10 +313,6 @@ update msg model =
                 Idle ->
                     ( model, Effect.none )
 
-                UserTextSubmitted _ ->
-                    -- TODO: Submit stuff
-                    ( model, Effect.none )
-
                 PromptInProgress _ ->
                     ( { model
                         | promptMode = PromptInProgress newStr
@@ -337,18 +320,26 @@ update msg model =
                     , Effect.none
                     )
 
-        TestInputTxtChanged newStr ->
-            ( { model | testInput = newStr }, Effect.none )
-
-        UserClickedCommit ( rawSub, ( rix, lbl ) ) ->
+        PromptSubmitted ( rawSub, ( rix, lbl ) ) ->
             let
-                newModel =
+                newSheetCols : Array.Array ColumnData
+                newSheetCols =
                     setCellValue model (str2Cell rawSub) rix lbl
+
+                newHistory : List RawPrompt
+                newHistory =
+                    model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
             in
-            ( newModel, Effect.none )
+            ( { model
+                | sheetColumns = newSheetCols
+                , promptMode = Idle -- TODO: Is this redundant to key input handling?
+                , submissionHistory = newHistory
+              }
+            , Effect.none
+            )
 
 
-setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> Model
+setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> Array.Array ColumnData
 setCellValue model val rix lbl =
     let
         col : Maybe ColumnData
@@ -388,9 +379,7 @@ setCellValue model val rix lbl =
         newArr =
             Array.set lbl row__ model.sheetColumns
     in
-    { model
-        | sheetColumns = newArr
-    }
+    newArr
 
 
 
@@ -550,8 +539,14 @@ sheet model =
                                         --, Background.color color.blue
                                         ]
                                         (Input.text []
-                                            { text = model.testInput
-                                            , onChange = TestInputTxtChanged
+                                            { text =
+                                                case model.promptMode of
+                                                    Idle ->
+                                                        ""
+
+                                                    PromptInProgress v ->
+                                                        v
+                                            , onChange = PromptInputChanged
                                             , label = Input.labelHidden ""
                                             , placeholder = Nothing
                                             }
@@ -559,9 +554,6 @@ sheet model =
 
                                 False ->
                                     none
-
-                        UserTextSubmitted _ ->
-                            none
             in
             E.table
                 [ padding 0 ]
@@ -623,44 +615,24 @@ viewDebugPanel model =
                 PromptInProgress str ->
                     "prompt thus far: " ++ str
 
-                UserTextSubmitted _ ->
-                    "just submitted"
-
-        lastSubmissionStr : String
-        lastSubmissionStr =
-            case model.lastSubmission of
-                Nothing ->
-                    "Awaiting submission"
-
-                Just ( sub_, ( rix, lbl ) ) ->
-                    sub_
-
-        testOffsetBox =
+        viewPromptHistory : List RawPrompt -> Element Msg
+        viewPromptHistory history =
             let
-                inputText =
-                    case model.promptMode of
-                        Idle ->
-                            ""
-
-                        PromptInProgress str ->
-                            str
-
-                        UserTextSubmitted _ ->
-                            ""
+                promptStr : RawPrompt -> Element Msg
+                promptStr prompt =
+                    case prompt of
+                        ( rawStr, ( rix, lbl ) ) ->
+                            text <| rawStr ++ "@:(" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
             in
-            Input.text
-                [ moveDown 25
-                , width <| px 50
-                , height <| px 50
-                , centerX
-                , Border.width 3
-                , Background.color UI.palette.black
-                ]
-                { text = inputText
-                , onChange = PromptInputChanged
-                , placeholder = Nothing
-                , label = Input.labelAbove [] <| text ""
-                }
+            column [ paddingEach { top = 0, left = 5, right = 0, bottom = 0 } ]
+                ([ text <| "Submission history:"
+                 ]
+                    ++ List.map promptStr history
+                )
+
+        --(text <| "Submission history:"
+        --        ++ List.map promptStr history
+        --)
     in
     column
         [ padding 5
@@ -671,41 +643,17 @@ viewDebugPanel model =
         , text selectedCoordsStr
         , text selectedValueStr
         , text promptModeStr
-        , text lastSubmissionStr
+        , viewPromptHistory model.submissionHistory
 
         --, testOffsetBox
         ]
-
-
-viewCommitButton : Model -> Element Msg
-viewCommitButton model =
-    let
-        attrs =
-            [ Border.width 2
-            , Border.rounded 2
-            , Border.color UI.palette.darkCharcoal
-            ]
-    in
-    case model.lastSubmission of
-        Nothing ->
-            Input.button attrs { onPress = Nothing, label = text "commit" }
-
-        Just ls ->
-            Input.button attrs { onPress = Just <| UserClickedCommit ls, label = text "commit" }
 
 
 content : Model -> Element Msg
 content model =
     column [ spacing 10, padding 10 ]
         [ sheet model
-        , viewCommitButton model
         , viewDebugPanel model
-        , Input.text []
-            { text = model.testInput
-            , onChange = TestInputTxtChanged
-            , label = Input.labelHidden ""
-            , placeholder = Nothing
-            }
         ]
 
 
@@ -722,3 +670,13 @@ elements model =
 
         --, footer
         ]
+
+
+
+-- utils
+
+
+send : Msg -> Cmd Msg
+send m =
+    Task.succeed m
+        |> Task.perform identity
