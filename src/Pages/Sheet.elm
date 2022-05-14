@@ -10,7 +10,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (..)
 import Element.Font as Font
-import Element.Input as Input
+import Element.Input as Input exposing (focusedOnLoad)
 import Gen.Params.Sheet exposing (Params)
 import Json.Decode as Decode
 import Page
@@ -43,12 +43,16 @@ type PromptMode
     | PromptInProgress String
 
 
+type alias CellCoords =
+    ( RowIx, ColumnLabel )
+
+
 type alias Model =
     { sheetIdx : Index
     , sheetColumns : Array.Array ColumnData
     , sheetRowCount : Int
     , keysDown : Set KeyCode
-    , selectedCoords : Maybe ( RowIx, ColumnLabel )
+    , selectedCoords : Maybe CellCoords
     , selectedValue : Maybe CellData
     , promptMode : PromptMode
     , submissionHistory : List RawPrompt
@@ -69,16 +73,6 @@ type Msg
 
 type alias RawPrompt =
     ( RawPromptString, ( RowIx, ColumnLabel ) )
-
-
-prompt2Str : PromptMode -> String
-prompt2Str pm =
-    case pm of
-        Idle ->
-            "Idle"
-
-        PromptInProgress str ->
-            "prompt thus far: " ++ str
 
 
 type alias RowNumber =
@@ -128,7 +122,12 @@ cell2Str cd =
             " "
 
         String_ s ->
-            s
+            if s == "" then
+                -- HACK: single space vs empty str yields elm-ui table styling
+                " "
+
+            else
+                s
 
         Float_ f ->
             String.fromFloat f
@@ -172,13 +171,13 @@ init =
             Array.fromList [ 0, 1, 2, 3, 4, 5, 6 ]
 
         columns =
-            Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Float_ 1.23 )) (Array.toList rowIx))) labels
+            Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Int_ 5 )) (Array.toList rowIx))) labels
     in
     ( { sheetIdx = tableIndex
       , sheetColumns = columns
       , sheetRowCount = rowCount
       , keysDown = Set.empty
-      , selectedCoords = Nothing
+      , selectedCoords = Just ( 0, 0 )
       , selectedValue = Nothing
       , promptMode = Idle
       , submissionHistory = []
@@ -261,30 +260,52 @@ update msg model =
                 newKeys =
                     Set.insert code model.keysDown
 
-                ( newPromptMode, cmdToSend ) =
+                ( newPromptMode, cmdToSend, newSelectedCoords ) =
                     case model.selectedCoords of
                         Nothing ->
-                            ( Idle, Cmd.none )
+                            ( Idle, Cmd.none, Nothing )
 
                         Just ( rix, lbl ) ->
+                            let
+                                newRix_ =
+                                    if code == "ArrowUp" && rix > 0 then
+                                        rix - 1
+
+                                    else if code == "ArrowDown" then
+                                        rix + 1
+
+                                    else
+                                        rix
+
+                                newLbl_ =
+                                    if code == "ArrowLeft" && lbl > 0 then
+                                        lbl - 1
+
+                                    else if code == "ArrowRight" then
+                                        lbl + 1
+
+                                    else
+                                        lbl
+                            in
                             case model.promptMode of
                                 Idle ->
                                     if code == "Enter" then
-                                        ( PromptInProgress "", Cmd.none )
+                                        ( PromptInProgress "", Cmd.none, Just ( newRix_, newLbl_ ) )
 
                                     else
-                                        ( Idle, Cmd.none )
+                                        ( Idle, Cmd.none, Just ( newRix_, newLbl_ ) )
 
                                 PromptInProgress v ->
                                     if code == "Enter" then
-                                        ( Idle, send <| PromptSubmitted ( v, ( rix, lbl ) ) )
+                                        ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( newRix_, newLbl_ ) )
 
                                     else
-                                        ( PromptInProgress v, Cmd.none )
+                                        ( PromptInProgress v, Cmd.none, Just ( newRix_, newLbl_ ) )
             in
             ( { model
                 | keysDown = newKeys
                 , promptMode = newPromptMode
+                , selectedCoords = newSelectedCoords
               }
             , Effect.fromCmd cmdToSend
             )
@@ -329,11 +350,15 @@ update msg model =
                 newHistory : List RawPrompt
                 newHistory =
                     model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
+
+                newSelectedCoords =
+                    Just ( rix + 1, lbl )
             in
             ( { model
                 | sheetColumns = newSheetCols
                 , promptMode = Idle -- TODO: Is this redundant to key input handling?
                 , submissionHistory = newHistory
+                , selectedCoords = newSelectedCoords
               }
             , Effect.none
             )
@@ -416,8 +441,8 @@ view model =
     }
 
 
-sheet : Model -> Element Msg
-sheet model =
+viewSheet : Model -> Element Msg
+viewSheet model =
     let
         viewSheetIndex : Index -> Element Msg
         viewSheetIndex ix =
@@ -511,49 +536,46 @@ sheet model =
                     , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
 
-                promptElement : RowIx -> PromptMode -> Element Msg
-                promptElement rix pm =
+                viewCell : Maybe CellCoords -> String -> RowIx -> PromptMode -> Element Msg
+                viewCell selectedCoords cellValueAsStr rix_ promptMode =
                     let
                         isTargetCell : Bool
                         isTargetCell =
-                            case model.selectedCoords of
+                            case selectedCoords of
                                 Nothing ->
                                     False
 
-                                Just ( rix_, lbl_ ) ->
-                                    (rix_ == rix) && (lbl_ == column.label)
+                                Just ( rix__, lbl_ ) ->
+                                    (rix_ == rix__) && (lbl_ == column.label)
                     in
-                    case pm of
-                        Idle ->
-                            none
+                    case isTargetCell of
+                        True ->
+                            case promptMode of
+                                Idle ->
+                                    E.text cellValueAsStr
 
-                        PromptInProgress _ ->
-                            case isTargetCell of
-                                True ->
+                                PromptInProgress v ->
                                     el
-                                        [ moveDown 25
-                                        , width <| px 50
-                                        , height <| px 50
-                                        , centerX
-
-                                        --, Background.color color.blue
+                                        [--moveDown 25
+                                         --, width <| px 50
+                                         --, height <| px 50
+                                         --, centerX
+                                         --, Background.color color.blue
                                         ]
-                                        (Input.text []
-                                            { text =
-                                                case model.promptMode of
-                                                    Idle ->
-                                                        ""
-
-                                                    PromptInProgress v ->
-                                                        v
+                                        (Input.text
+                                            [ focusedOnLoad
+                                            , padding 0
+                                            , Border.width 0
+                                            ]
+                                            { text = v
                                             , onChange = PromptInputChanged
                                             , label = Input.labelHidden ""
                                             , placeholder = Nothing
                                             }
                                         )
 
-                                False ->
-                                    none
+                        False ->
+                            E.text cellValueAsStr
             in
             E.table
                 [ padding 0 ]
@@ -566,8 +588,7 @@ sheet model =
                                 el (cellAttrs rix cellValue)
                                     (el (cellContentAttrs cellValue)
                                         (E.column (cellContentAttrs cellValue)
-                                            [ E.text (cell2Str cellValue)
-                                            , promptElement rix model.promptMode
+                                            [ viewCell model.selectedCoords (cell2Str cellValue) rix model.promptMode
                                             ]
                                         )
                                     )
@@ -624,35 +645,29 @@ viewDebugPanel model =
                         ( rawStr, ( rix, lbl ) ) ->
                             text <| rawStr ++ "@:(" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
             in
-            column [ paddingEach { top = 0, left = 5, right = 0, bottom = 0 } ]
-                ([ text <| "Submission history:"
-                 ]
-                    ++ List.map promptStr history
-                )
-
-        --(text <| "Submission history:"
-        --        ++ List.map promptStr history
-        --)
+            column []
+                [ text <| "Submission history:"
+                , column [ paddingEach { top = 0, left = 5, right = 0, bottom = 0 } ] <| List.map promptStr history
+                ]
     in
     column
         [ padding 5
         , Border.color UI.palette.black
         , Border.width 2
+        , spacing 5
         ]
         [ text keyString
         , text selectedCoordsStr
         , text selectedValueStr
         , text promptModeStr
         , viewPromptHistory model.submissionHistory
-
-        --, testOffsetBox
         ]
 
 
 content : Model -> Element Msg
 content model =
     column [ spacing 10, padding 10 ]
-        [ sheet model
+        [ viewSheet model
         , viewDebugPanel model
         ]
 
@@ -665,10 +680,7 @@ elements model =
         , Background.color UI.palette.white
         , Font.size 12
         ]
-        [ --header
-          content model
-
-        --, footer
+        [ content model
         ]
 
 
