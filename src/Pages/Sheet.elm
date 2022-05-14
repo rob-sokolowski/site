@@ -17,6 +17,7 @@ import Page
 import Request
 import Set exposing (Set)
 import Shared
+import SheetModel exposing (CellData(..), RawPromptString)
 import String
 import Task
 import Time
@@ -99,14 +100,6 @@ type alias ColumnData =
     { label : ColumnLabel
     , col : List ( RowIx, CellData )
     }
-
-
-type CellData
-    = Empty
-    | String_ String
-    | Float_ Float
-    | Int_ Int
-    | Bool_ Bool
 
 
 str2Cell : String -> CellData
@@ -243,10 +236,6 @@ type alias KeyCode =
     String
 
 
-type alias RawPromptString =
-    String
-
-
 
 --| Task_This
 --| NewTime Time.Posix
@@ -300,7 +289,24 @@ update msg model =
                                         ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( newRix_, newLbl_ ) )
 
                                     else
-                                        ( PromptInProgress v, Cmd.none, Just ( newRix_, newLbl_ ) )
+                                        let
+                                            newCode =
+                                                -- HACK: only consider "short" keys as potential prompt characters
+                                                --       This avoids codes like "ArrowLeft" and "ArrowRight"
+                                                --       This is sufficient for my standard keyboard, but I'm unsure
+                                                --       what would happen if I were typing a language whose characters
+                                                --       require unicode
+                                                --
+                                                -- TODO: It's unclear if this sufficient, if it is, is should be tested
+                                                --       Unfortunately that'd require moving this logic to its own util
+                                                --       module, to facilitate elm-spa Pages expose constraints
+                                                if String.length code == 1 then
+                                                    v ++ code
+
+                                                else
+                                                    v
+                                        in
+                                        ( PromptInProgress newCode, Cmd.none, Just ( newRix_, newLbl_ ) )
             in
             ( { model
                 | keysDown = newKeys
@@ -555,25 +561,33 @@ viewSheet model =
                                     E.text cellValueAsStr
 
                                 PromptInProgress v ->
-                                    el
-                                        [--moveDown 25
-                                         --, width <| px 50
-                                         --, height <| px 50
-                                         --, centerX
-                                         --, Background.color color.blue
-                                        ]
-                                        (Input.text
-                                            [ focusedOnLoad
-                                            , padding 0
-                                            , Border.width 0
-                                            ]
-                                            { text = v
-                                            , onChange = PromptInputChanged
-                                            , label = Input.labelHidden ""
-                                            , placeholder = Nothing
-                                            }
-                                        )
+                                    let
+                                        vStr =
+                                            if v == "" then
+                                                " "
 
+                                            else
+                                                v
+                                    in
+                                    el [] <| E.text vStr
+
+                        --[--moveDown 25
+                        -- --, width <| px 50
+                        -- --, height <| px 50
+                        -- --, centerX
+                        -- --, Background.color color.blue
+                        --]
+                        --(Input.text
+                        --    [ focusedOnLoad
+                        --    , padding 0
+                        --    , Border.width 0
+                        --    ]
+                        --    { text = v
+                        --    , onChange = PromptInputChanged
+                        --    , label = Input.labelHidden ""
+                        --    , placeholder = Nothing
+                        --    }
+                        --)
                         False ->
                             E.text cellValueAsStr
             in
