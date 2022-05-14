@@ -50,13 +50,16 @@ type alias CellCoords =
     ( RowIx, ColumnLabel )
 
 
+type alias Cell =
+    ( CellCoords, CellData )
+
+
 type alias Model =
     { sheetIdx : Index
     , sheetColumns : Array.Array ColumnData
     , sheetRowCount : Int
     , keysDown : Set KeyCode
-    , selectedCoords : Maybe CellCoords
-    , selectedValue : Maybe CellData
+    , selectedCell : Maybe Cell
     , promptMode : PromptMode
     , submissionHistory : List RawPrompt
     }
@@ -174,8 +177,7 @@ init =
       , sheetColumns = columns
       , sheetRowCount = rowCount
       , keysDown = Set.empty
-      , selectedCoords = Just ( 0, 0 )
-      , selectedValue = Nothing
+      , selectedCell = Just <| ( ( 0, 0 ), Int_ 5 ) -- TODO: DRY up the init 5
       , promptMode = Idle
       , submissionHistory = []
       }
@@ -254,11 +256,11 @@ update msg model =
                     Set.insert code model.keysDown
 
                 ( newPromptMode, cmdToSend, newSelectedCoords ) =
-                    case model.selectedCoords of
+                    case model.selectedCell of
                         Nothing ->
                             ( Idle, Cmd.none, Nothing )
 
-                        Just ( rix, lbl ) ->
+                        Just ( ( rix, lbl ), _ ) ->
                             let
                                 newRix_ =
                                     if code == "ArrowUp" && rix > 0 then
@@ -279,26 +281,35 @@ update msg model =
 
                                     else
                                         lbl
+
+                                newVal : CellData
+                                newVal =
+                                    case getValueAtCoords model newRix_ newLbl_ of
+                                        Nothing ->
+                                            Empty
+
+                                        Just v ->
+                                            v
                             in
                             case model.promptMode of
                                 Idle ->
                                     if code == "Enter" then
-                                        ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( newRix_, newLbl_ ) )
+                                        ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
 
                                     else
-                                        ( Idle, Cmd.none, Just ( newRix_, newLbl_ ) )
+                                        ( Idle, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
 
                                 PromptInProgress v ->
                                     if code == "Enter" then
-                                        ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( newRix_, newLbl_ ) )
+                                        ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( ( newRix_, newLbl_ ), newVal ) )
 
                                     else
-                                        ( PromptInProgress v, Cmd.none, Just ( newRix_, newLbl_ ) )
+                                        ( PromptInProgress v, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
             in
             ( { model
                 | keysDown = newKeys
                 , promptMode = newPromptMode
-                , selectedCoords = newSelectedCoords
+                , selectedCell = newSelectedCoords
               }
             , Effect.fromCmd cmdToSend
             )
@@ -312,12 +323,17 @@ update msg model =
 
         ClickedCell ( rix, lbl ) ->
             let
+                selectedValue : CellData
                 selectedValue =
-                    getValueAtCoords model rix lbl
+                    case getValueAtCoords model rix lbl of
+                        Nothing ->
+                            Empty
+
+                        Just v ->
+                            v
             in
             ( { model
-                | selectedCoords = Just ( rix, lbl )
-                , selectedValue = selectedValue
+                | selectedCell = Just ( ( rix, lbl ), selectedValue )
               }
             , Effect.none
             )
@@ -345,13 +361,21 @@ update msg model =
                     model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
 
                 newSelectedCoords =
-                    Just ( rix + 1, lbl )
+                    ( rix + 1, lbl )
+
+                newSelectedValue =
+                    case getValueAtCoords model (rix + 1) lbl of
+                        Nothing ->
+                            Empty
+
+                        Just v ->
+                            v
             in
             ( { model
                 | sheetColumns = newSheetCols
                 , promptMode = Idle -- TODO: Is this redundant to key input handling?
                 , submissionHistory = newHistory
-                , selectedCoords = newSelectedCoords
+                , selectedCell = Just ( newSelectedCoords, newSelectedValue )
               }
             , Effect.none
             )
@@ -486,11 +510,11 @@ viewSheet model =
                     let
                         shouldHighlightCell : Bool
                         shouldHighlightCell =
-                            case model.selectedCoords of
+                            case model.selectedCell of
                                 Nothing ->
                                     False
 
-                                Just ( rix_, lbl_ ) ->
+                                Just ( ( rix_, lbl_ ), _ ) ->
                                     (rix_ == rix) && (lbl_ == column.label)
 
                         borderWidth =
@@ -540,7 +564,7 @@ viewSheet model =
                     , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
 
-                viewCell : Maybe CellCoords -> String -> RowIx -> PromptMode -> Element Msg
+                viewCell : Maybe ( CellCoords, CellData ) -> String -> RowIx -> PromptMode -> Element Msg
                 viewCell selectedCoords cellValueAsStr rix_ promptMode =
                     let
                         isTargetCell : Bool
@@ -549,7 +573,7 @@ viewSheet model =
                                 Nothing ->
                                     False
 
-                                Just ( rix__, lbl_ ) ->
+                                Just ( ( rix__, lbl_ ), _ ) ->
                                     (rix_ == rix__) && (lbl_ == column.label)
                     in
                     case isTargetCell of
@@ -570,12 +594,6 @@ viewSheet model =
                                         , placeholder = Nothing
                                         }
 
-                        --[--moveDown 25
-                        -- --, width <| px 50
-                        -- --, height <| px 50
-                        -- --, centerX
-                        -- --, Background.color color.blue
-                        --]
                         False ->
                             E.text cellValueAsStr
             in
@@ -590,7 +608,7 @@ viewSheet model =
                                 el (cellAttrs rix cellValue)
                                     (el (cellContentAttrs cellValue)
                                         (E.column (cellContentAttrs cellValue)
-                                            [ viewCell model.selectedCoords (cell2Str cellValue) rix model.promptMode
+                                            [ viewCell model.selectedCell (cell2Str cellValue) rix model.promptMode
                                             ]
                                         )
                                     )
@@ -615,28 +633,20 @@ viewDebugPanel model =
             String.join "," keysList
 
         selectedCoordsStr =
-            case model.selectedCoords of
+            case model.selectedCell of
                 Nothing ->
                     "Click a cell to select it"
 
-                Just ( rix, lbl ) ->
+                Just ( ( rix, lbl ), _ ) ->
                     "Selection: (" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
 
         selectedValueStr =
-            case model.selectedValue of
+            case model.selectedCell of
                 Nothing ->
                     "No selected value"
 
-                Just v ->
+                Just ( _, v ) ->
                     "Value: " ++ cell2Str v
-
-        promptModeStr =
-            case model.promptMode of
-                Idle ->
-                    "prompt is idle"
-
-                PromptInProgress str ->
-                    "prompt thus far: " ++ str
 
         viewPromptHistory : List RawPrompt -> Element Msg
         viewPromptHistory history =
@@ -661,7 +671,6 @@ viewDebugPanel model =
         [ text keyString
         , text selectedCoordsStr
         , text selectedValueStr
-        , text promptModeStr
         , viewPromptHistory model.submissionHistory
         ]
 
