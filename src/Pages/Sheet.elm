@@ -1,6 +1,7 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
 import Array
+import Browser.Dom
 import Browser.Events as Events
 import Color
 import Dict exposing (Dict)
@@ -12,6 +13,7 @@ import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input exposing (focusedOnLoad)
 import Gen.Params.Sheet exposing (Params)
+import Html.Attributes as HA
 import Json.Decode as Decode
 import Page
 import Request
@@ -66,6 +68,8 @@ type Msg
     | ClickedCell ( RowIx, ColumnLabel )
     | PromptInputChanged String
     | PromptSubmitted RawPrompt
+    | QuirkWorkaround__FocusOn String
+    | QuirkWorkaound__FocusResult (Result Browser.Dom.Error ())
 
 
 
@@ -279,7 +283,7 @@ update msg model =
                             case model.promptMode of
                                 Idle ->
                                     if code == "Enter" then
-                                        ( PromptInProgress "", Cmd.none, Just ( newRix_, newLbl_ ) )
+                                        ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( newRix_, newLbl_ ) )
 
                                     else
                                         ( Idle, Cmd.none, Just ( newRix_, newLbl_ ) )
@@ -289,21 +293,7 @@ update msg model =
                                         ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( newRix_, newLbl_ ) )
 
                                     else
-                                        let
-                                            newCode =
-                                                -- HACK: only consider "short" keys as potential prompt characters
-                                                --       This bypasses the Element.Input focus issue, but at unacceptable
-                                                --       costs. Backspace, copy-paste, etc do not work
-                                                --       This avoids codes like "ArrowLeft" and "ArrowRight"
-                                                --
-                                                -- TODO: Figure out how to better control focus of Element.Input
-                                                if String.length code == 1 then
-                                                    v ++ code
-
-                                                else
-                                                    v
-                                        in
-                                        ( PromptInProgress newCode, Cmd.none, Just ( newRix_, newLbl_ ) )
+                                        ( PromptInProgress v, Cmd.none, Just ( newRix_, newLbl_ ) )
             in
             ( { model
                 | keysDown = newKeys
@@ -365,6 +355,17 @@ update msg model =
               }
             , Effect.none
             )
+
+        QuirkWorkaround__FocusOn domId ->
+            ( model, Effect.fromCmd (Browser.Dom.focus domId |> Task.attempt QuirkWorkaound__FocusResult) )
+
+        QuirkWorkaound__FocusResult result ->
+            case result of
+                Err _ ->
+                    ( model, Effect.none )
+
+                Ok () ->
+                    ( model, Effect.none )
 
 
 setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> Array.Array ColumnData
@@ -558,15 +559,16 @@ viewSheet model =
                                     E.text cellValueAsStr
 
                                 PromptInProgress v ->
-                                    let
-                                        vStr =
-                                            if v == "" then
-                                                " "
-
-                                            else
-                                                v
-                                    in
-                                    el [] <| E.text vStr
+                                    Input.text
+                                        [ htmlAttribute <| HA.id prompt_intput_dom_id
+                                        , padding 0
+                                        , Border.width 0
+                                        ]
+                                        { text = v
+                                        , onChange = PromptInputChanged
+                                        , label = Input.labelHidden ""
+                                        , placeholder = Nothing
+                                        }
 
                         --[--moveDown 25
                         -- --, width <| px 50
@@ -574,17 +576,6 @@ viewSheet model =
                         -- --, centerX
                         -- --, Background.color color.blue
                         --]
-                        --(Input.text
-                        --    [ focusedOnLoad
-                        --    , padding 0
-                        --    , Border.width 0
-                        --    ]
-                        --    { text = v
-                        --    , onChange = PromptInputChanged
-                        --    , label = Input.labelHidden ""
-                        --    , placeholder = Nothing
-                        --    }
-                        --)
                         False ->
                             E.text cellValueAsStr
             in
@@ -703,3 +694,9 @@ send : Msg -> Cmd Msg
 send m =
     Task.succeed m
         |> Task.perform identity
+
+
+prompt_intput_dom_id : String
+prompt_intput_dom_id =
+    -- page-scoped, static unique identifier to control focus manually
+    "prompt-input-element"
