@@ -54,7 +54,23 @@ type alias Cell =
     ( CellCoords, CellData )
 
 
-type alias Model =
+type ReplayState
+    = Paused
+    | Playing
+
+
+type alias TimelineState =
+    { currentFrame : Int
+    , replayState : ReplayState
+    }
+
+
+type Model
+    = Model ModelData
+    | TimelineMode ModelData TimelineState
+
+
+type alias ModelData =
     { sheetIdx : Index
     , sheetColumns : Array.Array ColumnData
     , sheetRowCount : Int
@@ -62,8 +78,12 @@ type alias Model =
     , selectedCell : Maybe Cell
     , promptMode : PromptMode
     , submissionHistory : List RawPrompt
+    , timeline : List ( Int, Model )
     }
 
+
+type TimelineMsg =
+    
 
 type Msg
     = KeyWentDown KeyCode
@@ -71,6 +91,8 @@ type Msg
     | ClickedCell ( RowIx, ColumnLabel )
     | PromptInputChanged String
     | PromptSubmitted RawPrompt
+    | EnterTimelineMode ModelData
+    | EnterSheetMode ModelData
     | QuirkWorkaround__FocusOn String
     | QuirkWorkaound__FocusResult (Result Browser.Dom.Error ())
 
@@ -173,14 +195,16 @@ init =
         columns =
             Array.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Int_ 5 )) (Array.toList rowIx))) labels
     in
-    ( { sheetIdx = tableIndex
-      , sheetColumns = columns
-      , sheetRowCount = rowCount
-      , keysDown = Set.empty
-      , selectedCell = Just <| ( ( 0, 0 ), Int_ 5 ) -- TODO: DRY up the init 5
-      , promptMode = Idle
-      , submissionHistory = []
-      }
+    ( Model
+        { sheetIdx = tableIndex
+        , sheetColumns = columns
+        , sheetRowCount = rowCount
+        , keysDown = Set.empty
+        , selectedCell = Just <| ( ( 0, 0 ), Int_ 5 ) -- TODO: DRY up the init 5
+        , promptMode = Idle
+        , submissionHistory = []
+        , timeline = []
+        }
     , Effect.none
     )
 
@@ -189,7 +213,7 @@ init =
 -- UPDATE
 
 
-getValueAtCoords : Model -> RowIx -> ColumnLabel -> Maybe CellData
+getValueAtCoords : ModelData -> RowIx -> ColumnLabel -> Maybe CellData
 getValueAtCoords model rix lbl =
     let
         colList =
@@ -248,151 +272,183 @@ type alias KeyCode =
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
-    case msg of
-        KeyWentDown code ->
-            let
-                newKeys =
-                    Set.insert code model.keysDown
+update msg model_ =
+    case model_ of
+        TimelineMode modelData state ->
+            case msg of
+                EnterSheetMode modelData_ ->
+                    ( Model modelData_, Effect.none )
 
-                ( newPromptMode, cmdToSend, newSelectedCoords ) =
-                    case model.selectedCell of
-                        Nothing ->
-                            ( Idle, Cmd.none, Nothing )
+                _ ->
+                    -- TODO: This is a code smell for a refactor.
+                    ( TimelineMode modelData state, Effect.none )
 
-                        Just ( ( rix, lbl ), _ ) ->
-                            let
-                                newRix_ =
-                                    if code == "ArrowUp" && rix > 0 then
-                                        rix - 1
+        Model model ->
+            case msg of
+                EnterSheetMode modelData ->
+                    -- TODO: This branch should never happen, and is a code smell for a refactor.
+                    ( Model modelData, Effect.none )
 
-                                    else if code == "ArrowDown" then
-                                        rix + 1
-
-                                    else
-                                        rix
-
-                                newLbl_ =
-                                    if code == "ArrowLeft" && lbl > 0 then
-                                        lbl - 1
-
-                                    else if code == "ArrowRight" then
-                                        lbl + 1
-
-                                    else
-                                        lbl
-
-                                newVal : CellData
-                                newVal =
-                                    case getValueAtCoords model newRix_ newLbl_ of
-                                        Nothing ->
-                                            Empty
-
-                                        Just v ->
-                                            v
-                            in
-                            case model.promptMode of
-                                Idle ->
-                                    if code == "Enter" then
-                                        ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
-
-                                    else
-                                        ( Idle, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
-
-                                PromptInProgress v ->
-                                    if code == "Enter" then
-                                        ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( ( newRix_, newLbl_ ), newVal ) )
-
-                                    else
-                                        ( PromptInProgress v, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
-            in
-            ( { model
-                | keysDown = newKeys
-                , promptMode = newPromptMode
-                , selectedCell = newSelectedCoords
-              }
-            , Effect.fromCmd cmdToSend
-            )
-
-        KeyReleased code ->
-            let
-                newKeys =
-                    Set.remove code model.keysDown
-            in
-            ( { model | keysDown = newKeys }, Effect.none )
-
-        ClickedCell ( rix, lbl ) ->
-            let
-                selectedValue : CellData
-                selectedValue =
-                    case getValueAtCoords model rix lbl of
-                        Nothing ->
-                            Empty
-
-                        Just v ->
-                            v
-            in
-            ( { model
-                | selectedCell = Just ( ( rix, lbl ), selectedValue )
-              }
-            , Effect.none
-            )
-
-        PromptInputChanged newStr ->
-            case model.promptMode of
-                Idle ->
-                    ( model, Effect.none )
-
-                PromptInProgress _ ->
-                    ( { model
-                        | promptMode = PromptInProgress newStr
-                      }
+                EnterTimelineMode modelData ->
+                    ( TimelineMode modelData
+                        { currentFrame = 0
+                        , replayState = Paused
+                        }
                     , Effect.none
                     )
 
-        PromptSubmitted ( rawSub, ( rix, lbl ) ) ->
-            let
-                newSheetCols : Array.Array ColumnData
-                newSheetCols =
-                    setCellValue model (str2Cell rawSub) rix lbl
+                KeyWentDown code ->
+                    let
+                        newKeys =
+                            Set.insert code model.keysDown
 
-                newHistory : List RawPrompt
-                newHistory =
-                    model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
+                        ( newPromptMode, cmdToSend, newSelectedCoords ) =
+                            case model.selectedCell of
+                                Nothing ->
+                                    ( Idle, Cmd.none, Nothing )
 
-                newSelectedCoords =
-                    ( rix + 1, lbl )
+                                Just ( ( rix, lbl ), _ ) ->
+                                    let
+                                        newRix_ =
+                                            if code == "ArrowUp" && rix > 0 then
+                                                rix - 1
 
-                newSelectedValue =
-                    case getValueAtCoords model (rix + 1) lbl of
-                        Nothing ->
-                            Empty
+                                            else if code == "ArrowDown" then
+                                                rix + 1
 
-                        Just v ->
-                            v
-            in
-            ( { model
-                | sheetColumns = newSheetCols
-                , promptMode = Idle -- TODO: Is this redundant to key input handling?
-                , submissionHistory = newHistory
-                , selectedCell = Just ( newSelectedCoords, newSelectedValue )
-              }
-            , Effect.none
-            )
+                                            else
+                                                rix
 
-        QuirkWorkaround__FocusOn domId ->
-            ( model, Effect.fromCmd (Browser.Dom.focus domId |> Task.attempt QuirkWorkaound__FocusResult) )
+                                        newLbl_ =
+                                            if code == "ArrowLeft" && lbl > 0 then
+                                                lbl - 1
 
-        QuirkWorkaound__FocusResult result ->
-            case result of
-                Err _ ->
-                    ( model, Effect.none )
+                                            else if code == "ArrowRight" then
+                                                lbl + 1
 
-                Ok () ->
-                    ( model, Effect.none )
+                                            else
+                                                lbl
+
+                                        newVal : CellData
+                                        newVal =
+                                            case getValueAtCoords model newRix_ newLbl_ of
+                                                Nothing ->
+                                                    Empty
+
+                                                Just v ->
+                                                    v
+                                    in
+                                    case model.promptMode of
+                                        Idle ->
+                                            if code == "Enter" then
+                                                ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
+
+                                            else
+                                                ( Idle, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
+
+                                        PromptInProgress v ->
+                                            if code == "Enter" then
+                                                ( Idle, send <| PromptSubmitted ( v, ( newRix_, newLbl_ ) ), Just ( ( newRix_, newLbl_ ), newVal ) )
+
+                                            else
+                                                ( PromptInProgress v, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
+                    in
+                    ( Model
+                        { model
+                            | keysDown = newKeys
+                            , promptMode = newPromptMode
+                            , selectedCell = newSelectedCoords
+                        }
+                    , Effect.fromCmd cmdToSend
+                    )
+
+                KeyReleased code ->
+                    let
+                        newKeys =
+                            Set.remove code model.keysDown
+                    in
+                    ( Model { model | keysDown = newKeys }, Effect.none )
+
+                ClickedCell ( rix, lbl ) ->
+                    let
+                        selectedValue : CellData
+                        selectedValue =
+                            case getValueAtCoords model rix lbl of
+                                Nothing ->
+                                    Empty
+
+                                Just v ->
+                                    v
+                    in
+                    ( Model
+                        { model
+                            | selectedCell = Just ( ( rix, lbl ), selectedValue )
+                        }
+                    , Effect.none
+                    )
+
+                PromptInputChanged newStr ->
+                    case model.promptMode of
+                        Idle ->
+                            ( Model model, Effect.none )
+
+                        PromptInProgress _ ->
+                            ( Model
+                                { model
+                                    | promptMode = PromptInProgress newStr
+                                }
+                            , Effect.none
+                            )
+
+                PromptSubmitted ( rawSub, ( rix, lbl ) ) ->
+                    let
+                        newSheetCols : Array.Array ColumnData
+                        newSheetCols =
+                            setCellValue model (str2Cell rawSub) rix lbl
+
+                        newHistory : List RawPrompt
+                        newHistory =
+                            model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
+
+                        newSelectedCoords =
+                            ( rix + 1, lbl )
+
+                        newSelectedValue =
+                            case getValueAtCoords model (rix + 1) lbl of
+                                Nothing ->
+                                    Empty
+
+                                Just v ->
+                                    v
+
+                        newTimeline : List ( Int, Model )
+                        newTimeline =
+                            model.timeline ++ [ ( List.length model.timeline, Model model ) ]
+                    in
+                    ( Model
+                        { model
+                            | sheetColumns = newSheetCols
+                            , promptMode = Idle -- TODO: Is this redundant to key input handling?
+                            , submissionHistory = newHistory
+                            , selectedCell = Just ( newSelectedCoords, newSelectedValue )
+                            , timeline = newTimeline
+                        }
+                    , Effect.none
+                    )
+
+                QuirkWorkaround__FocusOn domId ->
+                    ( Model model, Effect.fromCmd (Browser.Dom.focus domId |> Task.attempt QuirkWorkaound__FocusResult) )
+
+                QuirkWorkaound__FocusResult result ->
+                    case result of
+                        Err _ ->
+                            ( Model model, Effect.none )
+
+                        Ok () ->
+                            ( Model model, Effect.none )
 
 
-setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> Array.Array ColumnData
+setCellValue : ModelData -> CellData -> RowIx -> ColumnLabel -> Array.Array ColumnData
 setCellValue model val rix lbl =
     let
         col : Maybe ColumnData
@@ -441,10 +497,15 @@ setCellValue model val rix lbl =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Events.onKeyDown (Decode.map KeyWentDown keyDecoder)
-        , Events.onKeyUp (Decode.map KeyReleased keyDecoder)
-        ]
+    case model of
+        Model _ ->
+            Sub.batch
+                [ Events.onKeyDown (Decode.map KeyWentDown keyDecoder)
+                , Events.onKeyUp (Decode.map KeyReleased keyDecoder)
+                ]
+
+        TimelineMode _ _ ->
+            Sub.none
 
 
 keyDecoder : Decode.Decoder String
@@ -458,7 +519,11 @@ keyDecoder =
 
 view : Model -> View Msg
 view model =
-    { title = "Sheet Demo"
+    let
+        title =
+            "Sheet Demo"
+    in
+    { title = title
     , body =
         [ layout
             [ E.width E.fill
@@ -469,7 +534,7 @@ view model =
     }
 
 
-viewSheet : Model -> Element Msg
+viewSheet : ModelData -> Element Msg
 viewSheet model =
     let
         viewSheetIndex : Index -> Element Msg
@@ -623,7 +688,47 @@ viewSheet model =
                )
 
 
-viewDebugPanel : Model -> Element Msg
+viewTimelinePanel : Model -> Element Msg
+viewTimelinePanel model =
+    case model of
+        Model modelData ->
+            Input.button
+                [ Border.color UI.palette.black
+                , Border.width 1
+                , Border.rounded 4
+                , padding 4
+                , alignTop
+                , Background.color UI.palette.lightGrey
+                ]
+                { onPress = Just <| EnterTimelineMode modelData
+                , label = text "Enter Timeline Mode"
+                }
+
+        TimelineMode modelData _ ->
+            E.row
+                [ padding 5
+                , spacing 5
+                ]
+                [ Input.button
+                    [ Border.color UI.palette.black
+                    , Border.width 1
+                    , Border.rounded 4
+                    , padding 4
+                    , alignTop
+                    , Background.color UI.palette.lightGrey
+                    ]
+                    { onPress = Just <| EnterSheetMode modelData
+                    , label = text "Back to Edit Mode"
+                    }
+                , E.text "<|-"
+                , E.text "<"
+                , E.text "||"
+                , E.text ">"
+                , E.text "-|>"
+                ]
+
+
+viewDebugPanel : ModelData -> Element Msg
 viewDebugPanel model =
     let
         keysList =
@@ -682,11 +787,30 @@ content model =
         viewInstructions =
             text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new a value for a cell, which will be submitted upon pressing <Enter> a second time"
     in
-    column [ spacing 10, padding 10 ]
-        [ viewInstructions
-        , viewSheet model
-        , viewDebugPanel model
-        ]
+    case model of
+        Model modelData ->
+            column [ spacing 10, padding 10 ]
+                [ viewInstructions
+                , viewTimelinePanel model
+                , viewSheet modelData
+                , row
+                    [ spacing 5
+                    ]
+                    [ viewDebugPanel modelData
+                    ]
+                ]
+
+        TimelineMode modelData _ ->
+            column [ spacing 10, padding 10 ]
+                [ viewInstructions
+                , viewTimelinePanel model
+                , viewSheet modelData
+                , row
+                    [ spacing 5
+                    ]
+                    [ viewDebugPanel modelData
+                    ]
+                ]
 
 
 elements : Model -> Element Msg
