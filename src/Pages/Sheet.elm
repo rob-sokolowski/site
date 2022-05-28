@@ -149,12 +149,12 @@ cell2Str : CellData -> String
 cell2Str cd =
     case cd of
         Empty ->
-            -- HACK: single space vs empty str yields elm-ui table styling
+            -- HACK: single space vs empty str yields 'expected' elm-ui table styling
             " "
 
         String_ s ->
             if s == "" then
-                -- HACK: single space vs empty str yields elm-ui table styling
+                -- HACK: single space vs empty str yields 'expected' elm-ui table styling
                 " "
 
             else
@@ -720,7 +720,7 @@ viewTimelinePanel model =
                         0
 
                 nextFrame =
-                    if frame == A.length model.timeline then
+                    if frame == A.length model.timeline - 1 then
                         frame
 
                     else
@@ -730,8 +730,6 @@ viewTimelinePanel model =
                 [ E.text <|
                     "You are currently viewing frame "
                         ++ String.fromInt frame
-                        ++ " of "
-                        ++ String.fromInt (A.length model.timeline)
                 , E.row
                     [ padding 5
                     , spacing 5
