@@ -22,14 +22,15 @@ viewElement : Element msg
 viewElement =
     column [ padding 25, spacing 10 ]
         [ text <| "Hello world, some WIP links.."
-        , link [ Font.color blue ]
-            { url = "/animation"
-            , label = text "Animation"
-            }
-        , link [ Font.color blue ]
-            { url = "/game-dev"
-            , label = text "Game Sandbox"
-            }
+
+        --, link [ Font.color blue ]
+        --    { url = "/animation"
+        --    , label = text "Animation"
+        --    }
+        --, link [ Font.color blue ]
+        --    { url = "/game-dev"
+        --    , label = text "Game Sandbox"
+        --    }
         , link [ Font.color blue ]
             { url = "/pops"
             , label = text "Pops"

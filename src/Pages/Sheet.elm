@@ -82,8 +82,9 @@ type alias ModelData =
     }
 
 
-type TimelineMsg =
-    
+
+--type TimelineMsg =
+
 
 type Msg
     = KeyWentDown KeyCode
@@ -93,8 +94,8 @@ type Msg
     | PromptSubmitted RawPrompt
     | EnterTimelineMode ModelData
     | EnterSheetMode ModelData
-    | QuirkWorkaround__FocusOn String
-    | QuirkWorkaound__FocusResult (Result Browser.Dom.Error ())
+    | ManualDom__AttemptFocus String
+    | ManualDom__FocusResult (Result Browser.Dom.Error ())
 
 
 
@@ -341,7 +342,7 @@ update msg model_ =
                                     case model.promptMode of
                                         Idle ->
                                             if code == "Enter" then
-                                                ( PromptInProgress "", send <| QuirkWorkaround__FocusOn prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
+                                                ( PromptInProgress "", send <| ManualDom__AttemptFocus prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
 
                                             else
                                                 ( Idle, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
@@ -436,10 +437,10 @@ update msg model_ =
                     , Effect.none
                     )
 
-                QuirkWorkaround__FocusOn domId ->
-                    ( Model model, Effect.fromCmd (Browser.Dom.focus domId |> Task.attempt QuirkWorkaound__FocusResult) )
+                ManualDom__AttemptFocus domId ->
+                    ( Model model, Effect.fromCmd (Browser.Dom.focus domId |> Task.attempt ManualDom__FocusResult) )
 
-                QuirkWorkaound__FocusResult result ->
+                ManualDom__FocusResult result ->
                     case result of
                         Err _ ->
                             ( Model model, Effect.none )
