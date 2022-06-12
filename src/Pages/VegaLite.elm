@@ -81,6 +81,7 @@ view model =
         [ layout
             [ E.width E.fill
             , E.height E.fill
+            , padding 10
             ]
             (elements model)
         ]
@@ -89,12 +90,30 @@ view model =
 
 elements : Model -> Element Msg
 elements model =
-    row
-        [ htmlAttribute <| HA.id "elm-ui-viz"
-        , Border.width 2
+    let
+        vegaLiteDiv =
+            el
+                [ htmlAttribute <| HA.id "elm-ui-viz"
+                , Border.color UI.palette.black
+                , Border.width 2
+
+                --, width <| px 10
+                --, height <| px 10
+                ]
+                E.none
+    in
+    column
+        [ --htmlAttribute <| HA.id "elm-ui-viz"
+          Border.width 2
         , Border.color UI.palette.black
-        , width <| px 200
-        , height <| px 400
+        , padding 10
+        , spacing 10
+
+        --, width <| px 200
+        --, height <| px 400
+        --, alignTop
         ]
-        [ E.text "Hello!"
+        [ el [] (E.text "Hi hi hi!")
+        , vegaLiteDiv
+        , el [] (E.text "Bye bye bye!")
         ]

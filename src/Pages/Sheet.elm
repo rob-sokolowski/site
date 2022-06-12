@@ -106,10 +106,6 @@ type Msg
     | TogglePauseResume
 
 
-
--- TODO: Can we save sheet state history here too?
-
-
 type alias RawPrompt =
     ( RawPromptString, ( RowIx, ColumnLabel ) )
 
@@ -136,6 +132,8 @@ type alias ColumnLabel =
 
 type alias ColumnData =
     { label : ColumnLabel
+
+    -- TODO: IndexedList might be a better fit
     , col : List ( RowIx, CellData )
     }
 
