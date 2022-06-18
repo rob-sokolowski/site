@@ -1,6 +1,8 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
 import Array as A
+import Array.Extra as AE
+import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
 import Browser.Dom
 import Browser.Events as Events
 import Effect exposing (Effect)
@@ -17,8 +19,8 @@ import Page
 import Request
 import Set exposing (Set)
 import Shared
-import SheetModel exposing (CellData(..), RawPromptString)
-import String
+import SheetModel exposing (Cell, CellCoords, CellElement(..), RawPromptString, SheetData, array2DToSheet, elementAt)
+import String exposing (fromInt)
 import Task
 import UI
 import View exposing (View)
@@ -43,14 +45,6 @@ type PromptMode
     | PromptInProgress String
 
 
-type alias CellCoords =
-    ( RowIx, ColumnLabel )
-
-
-type alias Cell =
-    ( CellCoords, CellData )
-
-
 type ReplayState
     = Paused
     | Playing
@@ -63,9 +57,7 @@ type alias TimelineState =
 
 
 type alias Model =
-    { sheetIdx : Index
-    , sheetColumns : A.Array ColumnData
-    , sheetRowCount : Int
+    { sheetData : SheetData
     , keysDown : Set KeyCode
     , selectedCell : Maybe Cell
     , promptMode : PromptMode
@@ -91,7 +83,7 @@ type Timeline
 type Msg
     = KeyWentDown KeyCode
     | KeyReleased KeyCode
-    | ClickedCell ( RowIx, ColumnLabel )
+    | ClickedCell CellCoords
     | PromptInputChanged String
     | PromptSubmitted RawPrompt
     | ManualDom__AttemptFocus String
@@ -106,28 +98,8 @@ type Msg
     | TogglePauseResume
 
 
-
--- TODO: Can we save sheet state history here too?
-
-
 type alias RawPrompt =
     ( RawPromptString, ( RowIx, ColumnLabel ) )
-
-
-type alias RowNumber =
-    Int
-
-
-type alias Index =
-    A.Array TableIndex
-
-
-type TableIndex
-    = RowIdx RowNumber
-
-
-type alias RowIx =
-    Int
 
 
 type alias ColumnLabel =
@@ -136,16 +108,18 @@ type alias ColumnLabel =
 
 type alias ColumnData =
     { label : ColumnLabel
-    , col : List ( RowIx, CellData )
+
+    -- TODO: IndexedList might be a better fit
+    , col : List ( RowIx, CellElement )
     }
 
 
-str2Cell : String -> CellData
+str2Cell : String -> CellElement
 str2Cell s =
     String_ s
 
 
-cell2Str : CellData -> String
+cell2Str : CellElement -> String
 cell2Str cd =
     case cd of
         Empty ->
@@ -175,47 +149,36 @@ cell2Str cd =
                     "FALSE"
 
 
-index2Str : TableIndex -> String
-index2Str ti =
-    case ti of
-        RowIdx ix ->
-            String.fromInt ix
-
-
 init : ( Model, Effect Msg )
 init =
     let
-        rowCount =
-            10
+        data : Array2D CellElement
+        data =
+            fromListOfLists
+                [ [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
+                ]
 
-        rowIx =
-            A.initialize rowCount identity
-
-        tableIndex =
-            A.map (\e -> RowIdx e) rowIx
-
-        labels : A.Array Int
-        labels =
-            A.fromList [ 0, 1, 2, 3, 4, 5, 6 ]
-
-        columns =
-            A.map (\lbl -> ColumnData lbl (List.map (\rix -> ( rix, Empty )) (A.toList rowIx))) labels
+        sheetData : SheetData
+        sheetData =
+            array2DToSheet data
 
         -- NB: timeline is recursive, so we save the initial model state in this let expression, and return
         --     a partially updated model containing this one
         model =
-            { sheetIdx = tableIndex
-            , sheetColumns = columns
-            , sheetRowCount = rowCount
+            { sheetData = sheetData
             , keysDown = Set.empty
             , selectedCell = Just <| ( ( 0, 0 ), Empty ) -- TODO: DRY up the ini
             , promptMode = Idle
             , submissionHistory = []
-            , uiMode = SheetEditor
             , timeline = A.fromList []
+            , uiMode = SheetEditor
             }
     in
-    --( { model | timeline = A.fromList [ Timeline model ] }
     ( model
     , Effect.none
     )
@@ -223,55 +186,6 @@ init =
 
 
 -- UPDATE
-
-
-getValueAtCoords : Model -> RowIx -> ColumnLabel -> Maybe CellData
-getValueAtCoords model rix lbl =
-    let
-        colList =
-            A.toList model.sheetColumns
-
-        targetLbl =
-            List.filter (\e -> e.label == lbl) colList
-
-        targetCol : Maybe ColumnData
-        targetCol =
-            case targetLbl of
-                [] ->
-                    Nothing
-
-                [ x ] ->
-                    Just x
-
-                x :: xs ->
-                    Nothing
-
-        targetRow =
-            case targetCol of
-                Nothing ->
-                    Nothing
-
-                Just colData ->
-                    let
-                        targetRow_ =
-                            List.filter (\( rix_, cd ) -> rix_ == rix) colData.col
-                    in
-                    case targetRow_ of
-                        [] ->
-                            Nothing
-
-                        [ x_ ] ->
-                            Just x_
-
-                        x :: xs ->
-                            Nothing
-    in
-    case targetRow of
-        Just ( rix__, cd_ ) ->
-            Just cd_
-
-        Nothing ->
-            Nothing
 
 
 type alias KeyCode =
@@ -339,9 +253,9 @@ update msg model =
                                     else
                                         lbl
 
-                                newVal : CellData
+                                newVal : CellElement
                                 newVal =
-                                    case getValueAtCoords model newRix_ newLbl_ of
+                                    case elementAt ( newRix_, newLbl_ ) model.sheetData of
                                         Nothing ->
                                             Empty
 
@@ -351,7 +265,7 @@ update msg model =
                             case model.promptMode of
                                 Idle ->
                                     if code == "Enter" then
-                                        ( PromptInProgress "", send <| ManualDom__AttemptFocus prompt_intput_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
+                                        ( PromptInProgress "", send <| ManualDom__AttemptFocus prompt_input_dom_id, Just ( ( newRix_, newLbl_ ), newVal ) )
 
                                     else
                                         ( Idle, Cmd.none, Just ( ( newRix_, newLbl_ ), newVal ) )
@@ -378,11 +292,11 @@ update msg model =
             in
             ( { model | keysDown = newKeys }, Effect.none )
 
-        ClickedCell ( rix, lbl ) ->
+        ClickedCell ( rix, cix ) ->
             let
-                selectedValue : CellData
+                selectedValue : CellElement
                 selectedValue =
-                    case getValueAtCoords model rix lbl of
+                    case elementAt ( rix, cix ) model.sheetData of
                         Nothing ->
                             Empty
 
@@ -390,7 +304,7 @@ update msg model =
                             v
             in
             ( { model
-                | selectedCell = Just ( ( rix, lbl ), selectedValue )
+                | selectedCell = Just ( ( rix, cix ), selectedValue )
               }
             , Effect.none
             )
@@ -407,21 +321,21 @@ update msg model =
                     , Effect.none
                     )
 
-        PromptSubmitted ( rawSub, ( rix, lbl ) ) ->
+        PromptSubmitted ( rawSub, ( rix, cix ) ) ->
             let
-                newSheetCols : A.Array ColumnData
+                newSheetCols : SheetData
                 newSheetCols =
-                    setCellValue model (str2Cell rawSub) rix lbl
+                    setValueAt ( rix, cix ) ( ( rix, cix ), str2Cell rawSub ) model.sheetData
 
                 newHistory : List RawPrompt
                 newHistory =
-                    model.submissionHistory ++ [ ( rawSub, ( rix, lbl ) ) ]
+                    model.submissionHistory ++ [ ( rawSub, ( rix, cix ) ) ]
 
                 newSelectedCoords =
-                    ( rix + 1, lbl )
+                    ( rix + 1, cix )
 
                 newSelectedValue =
-                    case getValueAtCoords model (rix + 1) lbl of
+                    case elementAt ( rix + 1, cix ) model.sheetData of
                         Nothing ->
                             Empty
 
@@ -433,7 +347,7 @@ update msg model =
                     A.append model.timeline (A.fromList [ Timeline model ])
             in
             ( { model
-                | sheetColumns = newSheetCols
+                | sheetData = newSheetCols
                 , promptMode = Idle -- TODO: Is this redundant to key input handling?
                 , submissionHistory = newHistory
                 , selectedCell = Just ( newSelectedCoords, newSelectedValue )
@@ -452,49 +366,6 @@ update msg model =
 
                 Ok () ->
                     ( model, Effect.none )
-
-
-setCellValue : Model -> CellData -> RowIx -> ColumnLabel -> A.Array ColumnData
-setCellValue model val rix lbl =
-    let
-        col : Maybe ColumnData
-        col =
-            A.get lbl model.sheetColumns
-
-        row : A.Array CellData
-        row =
-            case col of
-                Just v ->
-                    A.map (\( _, cd ) -> cd) (A.fromList v.col)
-
-                Nothing ->
-                    A.empty
-
-        row_ : A.Array CellData
-        row_ =
-            A.set rix val row
-
-        row__ : ColumnData
-        row__ =
-            let
-                r =
-                    A.toList row_
-
-                ixs =
-                    List.range 0 (List.length r - 1)
-
-                r_ =
-                    List.map2 (\e ix -> ( ix, e )) r ixs
-            in
-            { label = lbl
-            , col = r_
-            }
-
-        newArr : A.Array ColumnData
-        newArr =
-            A.set lbl row__ model.sheetColumns
-    in
-    newArr
 
 
 
@@ -543,19 +414,15 @@ view model =
 viewSheet : Model -> Element Msg
 viewSheet model =
     let
-        viewSheetIndex : Index -> Element Msg
-        viewSheetIndex ix =
-            let
-                ix_ =
-                    A.toList ix
-            in
+        viewSheetIndex : SheetData -> Element Msg
+        viewSheetIndex sheetData =
             E.table []
-                { data = ix_
+                { data = List.range 0 (rowCount sheetData - 1)
                 , columns =
                     [ { header = E.text " "
                       , width = px 30
                       , view =
-                            \r ->
+                            \rix ->
                                 el
                                     [ Border.color UI.palette.darkishGrey
                                     , Border.width 1
@@ -567,17 +434,17 @@ viewSheet model =
                                         ]
                                      <|
                                         E.text <|
-                                            index2Str r
+                                            fromInt rix
                                     )
                       }
                     ]
                 }
 
-        viewSheetColumns : ColumnData -> Element Msg
-        viewSheetColumns column =
+        viewSheetColumn : ColIx -> A.Array Cell -> Element Msg
+        viewSheetColumn cix column =
             let
-                cellAttrs : RowIx -> CellData -> List (Attribute Msg)
-                cellAttrs rix cd =
+                cellAttrs : RowIx -> List (Attribute Msg)
+                cellAttrs rix =
                     let
                         shouldHighlightCell : Bool
                         shouldHighlightCell =
@@ -585,8 +452,8 @@ viewSheet model =
                                 Nothing ->
                                     False
 
-                                Just ( ( rix_, lbl_ ), _ ) ->
-                                    (rix_ == rix) && (lbl_ == column.label)
+                                Just ( ( rix_, cix_ ), _ ) ->
+                                    (rix_ == rix) && (cix_ == cix)
 
                         borderWidth =
                             case shouldHighlightCell of
@@ -606,12 +473,12 @@ viewSheet model =
                     in
                     [ Border.color borderColor
                     , Border.width borderWidth
-                    , onClick <| ClickedCell ( rix, column.label )
+                    , onClick <| ClickedCell ( rix, cix )
 
                     --, paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
 
-                cellContentAttrs : CellData -> List (Attribute Msg)
+                cellContentAttrs : CellElement -> List (Attribute Msg)
                 cellContentAttrs cd =
                     let
                         alignment =
@@ -635,7 +502,7 @@ viewSheet model =
                     , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                     ]
 
-                viewCell : Maybe ( CellCoords, CellData ) -> String -> RowIx -> PromptMode -> Element Msg
+                viewCell : Maybe ( CellCoords, CellElement ) -> String -> RowIx -> PromptMode -> Element Msg
                 viewCell selectedCoords cellValueAsStr rix_ promptMode =
                     let
                         isTargetCell : Bool
@@ -644,8 +511,8 @@ viewSheet model =
                                 Nothing ->
                                     False
 
-                                Just ( ( rix__, lbl_ ), _ ) ->
-                                    (rix_ == rix__) && (lbl_ == column.label)
+                                Just ( ( rix__, cix_ ), _ ) ->
+                                    (rix_ == rix__) && (cix_ == cix)
                     in
                     case isTargetCell of
                         True ->
@@ -655,7 +522,7 @@ viewSheet model =
 
                                 PromptInProgress v ->
                                     Input.text
-                                        [ htmlAttribute <| HA.id prompt_intput_dom_id
+                                        [ htmlAttribute <| HA.id prompt_input_dom_id
                                         , padding 0
                                         , Border.width 0
                                         ]
@@ -670,16 +537,16 @@ viewSheet model =
             in
             E.table
                 [ padding 0 ]
-                { data = column.col
+                { data = A.toList column
                 , columns =
-                    [ { header = E.text <| String.fromInt column.label
+                    [ { header = E.text <| String.fromInt cix
                       , width = px 80
                       , view =
-                            \( rix, cellValue ) ->
-                                el (cellAttrs rix cellValue)
-                                    (el (cellContentAttrs cellValue)
-                                        (E.column (cellContentAttrs cellValue)
-                                            [ viewCell model.selectedCell (cell2Str cellValue) rix model.promptMode
+                            \( ( rix, _ ), cellElement ) ->
+                                el (cellAttrs rix)
+                                    (el (cellContentAttrs cellElement)
+                                        (E.column (cellContentAttrs cellElement)
+                                            [ viewCell model.selectedCell (cell2Str cellElement) rix model.promptMode
                                             ]
                                         )
                                     )
@@ -688,9 +555,9 @@ viewSheet model =
                 }
     in
     row [ padding 5 ] <|
-        [ viewSheetIndex model.sheetIdx ]
+        [ viewSheetIndex model.sheetData ]
             ++ (A.toList <|
-                    A.map (\e -> viewSheetColumns e) model.sheetColumns
+                    A.map (\cix -> viewSheetColumn cix (getCol cix model.sheetData)) (A.fromList (List.range 0 (colCount model.sheetData - 1)))
                )
 
 
@@ -916,7 +783,7 @@ send m =
         |> Task.perform identity
 
 
-prompt_intput_dom_id : String
-prompt_intput_dom_id =
+prompt_input_dom_id : String
+prompt_input_dom_id =
     -- page-scoped, static unique identifier to control focus manually
     "prompt-input-element"
