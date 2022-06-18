@@ -4,7 +4,7 @@ import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Parser
 import PromptParser
-import SheetModel exposing (CellData(..))
+import SheetModel exposing (CellElement(..))
 import Test exposing (..)
 
 

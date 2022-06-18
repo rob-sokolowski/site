@@ -1,4 +1,8 @@
-module Array2D exposing (ColIx, RowIx, fromListOfLists, getCol, getRow, getValueAt, setValueAt)
+module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, rowCount, setValueAt)
+
+-- Implements basic 2D array structure. I didn't consider performance at all, and all 2D arrays are assumed
+-- to be regular. Where "regular" means all rows have the same length and all cols have the same length
+-- (but isn't necessarily a square matrix)
 
 import Array as A
 import List as L
@@ -64,7 +68,7 @@ getRow rix arr2d =
 
 getCol : ColIx -> Array2D e -> A.Array e
 getCol cix arr2d =
-    -- This function feels inefficient..
+    -- This function feels inefficient.. Also, weird, silent stuff might happen if the array isn't "regular"
     let
         nRows : Int
         nRows =
@@ -72,6 +76,17 @@ getCol cix arr2d =
 
         colWithMaybes : List (Maybe e)
         colWithMaybes =
-            List.map2 (\rix cix_ -> getValueAt ( rix, cix_ ) arr2d) (L.range 0 (nRows - 1)) (L.repeat nRows cix)
+            List.map (\rix -> getValueAt ( rix, cix ) arr2d) (L.range 0 (nRows - 1))
     in
     A.fromList <| removeNothingFromList colWithMaybes
+
+
+rowCount : Array2D e -> Int
+rowCount arr2d =
+    A.length arr2d
+
+
+colCount : Array2D e -> Int
+colCount arr2d =
+    -- Assumes square array2d!
+    A.length (getRow 0 arr2d)

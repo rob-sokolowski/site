@@ -1,13 +1,13 @@
 module PromptParser exposing (parseCellData)
 
 import Parser exposing ((|.), (|=), Parser, chompWhile, float, getChompedString, int, number, oneOf, spaces, succeed, symbol)
-import SheetModel exposing (CellData(..), RawPromptString)
+import SheetModel exposing (CellElement(..), RawPromptString)
 
 
-parseCellData : RawPromptString -> CellData
+parseCellData : RawPromptString -> CellElement
 parseCellData str =
     let
-        parser_ : Parser CellData
+        parser_ : Parser CellElement
         parser_ =
             oneOf
                 [ succeed Int_
