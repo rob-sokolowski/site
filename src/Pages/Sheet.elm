@@ -2,7 +2,7 @@ module Pages.Sheet exposing (Model, Msg, page)
 
 import Array as A
 import Array.Extra as AE
-import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, rowCount, setValueAt)
+import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
 import Browser.Dom
 import Browser.Events as Events
 import Effect exposing (Effect)
@@ -440,11 +440,11 @@ viewSheet model =
                     ]
                 }
 
-        viewSheetColumns : ColIx -> A.Array Cell -> Element Msg
-        viewSheetColumns cix column =
+        viewSheetColumn : ColIx -> A.Array Cell -> Element Msg
+        viewSheetColumn cix column =
             let
-                cellAttrs : RowIx -> CellElement -> List (Attribute Msg)
-                cellAttrs rix cd =
+                cellAttrs : RowIx -> List (Attribute Msg)
+                cellAttrs rix =
                     let
                         shouldHighlightCell : Bool
                         shouldHighlightCell =
@@ -543,7 +543,7 @@ viewSheet model =
                       , width = px 80
                       , view =
                             \( ( rix, _ ), cellElement ) ->
-                                el (cellAttrs rix cellElement)
+                                el (cellAttrs rix)
                                     (el (cellContentAttrs cellElement)
                                         (E.column (cellContentAttrs cellElement)
                                             [ viewCell model.selectedCell (cell2Str cellElement) rix model.promptMode
@@ -557,7 +557,7 @@ viewSheet model =
     row [ padding 5 ] <|
         [ viewSheetIndex model.sheetData ]
             ++ (A.toList <|
-                    AE.map2 (\cix e -> viewSheetColumns cix e) (A.fromList (List.range 0 (colCount model.sheetData - 1))) model.sheetData
+                    A.map (\cix -> viewSheetColumn cix (getCol cix model.sheetData)) (A.fromList (List.range 0 (colCount model.sheetData - 1)))
                )
 
 
