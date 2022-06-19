@@ -14,7 +14,7 @@ import Request
 import Shared
 import UI
 import VegaLite exposing (Position(..), Spec, circle, dataColumn, dataFromColumns, encoding, nums, pName, pQuant, position, title, toVegaLite)
-import VegaPort exposing (elmToJS, myVis)
+import VegaPort exposing (elmToJS)
 import View exposing (View)
 
 

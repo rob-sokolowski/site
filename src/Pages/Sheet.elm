@@ -5,6 +5,7 @@ import Array.Extra as AE
 import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
 import Browser.Dom
 import Browser.Events as Events
+import Config exposing (apiHost)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -14,8 +15,11 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.Sheet exposing (Params)
 import Html.Attributes as HA
-import Json.Decode as Decode
+import Http
+import Json.Decode as JD
+import Json.Encode as JE
 import Page
+import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
 import Shared
@@ -64,6 +68,7 @@ type alias Model =
     , submissionHistory : List RawPrompt
     , timeline : A.Array Timeline
     , uiMode : UiMode
+    , duckDbResponse : WebData DuckDbQueryResponse
     }
 
 
@@ -90,6 +95,8 @@ type Msg
     | ManualDom__FocusResult (Result Browser.Dom.Error ())
     | EnterTimelineViewerMode
     | EnterSheetEditorMode -- TODO: Just toggle UI mode?
+    | QueryDuckDb String
+    | GotDuckDbResponse (Result Http.Error DuckDbQueryResponse)
       -- Timeline stuff:
       -- TODO: Should Msg take in a `model` param?
     | JumpToFirstFrame
@@ -177,6 +184,7 @@ init =
             , submissionHistory = []
             , timeline = A.fromList []
             , uiMode = SheetEditor
+            , duckDbResponse = NotAsked
             }
     in
     ( model
@@ -200,6 +208,27 @@ type alias KeyCode =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        QueryDuckDb queryStr ->
+            ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr )
+
+        GotDuckDbResponse response ->
+            case response of
+                Ok data ->
+                    let
+                        convertToSheet : DuckDbQueryResponse -> SheetData
+                        convertToSheet data_ =
+                            array2DToSheet <| fromListOfLists (List.map (\e -> [ String_ e ]) data_.data)
+                    in
+                    ( { model
+                        | duckDbResponse = Success data
+                        , sheetData = convertToSheet data
+                      }
+                    , Effect.none
+                    )
+
+                Err err ->
+                    ( { model | duckDbResponse = Failure err }, Effect.none )
+
         EnterSheetEditorMode ->
             ( { model | uiMode = SheetEditor }, Effect.none )
 
@@ -377,17 +406,17 @@ subscriptions model =
     case model.uiMode of
         SheetEditor ->
             Sub.batch
-                [ Events.onKeyDown (Decode.map KeyWentDown keyDecoder)
-                , Events.onKeyUp (Decode.map KeyReleased keyDecoder)
+                [ Events.onKeyDown (JD.map KeyWentDown keyDecoder)
+                , Events.onKeyUp (JD.map KeyReleased keyDecoder)
                 ]
 
         TimelineViewer _ ->
             Sub.none
 
 
-keyDecoder : Decode.Decoder String
+keyDecoder : JD.Decoder String
 keyDecoder =
-    Decode.field "key" Decode.string
+    JD.field "key" JD.string
 
 
 
@@ -559,6 +588,21 @@ viewSheet model =
             ++ (A.toList <|
                     A.map (\cix -> viewSheetColumn cix (getCol cix model.sheetData)) (A.fromList (List.range 0 (colCount model.sheetData - 1)))
                )
+
+
+viewDuckDbButton : Element Msg
+viewDuckDbButton =
+    Input.button
+        [ Border.color UI.palette.black
+        , Border.width 1
+        , Border.rounded 4
+        , padding 4
+        , alignTop
+        , Background.color UI.palette.lightGrey
+        ]
+        { onPress = Just <| QueryDuckDb query_
+        , label = text "Quack"
+        }
 
 
 viewTimelinePanel : Model -> Element Msg
@@ -751,6 +795,7 @@ content model =
     in
     column [ spacing 10, padding 10 ]
         [ viewInstructions
+        , viewDuckDbButton
         , viewTimelinePanel model_
         , viewSheet model_
         , row
@@ -771,6 +816,43 @@ elements model =
         ]
         [ content model
         ]
+
+
+
+-- API
+
+
+query_ =
+    """
+select * from president_polls_historical limit 100
+    """
+
+
+type alias DuckDbQueryResponse =
+    { data : List String
+    }
+
+
+queryDuckDb : String -> Cmd Msg
+queryDuckDb query =
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody (duckDbQueryEncoder query)
+        , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
+        }
+
+
+duckDbQueryEncoder : String -> JE.Value
+duckDbQueryEncoder query =
+    JE.object
+        [ ( "query_str", JE.string query )
+        ]
+
+
+duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+duckDbQueryResponseDecoder =
+    JD.map DuckDbQueryResponse
+        (JD.at [ "data", "candidate_name" ] (JD.list JD.string))
 
 
 
