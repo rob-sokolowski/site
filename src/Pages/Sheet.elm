@@ -6,6 +6,7 @@ import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists,
 import Browser.Dom
 import Browser.Events as Events
 import Config exposing (apiHost)
+import DuckDbApi exposing (DuckDbQueryResponse, queryDuckDb)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -826,33 +827,6 @@ query_ =
     """
 select * from president_polls_historical limit 100
     """
-
-
-type alias DuckDbQueryResponse =
-    { data : List String
-    }
-
-
-queryDuckDb : String -> Cmd Msg
-queryDuckDb query =
-    Http.post
-        { url = apiHost ++ "/duckdb"
-        , body = Http.jsonBody (duckDbQueryEncoder query)
-        , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
-        }
-
-
-duckDbQueryEncoder : String -> JE.Value
-duckDbQueryEncoder query =
-    JE.object
-        [ ( "query_str", JE.string query )
-        ]
-
-
-duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
-duckDbQueryResponseDecoder =
-    JD.map DuckDbQueryResponse
-        (JD.at [ "data", "candidate_name" ] (JD.list JD.string))
 
 
 
