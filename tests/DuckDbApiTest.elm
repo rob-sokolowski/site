@@ -48,7 +48,7 @@ suite =
                             (Ok
                                 { name = "candidate_name"
                                 , type_ = "VARCHAR"
-                                , vals = Varchar_ "George Washington"
+                                , vals = [ Varchar_ "George Washington", Varchar_ "Thomas Jefferson", Varchar_ "Benjamin Franklin" ]
                                 }
                             )
                 )
@@ -60,7 +60,7 @@ suite =
                             (Ok
                                 { name = "year_of_birth"
                                 , type_ = "INTEGER"
-                                , vals = Int_ 1732
+                                , vals = [ Int_ 1732, Int_ 1743, Int_ 1706 ]
                                 }
                             )
                 )
@@ -92,7 +92,7 @@ simpleVarchar =
 {
     "name": "candidate_name",
     "type": "VARCHAR",
-    "values": "George Washington"
+    "values": ["George Washington", "Thomas Jefferson", "Benjamin Franklin"]
 }
 """
 
@@ -102,6 +102,6 @@ simpleInt =
 {
     "name": "year_of_birth",
     "type": "INTEGER",
-    "values": 1732
+    "values": [1732, 1743, 1706]
 }
 """

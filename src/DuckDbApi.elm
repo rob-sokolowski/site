@@ -41,20 +41,20 @@ mainDecoder =
                     JD.map3 Column
                         (JD.field "name" JD.string)
                         (JD.field "type" JD.string)
-                        (JD.map Varchar_ (JD.field "values" JD.string))
+                        (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
 
                 "INTEGER" ->
                     JD.map3 Column
                         (JD.field "name" JD.string)
                         (JD.field "type" JD.string)
-                        (JD.map Int_ (JD.field "values" JD.int))
+                        (JD.field "values" (JD.list (JD.map Int_ JD.int)))
 
                 _ ->
                     -- This feels wrong to me, but unsure how else to workaround the string pattern matching
                     JD.map3 Column
                         (JD.field "name" JD.string)
                         (JD.field "type" JD.string)
-                        (JD.succeed Unknown)
+                        (JD.list (JD.succeed Unknown))
     in
     JD.field "type" JD.string |> JD.andThen decoderByType
 
@@ -62,7 +62,7 @@ mainDecoder =
 type alias Column =
     { name : String
     , type_ : String
-    , vals : Val
+    , vals : List Val
     }
 
 
