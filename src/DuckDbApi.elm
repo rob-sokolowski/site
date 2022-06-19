@@ -13,15 +13,11 @@ type Msg
 
 queryDuckDb : String -> Cmd Msg
 queryDuckDb query =
-    Debug.todo "implement decoder"
-
-
-
---Http.post
---    { url = apiHost ++ "/duckdb"
---    , body = Http.jsonBody (duckDbQueryEncoder query)
---    , expect = Http.expectJson GotDuckReponse duckDbQueryResponseDecoder
---    }
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody (duckDbQueryEncoder query)
+        , expect = Http.expectJson GotDuckReponse duckDbQueryResponseDecoder
+        }
 
 
 duckDbQueryEncoder : String -> JE.Value
@@ -31,9 +27,13 @@ duckDbQueryEncoder query =
         ]
 
 
-mainDecoder : JD.Decoder Column
-mainDecoder =
+duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+duckDbQueryResponseDecoder =
     let
+        columnDecoderHelper : JD.Decoder Column
+        columnDecoderHelper =
+            JD.field "type" JD.string |> JD.andThen decoderByType
+
         decoderByType : String -> JD.Decoder Column
         decoderByType type_ =
             case type_ of
@@ -51,12 +51,14 @@ mainDecoder =
 
                 _ ->
                     -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                    -- Should this fail loudly?
                     JD.map3 Column
                         (JD.field "name" JD.string)
                         (JD.field "type" JD.string)
                         (JD.list (JD.succeed Unknown))
     in
-    JD.field "type" JD.string |> JD.andThen decoderByType
+    JD.map DuckDbQueryResponse
+        (JD.field "columns" (JD.list columnDecoderHelper))
 
 
 type alias Column =
