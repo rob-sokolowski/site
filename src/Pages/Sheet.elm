@@ -851,7 +851,7 @@ elements model =
 
 query_ =
     """
-select p.poll_id, p.question_id, p.cycle from president_polls_historical p limit 50
+select p.question_id, p.poll_id, p.cycle, p.sample_size, p.population, p.candidate_party, p.candidate_name,  from president_polls_historical p limit 50
     """
 
 
