@@ -6,7 +6,6 @@ import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists,
 import Browser.Dom
 import Browser.Events as Events
 import Config exposing (apiHost)
-import DuckDbApi exposing (DuckDbQueryResponse, queryDuckDb)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -19,6 +18,7 @@ import Html.Attributes as HA
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
+import List.Extra as LE
 import Page
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
@@ -206,6 +206,32 @@ type alias KeyCode =
 --| NewTime Time.Posix
 
 
+mapColumnsToSheet : List Column -> SheetData
+mapColumnsToSheet cols =
+    let
+        mapVal : Val -> CellElement
+        mapVal v =
+            case v of
+                Varchar_ var ->
+                    String_ var
+
+                Int__ i ->
+                    Int_ i
+
+                Unknown ->
+                    Empty
+
+        -- lol is "list of lists", but I'm also laughing at how inefficient this is
+        -- TODO: I think it'd be worthwhile to refactor Array2D to accept column lists not row-lists
+        lolWrong =
+            List.map (\col -> List.map (\e -> mapVal e) col.vals) cols
+
+        lolTransposed =
+            LE.transpose lolWrong
+    in
+    array2DToSheet <| fromListOfLists lolTransposed
+
+
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
@@ -215,14 +241,14 @@ update msg model =
         GotDuckDbResponse response ->
             case response of
                 Ok data ->
-                    let
-                        convertToSheet : DuckDbQueryResponse -> SheetData
-                        convertToSheet data_ =
-                            array2DToSheet <| fromListOfLists (List.map (\e -> [ String_ e ]) data_.data)
-                    in
+                    --let
+                    --    convertToSheet : DuckDbQueryResponse -> SheetData
+                    --    convertToSheet data_ =
+                    --        array2DToSheet <| fromListOfLists (List.map (\e -> [ String_ e ]) data_.columns)
+                    --in
                     ( { model
                         | duckDbResponse = Success data
-                        , sheetData = convertToSheet data
+                        , sheetData = mapColumnsToSheet data.columns
                       }
                     , Effect.none
                     )
@@ -825,7 +851,7 @@ elements model =
 
 query_ =
     """
-select * from president_polls_historical limit 100
+select p.poll_id, p.question_id, p.cycle from president_polls_historical p limit 50
     """
 
 
@@ -843,3 +869,77 @@ prompt_input_dom_id : String
 prompt_input_dom_id =
     -- page-scoped, static unique identifier to control focus manually
     "prompt-input-element"
+
+
+
+-- API - TODO: I'd like for these to be in it's own tested module
+
+
+queryDuckDb : String -> Cmd Msg
+queryDuckDb query =
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody (duckDbQueryEncoder query)
+        , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
+        }
+
+
+duckDbQueryEncoder : String -> JE.Value
+duckDbQueryEncoder query =
+    JE.object
+        [ ( "query_str", JE.string query )
+        ]
+
+
+duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+duckDbQueryResponseDecoder =
+    let
+        columnDecoderHelper : JD.Decoder Column
+        columnDecoderHelper =
+            JD.field "type" JD.string |> JD.andThen decoderByType
+
+        decoderByType : String -> JD.Decoder Column
+        decoderByType type_ =
+            case type_ of
+                "VARCHAR" ->
+                    JD.map3 Column
+                        (JD.field "name" JD.string)
+                        (JD.field "type" JD.string)
+                        (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
+
+                "INTEGER" ->
+                    JD.map3 Column
+                        (JD.field "name" JD.string)
+                        (JD.field "type" JD.string)
+                        (JD.field "values" (JD.list (JD.map Int__ JD.int)))
+
+                _ ->
+                    -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                    -- Should this fail loudly?
+                    JD.map3 Column
+                        (JD.field "name" JD.string)
+                        (JD.field "type" JD.string)
+                        (JD.list (JD.succeed Unknown))
+    in
+    JD.map DuckDbQueryResponse
+        (JD.field "columns" (JD.list columnDecoderHelper))
+
+
+type alias Column =
+    { name : String
+    , type_ : String
+    , vals : List Val
+    }
+
+
+type Val
+    = Varchar_ String
+      --| Bool_ Bool
+      --| Float_ Float
+    | Int__ Int
+    | Unknown
+
+
+type alias DuckDbQueryResponse =
+    { columns : List Column
+    }
