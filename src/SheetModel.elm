@@ -5,6 +5,10 @@ import Array.Extra as AE
 import Array2D exposing (Array2D, ColIx, RowIx)
 
 
+
+-- this module provides a sheet-specific wrapper around an Array2D
+
+
 type CellElement
     = Empty
     | String_ String
@@ -31,12 +35,7 @@ type alias SheetData =
 
 elementAt : ( RowIx, ColIx ) -> SheetData -> Maybe CellElement
 elementAt ( rix, cix ) sheet =
-    let
-        cell : Maybe Cell
-        cell =
-            Array2D.getValueAt ( rix, cix ) sheet
-    in
-    case cell of
+    case Array2D.getValueAt ( rix, cix ) sheet of
         -- throw away coords
         Just ( _, e ) ->
             Just e

@@ -7,7 +7,7 @@ docker tag \
 
 docker push gcr.io/fir-sandbox-326008/site-nginx:latest
 
-gcloud run deploy \
+gcloud run deploy site-nginx \
     --image gcr.io/fir-sandbox-326008/site-nginx:latest \
     --platform managed \
     --region us-east4 \

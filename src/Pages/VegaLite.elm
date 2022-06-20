@@ -13,8 +13,8 @@ import Page
 import Request
 import Shared
 import UI
-import VegaLite exposing (Spec)
-import VegaPort exposing (elmToJS, myVis)
+import VegaLite exposing (Position(..), Spec, circle, dataColumn, dataFromColumns, encoding, nums, pName, pQuant, position, title, toVegaLite)
+import VegaPort exposing (elmToJS)
 import View exposing (View)
 
 
@@ -116,4 +116,23 @@ elements model =
         [ el [] (E.text "Hi hi hi!")
         , vegaLiteDiv
         , el [] (E.text "Bye bye bye!")
+        ]
+
+
+myVis : Spec
+myVis =
+    let
+        data =
+            dataFromColumns []
+                << dataColumn "x" (nums [ 10, 20, 30 ])
+
+        enc =
+            encoding
+                << position X [ pName "x", pQuant ]
+    in
+    toVegaLite
+        [ title "Hello, World!" []
+        , data []
+        , enc []
+        , circle []
         ]
