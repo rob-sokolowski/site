@@ -70,6 +70,7 @@ type alias Model =
     , timeline : A.Array Timeline
     , uiMode : UiMode
     , duckDbResponse : WebData DuckDbQueryResponse
+    , userSqlText : String
     }
 
 
@@ -97,6 +98,7 @@ type Msg
     | EnterTimelineViewerMode
     | EnterSheetEditorMode -- TODO: Just toggle UI mode?
     | QueryDuckDb String
+    | UserSqlTextChanged String
     | GotDuckDbResponse (Result Http.Error DuckDbQueryResponse)
       -- Timeline stuff:
       -- TODO: Should Msg take in a `model` param?
@@ -160,6 +162,9 @@ cell2Str cd =
 init : ( Model, Effect Msg )
 init =
     let
+        initSqlText =
+            "select p.question_id, p.poll_id, p.cycle, p.sample_size, p.population, p.candidate_party, p.candidate_name,  from president_polls_historical p limit 100"
+
         data : Array2D CellElement
         data =
             fromListOfLists
@@ -186,6 +191,7 @@ init =
             , timeline = A.fromList []
             , uiMode = SheetEditor
             , duckDbResponse = NotAsked
+            , userSqlText = initSqlText
             }
     in
     ( model
@@ -235,6 +241,9 @@ mapColumnsToSheet cols =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        UserSqlTextChanged newText ->
+            ( { model | userSqlText = newText }, Effect.none )
+
         QueryDuckDb queryStr ->
             ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr )
 
@@ -617,19 +626,43 @@ viewSheet model =
                )
 
 
-viewDuckDbButton : Element Msg
-viewDuckDbButton =
-    Input.button
-        [ Border.color UI.palette.black
-        , Border.width 1
-        , Border.rounded 4
-        , padding 4
-        , alignTop
-        , Background.color UI.palette.lightGrey
+viewSqlInputPanel : Model -> Element Msg
+viewSqlInputPanel model =
+    let
+        viewDuckDbButton : Element Msg
+        viewDuckDbButton =
+            Input.button
+                [ Border.color UI.palette.black
+                , Border.width 1
+                , Border.rounded 4
+                , padding 4
+                , alignTop
+                , Background.color UI.palette.lightGrey
+                ]
+                { onPress = Just <| QueryDuckDb model.userSqlText
+                , label = text "Query DuckDB"
+                }
+
+        viewSqlInput : Element Msg
+        viewSqlInput =
+            Input.multiline
+                [ width <| maximum 450 fill
+                , height <| px 150
+                , Border.rounded 6
+                , Border.width 2
+                , Border.color <| rgb255 0x72 0x9F 0xCF
+                ]
+                { onChange = UserSqlTextChanged
+                , text = model.userSqlText
+                , placeholder = Just <| Input.placeholder [] <| text "Type your message"
+                , label = Input.labelAbove [] <| text "Enter a sql query:"
+                , spellcheck = True
+                }
+    in
+    E.column []
+        [ viewSqlInput
+        , viewDuckDbButton
         ]
-        { onPress = Just <| QueryDuckDb query_
-        , label = text "Quack"
-        }
 
 
 viewTimelinePanel : Model -> Element Msg
@@ -801,7 +834,7 @@ content model =
         viewInstructions =
             E.column [ spacing 5 ]
                 [ text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new a value for a cell, which will be submitted upon pressing <Enter> a second time"
-                , text "Timeline view currently under development!"
+                , text "This app is under development, there are bugs, but there shouldn't be any crashes"
                 ]
 
         model_ : Model
@@ -822,7 +855,7 @@ content model =
     in
     column [ spacing 10, padding 10 ]
         [ viewInstructions
-        , viewDuckDbButton
+        , viewSqlInputPanel model_
         , viewTimelinePanel model_
         , viewSheet model_
         , row
@@ -847,15 +880,6 @@ elements model =
 
 
 -- API
-
-
-query_ =
-    """
-select p.question_id, p.poll_id, p.cycle, p.sample_size, p.population, p.candidate_party, p.candidate_name,  from president_polls_historical p limit 50
-    """
-
-
-
 -- utils
 
 
