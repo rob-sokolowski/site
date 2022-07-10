@@ -2,23 +2,27 @@ module Config exposing (apiHost)
 
 
 env =
-    --Local
     Production
 
 
 
+--| Production
 --Production
 
 
 type Env
-    = Local
+    = LocalDev
+    | LocalGunicorn
     | Production
 
 
 apiHost =
     case env of
-        Local ->
+        LocalDev ->
             "http://localhost:8000"
+
+        LocalGunicorn ->
+            "http://localhost:8080"
 
         Production ->
             "https://api.robsoko.tech"
