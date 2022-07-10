@@ -13,6 +13,8 @@ import Element.Border as Border
 import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
+import File exposing (File)
+import File.Select as Select
 import Gen.Params.Sheet exposing (Params)
 import Html.Attributes as HA
 import Http
@@ -71,7 +73,19 @@ type alias Model =
     , uiMode : UiMode
     , duckDbResponse : WebData DuckDbQueryResponse
     , userSqlText : String
+    , fileUploadStatus : FileUploadStatus
     }
+
+
+type FileUploadStatus
+    = Idle_
+    | Waiting
+    | Success_
+    | Fail
+
+
+type alias Progress =
+    Float
 
 
 type alias CurrentFrame =
@@ -106,6 +120,14 @@ type Msg
     | JumpToFrame Int
     | JumpToLastFrame
     | TogglePauseResume
+      -- FileUpload Msgs
+    | FileUpload_UserClickedSelectFile
+    | FileUpload_UserSelectedCsvFile File
+    | FileUpload_UploadInitiated (Result Http.Error ())
+
+
+
+--| FileUpload_GotProgress Http.Progress
 
 
 type alias RawPrompt =
@@ -192,6 +214,7 @@ init =
             , uiMode = SheetEditor
             , duckDbResponse = NotAsked
             , userSqlText = initSqlText
+            , fileUploadStatus = Idle_
             }
     in
     ( model
@@ -238,9 +261,37 @@ mapColumnsToSheet cols =
     array2DToSheet <| fromListOfLists lolTransposed
 
 
+uploadFile : File -> Cmd Msg
+uploadFile f =
+    Http.request
+        { method = "POST"
+        , url = apiHost ++ "/duckdb/files"
+        , headers = []
+        , body =
+            Http.multipartBody
+                [ Http.filePart "file" f
+                , Http.stringPart "duckdb_table_ref" "elm_test_2"
+                ]
+        , expect = Http.expectWhatever FileUpload_UploadInitiated
+        , timeout = Nothing
+        , tracker = Just "upload"
+        }
+
+
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        FileUpload_UserClickedSelectFile ->
+            ( model, Effect.fromCmd requestFile )
+
+        FileUpload_UserSelectedCsvFile csv ->
+            ( model
+            , Effect.fromCmd <| uploadFile csv
+            )
+
+        FileUpload_UploadInitiated result ->
+            ( model, Effect.none )
+
         UserSqlTextChanged newText ->
             ( { model | userSqlText = newText }, Effect.none )
 
@@ -827,6 +878,19 @@ viewDebugPanel model =
         ]
 
 
+requestFile : Cmd Msg
+requestFile =
+    Select.file [ "application/csv" ] FileUpload_UserSelectedCsvFile
+
+
+viewUploadFile : Model -> Element Msg
+viewUploadFile model =
+    Input.button []
+        { onPress = Just FileUpload_UserClickedSelectFile
+        , label = text "Upload File"
+        }
+
+
 content : Model -> Element Msg
 content model =
     let
@@ -857,6 +921,7 @@ content model =
         [ viewInstructions
         , viewSqlInputPanel model_
         , viewTimelinePanel model_
+        , viewUploadFile model_
         , viewSheet model_
         , row
             [ spacing 5
