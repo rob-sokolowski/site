@@ -29,6 +29,7 @@ import Shared
 import SheetModel exposing (Cell, CellCoords, CellElement(..), RawPromptString, SheetData, array2DToSheet, elementAt)
 import String exposing (fromInt)
 import Task
+import Time exposing (Posix)
 import UI
 import View exposing (View)
 
@@ -74,6 +75,7 @@ type alias Model =
     , duckDbResponse : WebData DuckDbQueryResponse
     , userSqlText : String
     , fileUploadStatus : FileUploadStatus
+    , nowish : Maybe Posix
     }
 
 
@@ -102,7 +104,8 @@ type Timeline
 
 
 type Msg
-    = KeyWentDown KeyCode
+    = Tick Posix
+    | KeyWentDown KeyCode
     | KeyReleased KeyCode
     | ClickedCell CellCoords
     | PromptInputChanged String
@@ -215,6 +218,7 @@ init =
             , duckDbResponse = NotAsked
             , userSqlText = initSqlText
             , fileUploadStatus = Idle_
+            , nowish = Nothing
             }
     in
     ( model
@@ -261,8 +265,19 @@ mapColumnsToSheet cols =
     array2DToSheet <| fromListOfLists lolTransposed
 
 
-uploadFile : File -> Cmd Msg
-uploadFile f =
+uploadFile : Model -> File -> Cmd Msg
+uploadFile model f =
+    let
+        nowish_ =
+            case model.nowish of
+                Nothing ->
+                    -- HACK: as long as `Tick` is implemented at 250 ms chances of this occurring is very low
+                    --       good enough
+                    Time.posixToMillis (Time.millisToPosix 99999999)
+
+                Just n ->
+                    Time.posixToMillis n
+    in
     Http.request
         { method = "POST"
         , url = apiHost ++ "/duckdb/files"
@@ -270,7 +285,7 @@ uploadFile f =
         , body =
             Http.multipartBody
                 [ Http.filePart "file" f
-                , Http.stringPart "duckdb_table_ref" "elm_test_2"
+                , Http.stringPart "duckdb_table_ref" ("elm_test_" ++ String.fromInt nowish_)
                 ]
         , expect = Http.expectWhatever FileUpload_UploadInitiated
         , timeout = Nothing
@@ -281,12 +296,15 @@ uploadFile f =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        Tick now ->
+            ( { model | nowish = Just now }, Effect.none )
+
         FileUpload_UserClickedSelectFile ->
             ( model, Effect.fromCmd requestFile )
 
         FileUpload_UserSelectedCsvFile csv ->
             ( model
-            , Effect.fromCmd <| uploadFile csv
+            , Effect.fromCmd <| uploadFile model csv
             )
 
         FileUpload_UploadInitiated result ->
@@ -490,15 +508,22 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.uiMode of
-        SheetEditor ->
-            Sub.batch
-                [ Events.onKeyDown (JD.map KeyWentDown keyDecoder)
-                , Events.onKeyUp (JD.map KeyReleased keyDecoder)
-                ]
+    let
+        contextualKeystrokes =
+            case model.uiMode of
+                SheetEditor ->
+                    Sub.batch
+                        [ Events.onKeyDown (JD.map KeyWentDown keyDecoder)
+                        , Events.onKeyUp (JD.map KeyReleased keyDecoder)
+                        ]
 
-        TimelineViewer _ ->
-            Sub.none
+                TimelineViewer _ ->
+                    Sub.none
+    in
+    Sub.batch
+        [ contextualKeystrokes
+        , Time.every 500 Tick
+        ]
 
 
 keyDecoder : JD.Decoder String
