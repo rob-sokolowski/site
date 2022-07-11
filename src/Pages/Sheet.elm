@@ -195,10 +195,10 @@ init =
         data =
             let
                 col =
-                    List.repeat 16 Empty
+                    List.repeat 25 Empty
 
                 rows =
-                    List.repeat 45 col
+                    List.repeat 100 col
             in
             fromListOfLists rows
 
@@ -590,19 +590,19 @@ view model =
                             ( 800, 600 )
 
                         Just viewport ->
-                            ( viewport.viewport.width, viewport.viewport.height )
+                            ( round viewport.viewport.width - 20, round viewport.viewport.height - 20 )
             in
             el
-                [ width E.fill
-                , height E.fill
+                [ width (E.fill |> maximum w)
+                , height (E.fill |> maximum h)
                 , Border.width 1
                 , Border.color UI.palette.black
                 , padding 5
                 , spacing 5
                 ]
                 (row
-                    [ width E.fill
-                    , height E.fill
+                    [ width (E.fill |> maximum w)
+                    , height (E.fill |> maximum h)
                     , spacing 5
                     ]
                     [ el
@@ -610,6 +610,8 @@ view model =
                         , height <| E.fill
                         , Border.width 2
                         , Border.color UI.palette.blue
+                        , clip
+                        , scrollbars
                         ]
                         (viewSheet model)
                     , el
