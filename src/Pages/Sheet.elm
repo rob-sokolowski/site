@@ -16,7 +16,7 @@ import File exposing (File)
 import File.Select as Select
 import Gen.Params.Sheet exposing (Params)
 import Html.Attributes as HA
-import Http
+import Http exposing (Error(..))
 import Json.Decode as JD
 import Json.Encode as JE
 import List.Extra as LE
@@ -204,7 +204,11 @@ init : ( Model, Effect Msg )
 init =
     let
         initSqlText =
-            "select p.question_id, p.poll_id, p.cycle, p.sample_size, p.population, p.candidate_party, p.candidate_name,  from president_polls_historical p limit 100"
+            """select
+    p.sponsor_ids
+from president_polls_historical p
+limit 5
+"""
 
         data : Array2D CellElement
         data =
@@ -903,10 +907,42 @@ viewSqlInputPanel model =
                 , label = Input.labelAbove [] <| text "Enter a sql query:"
                 , spellcheck = True
                 }
+
+        viewError : Element Msg
+        viewError =
+            let
+                errAttrs =
+                    el
+                        [ Background.color UI.palette.lightGrey
+                        , Border.width 2
+                        , Border.color UI.palette.darkishGrey
+                        ]
+            in
+            case model.duckDbResponse of
+                Failure err ->
+                    case err of
+                        BadUrl url ->
+                            errAttrs <| text <| "Bad url: " ++ url
+
+                        Timeout ->
+                            errAttrs <| text <| "Request timed out!"
+
+                        BadStatus int ->
+                            errAttrs <| text <| "Http status: " ++ String.fromInt int
+
+                        NetworkError ->
+                            errAttrs <| text <| "An unknown network error!"
+
+                        BadBody s ->
+                            errAttrs <| text <| "Bad body: " ++ s
+
+                _ ->
+                    E.none
     in
     E.column []
         [ viewSqlInput
         , viewDuckDbButton
+        , viewError
         ]
 
 
