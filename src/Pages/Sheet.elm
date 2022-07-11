@@ -205,9 +205,9 @@ init =
     let
         initSqlText =
             """select
-    p.sponsor_ids
-from president_polls_historical p
-limit 5
+    *
+from president_polls_historical
+limit 50
 """
 
         data : Array2D CellElement
