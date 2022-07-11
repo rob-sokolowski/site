@@ -1,8 +1,7 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
 import Array as A
-import Array.Extra as AE
-import Array2D as A2 exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
+import Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
 import Browser.Dom
 import Browser.Events as Events
 import Config exposing (apiHost)
@@ -76,6 +75,7 @@ type alias Model =
     , userSqlText : String
     , fileUploadStatus : FileUploadStatus
     , nowish : Maybe Posix
+    , viewport : Maybe Browser.Dom.Viewport
     }
 
 
@@ -105,6 +105,7 @@ type Timeline
 
 type Msg
     = Tick Posix
+    | GotViewport Browser.Dom.Viewport
     | KeyWentDown KeyCode
     | KeyReleased KeyCode
     | ClickedCell CellCoords
@@ -192,14 +193,14 @@ init =
 
         data : Array2D CellElement
         data =
-            fromListOfLists
-                [ [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                , [ Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty ]
-                ]
+            let
+                col =
+                    List.repeat 25 Empty
+
+                rows =
+                    List.repeat 100 col
+            in
+            fromListOfLists rows
 
         sheetData : SheetData
         sheetData =
@@ -219,10 +220,11 @@ init =
             , userSqlText = initSqlText
             , fileUploadStatus = Idle_
             , nowish = Nothing
+            , viewport = Nothing
             }
     in
     ( model
-    , Effect.none
+    , Effect.fromCmd <| Task.perform GotViewport Browser.Dom.getViewport
     )
 
 
@@ -298,6 +300,9 @@ update msg model =
     case msg of
         Tick now ->
             ( { model | nowish = Just now }, Effect.none )
+
+        GotViewport viewport ->
+            ( { model | viewport = Just viewport }, Effect.none )
 
         FileUpload_UserClickedSelectFile ->
             ( model, Effect.fromCmd requestFile )
@@ -540,6 +545,127 @@ view model =
     let
         title =
             "Sheet Demo"
+
+        elements : Model -> Element Msg
+        elements mdl =
+            E.column
+                [ E.width E.fill
+                , E.height E.fill
+                , Background.color UI.palette.white
+                , Font.size 12
+                , padding 5
+                ]
+                [ content mdl
+                ]
+
+        content : Model -> Element Msg
+        content mdl =
+            let
+                viewInstructions : Element Msg
+                viewInstructions =
+                    E.column [ spacing 5 ]
+                        [ text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new a value for a cell, which will be submitted upon pressing <Enter> a second time"
+                        , text "This app is under development, there are bugs, but there shouldn't be any crashes"
+                        ]
+
+                model_ : Model
+                model_ =
+                    case mdl.uiMode of
+                        SheetEditor ->
+                            mdl
+
+                        TimelineViewer i ->
+                            case A.get i mdl.timeline of
+                                Nothing ->
+                                    mdl
+
+                                Just v ->
+                                    case v of
+                                        Timeline model__ ->
+                                            { model__ | uiMode = mdl.uiMode }
+
+                ( w, h ) =
+                    case mdl.viewport of
+                        Nothing ->
+                            ( 800, 600 )
+
+                        Just viewport ->
+                            ( round viewport.viewport.width - 20, round viewport.viewport.height - 20 )
+            in
+            el
+                [ width (E.fill |> maximum w)
+                , height (E.fill |> maximum h)
+                , Border.width 1
+                , Border.color UI.palette.black
+                , padding 5
+                , spacing 5
+                ]
+                (row
+                    [ width (E.fill |> maximum w)
+                    , height (E.fill |> maximum h)
+                    , spacing 5
+                    ]
+                    [ el
+                        [ width <| E.fillPortion 8
+                        , height <| E.fill
+                        , Border.width 2
+                        , Border.color UI.palette.blue
+                        , clip
+                        , scrollbars
+                        ]
+                        (viewSheet model)
+                    , el
+                        [ width <| E.fillPortion 2
+                        , height E.fill
+                        ]
+                        (column
+                            [ height E.fill
+                            , width E.fill
+                            , padding 5
+                            , Border.width 1
+                            , Border.color UI.palette.lightGrey
+                            , spacing 5
+                            ]
+                            [ el
+                                [ width E.fill
+                                , height <| E.fillPortion 4
+                                , Border.width 1
+                                , Border.color UI.palette.lightGrey
+                                ]
+                                (viewUploadFile model)
+                            , el
+                                [ width E.fill
+                                , height <| E.fillPortion 4
+                                , Border.width 1
+                                , Border.color UI.palette.lightGrey
+                                ]
+                                (viewSqlInputPanel model)
+                            , el
+                                [ width E.fill
+                                , height <| E.fillPortion 2
+                                , Border.width 1
+                                , Border.color UI.palette.lightGrey
+                                ]
+                                (viewDebugPanel model)
+                            ]
+                        )
+                    ]
+                )
+
+        --
+        --
+        --column [ spacing 10, padding 10 ]
+        --    [ viewInstructions
+        --    , viewSqlInputPanel model_
+        --    , viewTimelinePanel model_
+        --    , viewUploadFile model_
+        --    , viewSheet model_
+        --    , row
+        --        [ spacing 5
+        --        ]
+        --        [ viewDebugPanel model_
+        --        ]
+        --    ]
     in
     { title = title
     , body =
@@ -883,20 +1009,20 @@ viewDebugPanel model =
                 promptStr prompt =
                     case prompt of
                         ( rawStr, ( rix, lbl ) ) ->
-                            text <| rawStr ++ "@:(" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
+                            text <| "    " ++ rawStr ++ " @:(" ++ String.fromInt rix ++ ", " ++ String.fromInt lbl ++ ")"
             in
             column []
                 [ text <| "Submission history:"
-                , column [ paddingEach { top = 0, left = 5, right = 0, bottom = 0 } ] <| List.map promptStr history
+                , column [ spacing 2 ] <| List.map promptStr history
                 ]
     in
     column
-        [ padding 5
-        , Border.color UI.palette.black
-        , Border.width 2
-        , spacing 5
+        [ width E.fill
+        , height E.fill
+        , spacing 2
         ]
-        [ text keyString
+        [ text "Debug info:"
+        , text keyString
         , text selectedCoordsStr
         , text selectedValueStr
         , viewPromptHistory model.submissionHistory
@@ -914,58 +1040,6 @@ viewUploadFile model =
         { onPress = Just FileUpload_UserClickedSelectFile
         , label = text "Upload File"
         }
-
-
-content : Model -> Element Msg
-content model =
-    let
-        viewInstructions : Element Msg
-        viewInstructions =
-            E.column [ spacing 5 ]
-                [ text "Click a cell to select it, or use arrow keys to change selection. Then, press <Enter> to propose new a value for a cell, which will be submitted upon pressing <Enter> a second time"
-                , text "This app is under development, there are bugs, but there shouldn't be any crashes"
-                ]
-
-        model_ : Model
-        model_ =
-            case model.uiMode of
-                SheetEditor ->
-                    model
-
-                TimelineViewer i ->
-                    case A.get i model.timeline of
-                        Nothing ->
-                            model
-
-                        Just v ->
-                            case v of
-                                Timeline model__ ->
-                                    { model__ | uiMode = model.uiMode }
-    in
-    column [ spacing 10, padding 10 ]
-        [ viewInstructions
-        , viewSqlInputPanel model_
-        , viewTimelinePanel model_
-        , viewUploadFile model_
-        , viewSheet model_
-        , row
-            [ spacing 5
-            ]
-            [ viewDebugPanel model_
-            ]
-        ]
-
-
-elements : Model -> Element Msg
-elements model =
-    E.column
-        [ E.width E.fill
-        , E.height E.fill
-        , Background.color UI.palette.white
-        , Font.size 12
-        ]
-        [ content model
-        ]
 
 
 
