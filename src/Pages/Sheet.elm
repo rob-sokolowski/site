@@ -82,12 +82,14 @@ type alias Model =
     , timeline : A.Array Timeline
     , uiMode : UiMode
     , duckDbResponse : WebData DuckDbQueryResponse
+    , duckDbMetaResponse : WebData DuckDbQueryResponse
     , duckDbTableRefs : WebData DuckDbTableRefsResponse
     , userSqlText : String
     , fileUploadStatus : FileUploadStatus
     , nowish : Maybe Posix
     , viewport : Maybe Browser.Dom.Viewport
     , renderStatus : RenderStatus
+    , selectedTableRef : Maybe TableRef
     }
 
 
@@ -121,6 +123,7 @@ type Msg
     | GotResizeEvent Int Int
     | KeyWentDown KeyCode
     | KeyReleased KeyCode
+    | UserSelectedTableRef TableRef
     | ClickedCell CellCoords
     | PromptInputChanged String
     | PromptSubmitted RawPrompt
@@ -132,6 +135,7 @@ type Msg
     | UserSqlTextChanged String
       -- API response stuff:
     | GotDuckDbResponse (Result Http.Error DuckDbQueryResponse)
+    | GotDuckDbMetaResponse (Result Http.Error DuckDbQueryResponse)
     | GotDuckDbTableRefsResponse (Result Http.Error DuckDbTableRefsResponse)
       -- Timeline stuff:
       -- TODO: Should Msg take in a `model` param?
@@ -200,16 +204,26 @@ cell2Str cd =
                     "FALSE"
 
 
+buildSqlText : Maybe TableRef -> String
+buildSqlText ref =
+    let
+        tableRef =
+            case ref of
+                Nothing ->
+                    "president_polls_historical"
+
+                Just ref_ ->
+                    ref_
+    in
+    """select
+    *
+from """ ++ tableRef ++ """
+limit 50"""
+
+
 init : ( Model, Effect Msg )
 init =
     let
-        initSqlText =
-            """select
-    *
-from president_polls_historical
-limit 50
-"""
-
         data : Array2D CellElement
         data =
             let
@@ -227,6 +241,7 @@ limit 50
 
         -- NB: timeline is recursive, so we save the initial model state in this let expression, and return
         --     a partially updated model containing this one
+        model : Model
         model =
             { sheetData = sheetData
             , keysDown = Set.empty
@@ -236,12 +251,14 @@ limit 50
             , timeline = A.fromList []
             , uiMode = SheetEditor
             , duckDbResponse = NotAsked
-            , userSqlText = initSqlText
+            , duckDbMetaResponse = NotAsked
+            , userSqlText = buildSqlText Nothing
             , fileUploadStatus = Idle_
             , nowish = Nothing
             , viewport = Nothing
             , duckDbTableRefs = NotAsked
             , renderStatus = AwaitingDomInfo
+            , selectedTableRef = Nothing
             }
     in
     ( model
@@ -335,6 +352,18 @@ update msg model =
         GotViewport viewport ->
             ( { model | viewport = Just viewport, renderStatus = Ready }, Effect.none )
 
+        UserSelectedTableRef ref ->
+            let
+                queryStr =
+                    "select * from " ++ ref ++ " limit 0"
+            in
+            ( { model
+                | selectedTableRef = Just ref
+                , userSqlText = buildSqlText (Just ref)
+              }
+            , Effect.fromCmd (queryDuckDbMeta queryStr True [ ref ])
+            )
+
         GotDuckDbTableRefsResponse response ->
             case response of
                 Ok refs ->
@@ -358,16 +387,11 @@ update msg model =
             ( { model | userSqlText = newText }, Effect.none )
 
         QueryDuckDb queryStr ->
-            ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr )
+            ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr False [] )
 
         GotDuckDbResponse response ->
             case response of
                 Ok data ->
-                    --let
-                    --    convertToSheet : DuckDbQueryResponse -> SheetData
-                    --    convertToSheet data_ =
-                    --        array2DToSheet <| fromListOfLists (List.map (\e -> [ String_ e ]) data_.columns)
-                    --in
                     ( { model
                         | duckDbResponse = Success data
                         , sheetData = mapColumnsToSheet data.columns
@@ -377,6 +401,14 @@ update msg model =
 
                 Err err ->
                     ( { model | duckDbResponse = Failure err }, Effect.none )
+
+        GotDuckDbMetaResponse metaResponse ->
+            case metaResponse of
+                Ok data ->
+                    ( { model | duckDbMetaResponse = Success data }, Effect.none )
+
+                Err err ->
+                    ( { model | duckDbMetaResponse = Failure err }, Effect.none )
 
         EnterSheetEditorMode ->
             ( { model | uiMode = SheetEditor }, Effect.none )
@@ -894,6 +926,15 @@ viewSqlInputPanel model =
 
         viewSqlInput : Element Msg
         viewSqlInput =
+            let
+                label =
+                    case model.selectedTableRef of
+                        Nothing ->
+                            "Select a table ref below, or upload a new CSV"
+
+                        Just ref ->
+                            ref
+            in
             Input.multiline
                 [ width <| maximum 450 fill
                 , height <| px 150
@@ -904,7 +945,7 @@ viewSqlInputPanel model =
                 { onChange = UserSqlTextChanged
                 , text = model.userSqlText
                 , placeholder = Just <| Input.placeholder [] <| text "Type your message"
-                , label = Input.labelAbove [] <| text "Enter a sql query:"
+                , label = Input.labelAbove [] <| text label
                 , spellcheck = True
                 }
 
@@ -1128,12 +1169,19 @@ viewCatalogPanel model =
                             text "Fetching..."
 
                         Success refsResponse ->
+                            let
+                                refsSelector : List TableRef -> Element Msg
+                                refsSelector refs =
+                                    column
+                                        []
+                                        (List.map (\ref -> el [ onClick <| UserSelectedTableRef ref ] <| text ref) refs)
+                            in
                             column
                                 [ spacing 1
                                 ]
-                                ([ text "DuckDB Refs:" ]
-                                    ++ List.map (\ref -> text <| "  " ++ ref) refsResponse.refs
-                                )
+                                [ text "DuckDB Refs:"
+                                , refsSelector refsResponse.refs
+                                ]
 
                         Failure err ->
                             text "Error"
@@ -1200,15 +1248,15 @@ fetchDuckDbTableRefs =
         }
 
 
-queryDuckDb : String -> Cmd Msg
-queryDuckDb query =
+queryDuckDb : String -> Bool -> List TableRef -> Cmd Msg
+queryDuckDb query allowFallback refs =
     let
-        duckDbQueryEncoder : String -> JE.Value
-        duckDbQueryEncoder q =
+        duckDbQueryEncoder : JE.Value
+        duckDbQueryEncoder =
             JE.object
-                [ ( "query_str", JE.string q )
-                , ( "allow_blob_fallback", JE.bool False )
-                , ( "fallback_table_refs", JE.list JE.string [] )
+                [ ( "query_str", JE.string query )
+                , ( "allow_blob_fallback", JE.bool allowFallback )
+                , ( "fallback_table_refs", JE.list JE.string refs )
                 ]
 
         duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
@@ -1246,8 +1294,59 @@ queryDuckDb query =
     in
     Http.post
         { url = apiHost ++ "/duckdb"
-        , body = Http.jsonBody (duckDbQueryEncoder query)
+        , body = Http.jsonBody duckDbQueryEncoder
         , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
+        }
+
+
+queryDuckDbMeta : String -> Bool -> List TableRef -> Cmd Msg
+queryDuckDbMeta query allowFallback refs =
+    let
+        duckDbQueryEncoder : JE.Value
+        duckDbQueryEncoder =
+            JE.object
+                [ ( "query_str", JE.string query )
+                , ( "allow_blob_fallback", JE.bool allowFallback )
+                , ( "fallback_table_refs", JE.list JE.string refs )
+                ]
+
+        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+        duckDbQueryResponseDecoder =
+            let
+                columnDecoderHelper : JD.Decoder Column
+                columnDecoderHelper =
+                    JD.field "type" JD.string |> JD.andThen decoderByType
+
+                decoderByType : String -> JD.Decoder Column
+                decoderByType type_ =
+                    case type_ of
+                        "VARCHAR" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
+
+                        "INTEGER" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.map Int__ JD.int)))
+
+                        _ ->
+                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                            -- Should this fail loudly?
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.list (JD.succeed Unknown))
+            in
+            JD.map DuckDbQueryResponse
+                (JD.field "columns" (JD.list columnDecoderHelper))
+    in
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody duckDbQueryEncoder
+        , expect = Http.expectJson GotDuckDbMetaResponse duckDbQueryResponseDecoder
         }
 
 
@@ -1266,7 +1365,7 @@ type Val
     | Unknown
 
 
-type alias TypeRef =
+type alias TableRef =
     String
 
 
@@ -1276,5 +1375,5 @@ type alias DuckDbQueryResponse =
 
 
 type alias DuckDbTableRefsResponse =
-    { refs : List String
+    { refs : List TableRef
     }
