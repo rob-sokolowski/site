@@ -90,6 +90,7 @@ type alias Model =
     , viewport : Maybe Browser.Dom.Viewport
     , renderStatus : RenderStatus
     , selectedTableRef : Maybe TableRef
+    , hoveredOnTableRef : Maybe TableRef
     }
 
 
@@ -124,6 +125,8 @@ type Msg
     | KeyWentDown KeyCode
     | KeyReleased KeyCode
     | UserSelectedTableRef TableRef
+    | UserMouseEnteredTableRef TableRef
+    | UserMouseLeftTableRef
     | ClickedCell CellCoords
     | PromptInputChanged String
     | PromptSubmitted RawPrompt
@@ -259,6 +262,7 @@ init =
             , duckDbTableRefs = NotAsked
             , renderStatus = AwaitingDomInfo
             , selectedTableRef = Nothing
+            , hoveredOnTableRef = Nothing
             }
     in
     ( model
@@ -363,6 +367,16 @@ update msg model =
               }
             , Effect.fromCmd (queryDuckDbMeta queryStr True [ ref ])
             )
+
+        UserMouseEnteredTableRef ref ->
+            ( { model
+                | hoveredOnTableRef = Just ref
+              }
+            , Effect.none
+            )
+
+        UserMouseLeftTableRef ->
+            ( { model | hoveredOnTableRef = Nothing }, Effect.none )
 
         GotDuckDbTableRefsResponse response ->
             case response of
@@ -698,11 +712,8 @@ view model =
                         (column
                             [ height E.fill
                             , width E.fill
-
-                            --, padding 5
                             , Border.width 1
                             , Border.color UI.palette.lightGrey
-                            , spacing 5
                             ]
                             [ el
                                 [ width E.fill
@@ -729,21 +740,6 @@ view model =
                         )
                     ]
                 )
-
-        --
-        --
-        --column [ spacing 10, padding 10 ]
-        --    [ viewInstructions
-        --    , viewSqlInputPanel model_
-        --    , viewTimelinePanel model_
-        --    , viewUploadFile model_
-        --    , viewSheet model_
-        --    , row
-        --        [ spacing 5
-        --        ]
-        --        [ viewDebugPanel model_
-        --        ]
-        --    ]
     in
     { title = title
     , body =
@@ -936,8 +932,8 @@ viewSqlInputPanel model =
                             ref
             in
             Input.multiline
-                [ width <| maximum 450 fill
-                , height <| px 150
+                [ width fill
+                , height fill
                 , Border.rounded 6
                 , Border.width 2
                 , Border.color <| rgb255 0x72 0x9F 0xCF
@@ -980,7 +976,10 @@ viewSqlInputPanel model =
                 _ ->
                     E.none
     in
-    E.column []
+    E.column
+        [ width fill
+        , height fill
+        ]
         [ viewSqlInput
         , viewDuckDbButton
         , viewError
@@ -1159,34 +1158,108 @@ viewCatalogPanel model =
     let
         viewTableRefs : Model -> Element Msg
         viewTableRefs mdl =
-            let
-                s =
-                    case mdl.duckDbTableRefs of
-                        NotAsked ->
-                            text "Didn't request data yet"
+            case mdl.duckDbTableRefs of
+                NotAsked ->
+                    text "Didn't request data yet"
 
-                        Loading ->
-                            text "Fetching..."
+                Loading ->
+                    text "Fetching..."
 
-                        Success refsResponse ->
+                Success refsResponse ->
+                    let
+                        refsSelector : List TableRef -> Element Msg
+                        refsSelector refs =
                             let
-                                refsSelector : List TableRef -> Element Msg
-                                refsSelector refs =
-                                    column
-                                        []
-                                        (List.map (\ref -> el [ onClick <| UserSelectedTableRef ref ] <| text ref) refs)
+                                backgroundColorFor ref =
+                                    case model.hoveredOnTableRef of
+                                        Nothing ->
+                                            UI.palette.white
+
+                                        Just ref_ ->
+                                            if ref == ref_ then
+                                                UI.palette.lightGrey
+
+                                            else
+                                                UI.palette.white
+
+                                borderColorFor ref =
+                                    case model.hoveredOnTableRef of
+                                        Nothing ->
+                                            UI.palette.white
+
+                                        Just ref_ ->
+                                            if ref == ref_ then
+                                                UI.palette.darkishGrey
+
+                                            else
+                                                UI.palette.white
+
+                                borderFor ref =
+                                    case model.hoveredOnTableRef of
+                                        Nothing ->
+                                            { top = 1, left = 0, right = 0, bottom = 1 }
+
+                                        Just ref_ ->
+                                            if ref == ref_ then
+                                                { top = 1, left = 0, right = 0, bottom = 1 }
+
+                                            else
+                                                { top = 1, left = 0, right = 0, bottom = 1 }
+
+                                innerBlobColorFor ref =
+                                    case model.hoveredOnTableRef of
+                                        Nothing ->
+                                            UI.palette.white
+
+                                        Just ref_ ->
+                                            if ref == ref_ then
+                                                UI.palette.black
+
+                                            else
+                                                UI.palette.white
+
+                                ui : TableRef -> Element Msg
+                                ui ref =
+                                    row
+                                        [ width E.fill
+                                        , paddingXY 0 2
+                                        , spacingXY 2 0
+                                        , onClick <| UserSelectedTableRef ref
+                                        , onMouseEnter <| UserMouseEnteredTableRef ref
+                                        , onMouseLeave <| UserMouseLeftTableRef
+                                        , Background.color (backgroundColorFor ref)
+                                        , Border.widthEach (borderFor ref)
+                                        , Border.color (borderColorFor ref)
+                                        ]
+                                        [ el
+                                            [ width <| px 5
+                                            , height <| px 5
+                                            , Border.width 1
+                                            , Background.color (innerBlobColorFor ref)
+                                            ]
+                                            E.none
+                                        , text ref
+                                        ]
                             in
                             column
-                                [ spacing 1
+                                [ width E.fill
+                                , height E.fill
+                                , paddingXY 5 0
                                 ]
-                                [ text "DuckDB Refs:"
-                                , refsSelector refsResponse.refs
-                                ]
+                            <|
+                                List.map (\ref -> ui ref) refs
+                    in
+                    column
+                        [ width E.fill
+                        , height E.fill
+                        , spacing 2
+                        ]
+                        [ text "DuckDB Refs:"
+                        , refsSelector refsResponse.refs
+                        ]
 
-                        Failure err ->
-                            text "Error"
-            in
-            s
+                Failure err ->
+                    text "Error"
 
         viewUploadFile : Model -> Element Msg
         viewUploadFile mdl =
@@ -1206,7 +1279,6 @@ viewCatalogPanel model =
     column
         [ width E.fill
         , height E.fill
-        , clip
         ]
         [ viewTableRefs model
         , viewUploadFile model
