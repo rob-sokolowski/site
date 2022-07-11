@@ -72,6 +72,7 @@ type alias Model =
     , timeline : A.Array Timeline
     , uiMode : UiMode
     , duckDbResponse : WebData DuckDbQueryResponse
+    , duckDbTableRefs : WebData DuckDbTableRefsResponse
     , userSqlText : String
     , fileUploadStatus : FileUploadStatus
     , nowish : Maybe Posix
@@ -117,7 +118,9 @@ type Msg
     | EnterSheetEditorMode -- TODO: Just toggle UI mode?
     | QueryDuckDb String
     | UserSqlTextChanged String
+      -- API response stuff:
     | GotDuckDbResponse (Result Http.Error DuckDbQueryResponse)
+    | GotDuckDbTableRefsResponse (Result Http.Error DuckDbTableRefsResponse)
       -- Timeline stuff:
       -- TODO: Should Msg take in a `model` param?
     | JumpToFirstFrame
@@ -127,7 +130,7 @@ type Msg
       -- FileUpload Msgs
     | FileUpload_UserClickedSelectFile
     | FileUpload_UserSelectedCsvFile File
-    | FileUpload_UploadInitiated (Result Http.Error ())
+    | FileUpload_UploadResponded (Result Http.Error ())
 
 
 
@@ -221,10 +224,15 @@ init =
             , fileUploadStatus = Idle_
             , nowish = Nothing
             , viewport = Nothing
+            , duckDbTableRefs = NotAsked
             }
     in
     ( model
-    , Effect.fromCmd <| Task.perform GotViewport Browser.Dom.getViewport
+    , Effect.fromCmd <|
+        Cmd.batch
+            [ Task.perform GotViewport Browser.Dom.getViewport
+            , fetchDuckDbTableRefs
+            ]
     )
 
 
@@ -289,7 +297,7 @@ uploadFile model f =
                 [ Http.filePart "file" f
                 , Http.stringPart "duckdb_table_ref" ("elm_test_" ++ String.fromInt nowish_)
                 ]
-        , expect = Http.expectWhatever FileUpload_UploadInitiated
+        , expect = Http.expectWhatever FileUpload_UploadResponded
         , timeout = Nothing
         , tracker = Just "upload"
         }
@@ -304,6 +312,14 @@ update msg model =
         GotViewport viewport ->
             ( { model | viewport = Just viewport }, Effect.none )
 
+        GotDuckDbTableRefsResponse response ->
+            case response of
+                Ok refs ->
+                    ( { model | duckDbTableRefs = Success refs }, Effect.none )
+
+                Err err ->
+                    ( { model | duckDbTableRefs = Failure err }, Effect.none )
+
         FileUpload_UserClickedSelectFile ->
             ( model, Effect.fromCmd requestFile )
 
@@ -312,8 +328,8 @@ update msg model =
             , Effect.fromCmd <| uploadFile model csv
             )
 
-        FileUpload_UploadInitiated result ->
-            ( model, Effect.none )
+        FileUpload_UploadResponded result ->
+            ( model, Effect.fromCmd fetchDuckDbTableRefs )
 
         UserSqlTextChanged newText ->
             ( { model | userSqlText = newText }, Effect.none )
@@ -621,7 +637,8 @@ view model =
                         (column
                             [ height E.fill
                             , width E.fill
-                            , padding 5
+
+                            --, padding 5
                             , Border.width 1
                             , Border.color UI.palette.lightGrey
                             , spacing 5
@@ -632,7 +649,7 @@ view model =
                                 , Border.width 1
                                 , Border.color UI.palette.lightGrey
                                 ]
-                                (viewUploadFile model)
+                                (viewCatalogPanel model)
                             , el
                                 [ width E.fill
                                 , height <| E.fillPortion 4
@@ -839,6 +856,7 @@ viewSqlInputPanel model =
                 , Border.rounded 4
                 , padding 4
                 , alignTop
+                , alignRight
                 , Background.color UI.palette.lightGrey
                 ]
                 { onPress = Just <| QueryDuckDb model.userSqlText
@@ -1034,12 +1052,56 @@ requestFile =
     Select.file [ "application/csv" ] FileUpload_UserSelectedCsvFile
 
 
-viewUploadFile : Model -> Element Msg
-viewUploadFile model =
-    Input.button []
-        { onPress = Just FileUpload_UserClickedSelectFile
-        , label = text "Upload File"
-        }
+viewCatalogPanel : Model -> Element Msg
+viewCatalogPanel model =
+    let
+        viewTableRefs : Model -> Element Msg
+        viewTableRefs mdl =
+            let
+                s =
+                    case mdl.duckDbTableRefs of
+                        NotAsked ->
+                            text "Didn't request data yet"
+
+                        Loading ->
+                            text "Fetching..."
+
+                        Success refsResponse ->
+                            column
+                                [ spacing 1
+                                ]
+                                ([ text "DuckDB Refs:" ]
+                                    ++ List.map (\ref -> text <| "  " ++ ref) refsResponse.refs
+                                )
+
+                        Failure err ->
+                            text "Error"
+            in
+            s
+
+        viewUploadFile : Model -> Element Msg
+        viewUploadFile mdl =
+            Input.button
+                [ alignBottom
+                , alignRight
+                , padding 5
+                , Border.color UI.palette.black
+                , Border.width 1
+                , Border.rounded 3
+                , Background.color UI.palette.lightGrey
+                ]
+                { onPress = Just FileUpload_UserClickedSelectFile
+                , label = text "Upload CSV File"
+                }
+    in
+    column
+        [ width E.fill
+        , height E.fill
+        , clip
+        ]
+        [ viewTableRefs model
+        , viewUploadFile model
+        ]
 
 
 
@@ -1063,54 +1125,67 @@ prompt_input_dom_id =
 -- API - TODO: I'd like for these to be in it's own tested module
 
 
+fetchDuckDbTableRefs : Cmd Msg
+fetchDuckDbTableRefs =
+    let
+        duckDbTableRefsResponseDecoder : JD.Decoder DuckDbTableRefsResponse
+        duckDbTableRefsResponseDecoder =
+            JD.map DuckDbTableRefsResponse
+                (JD.field "refs" (JD.list JD.string))
+    in
+    Http.get
+        { url = apiHost ++ "/duckdb/table_refs"
+        , expect = Http.expectJson GotDuckDbTableRefsResponse duckDbTableRefsResponseDecoder
+        }
+
+
 queryDuckDb : String -> Cmd Msg
 queryDuckDb query =
+    let
+        duckDbQueryEncoder : String -> JE.Value
+        duckDbQueryEncoder q =
+            JE.object
+                [ ( "query_str", JE.string q )
+                ]
+
+        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+        duckDbQueryResponseDecoder =
+            let
+                columnDecoderHelper : JD.Decoder Column
+                columnDecoderHelper =
+                    JD.field "type" JD.string |> JD.andThen decoderByType
+
+                decoderByType : String -> JD.Decoder Column
+                decoderByType type_ =
+                    case type_ of
+                        "VARCHAR" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
+
+                        "INTEGER" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.map Int__ JD.int)))
+
+                        _ ->
+                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                            -- Should this fail loudly?
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.list (JD.succeed Unknown))
+            in
+            JD.map DuckDbQueryResponse
+                (JD.field "columns" (JD.list columnDecoderHelper))
+    in
     Http.post
         { url = apiHost ++ "/duckdb"
         , body = Http.jsonBody (duckDbQueryEncoder query)
         , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
         }
-
-
-duckDbQueryEncoder : String -> JE.Value
-duckDbQueryEncoder query =
-    JE.object
-        [ ( "query_str", JE.string query )
-        ]
-
-
-duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
-duckDbQueryResponseDecoder =
-    let
-        columnDecoderHelper : JD.Decoder Column
-        columnDecoderHelper =
-            JD.field "type" JD.string |> JD.andThen decoderByType
-
-        decoderByType : String -> JD.Decoder Column
-        decoderByType type_ =
-            case type_ of
-                "VARCHAR" ->
-                    JD.map3 Column
-                        (JD.field "name" JD.string)
-                        (JD.field "type" JD.string)
-                        (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
-
-                "INTEGER" ->
-                    JD.map3 Column
-                        (JD.field "name" JD.string)
-                        (JD.field "type" JD.string)
-                        (JD.field "values" (JD.list (JD.map Int__ JD.int)))
-
-                _ ->
-                    -- This feels wrong to me, but unsure how else to workaround the string pattern matching
-                    -- Should this fail loudly?
-                    JD.map3 Column
-                        (JD.field "name" JD.string)
-                        (JD.field "type" JD.string)
-                        (JD.list (JD.succeed Unknown))
-    in
-    JD.map DuckDbQueryResponse
-        (JD.field "columns" (JD.list columnDecoderHelper))
 
 
 type alias Column =
@@ -1128,6 +1203,15 @@ type Val
     | Unknown
 
 
+type alias TypeRef =
+    String
+
+
 type alias DuckDbQueryResponse =
     { columns : List Column
+    }
+
+
+type alias DuckDbTableRefsResponse =
+    { refs : List String
     }
