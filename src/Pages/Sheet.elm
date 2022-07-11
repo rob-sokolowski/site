@@ -1146,6 +1146,8 @@ queryDuckDb query =
         duckDbQueryEncoder q =
             JE.object
                 [ ( "query_str", JE.string q )
+                , ( "allow_blob_fallback", JE.bool False )
+                , ( "fallback_table_refs", JE.list JE.string [] )
                 ]
 
         duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
