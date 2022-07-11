@@ -63,6 +63,11 @@ type alias TimelineState =
     }
 
 
+type RenderStatus
+    = AwaitingDomInfo
+    | Ready
+
+
 type alias Model =
     { sheetData : SheetData
     , keysDown : Set KeyCode
@@ -77,6 +82,7 @@ type alias Model =
     , fileUploadStatus : FileUploadStatus
     , nowish : Maybe Posix
     , viewport : Maybe Browser.Dom.Viewport
+    , renderStatus : RenderStatus
     }
 
 
@@ -107,6 +113,7 @@ type Timeline
 type Msg
     = Tick Posix
     | GotViewport Browser.Dom.Viewport
+    | GotResizeEvent Int Int
     | KeyWentDown KeyCode
     | KeyReleased KeyCode
     | ClickedCell CellCoords
@@ -225,6 +232,7 @@ init =
             , nowish = Nothing
             , viewport = Nothing
             , duckDbTableRefs = NotAsked
+            , renderStatus = AwaitingDomInfo
             }
     in
     ( model
@@ -309,8 +317,14 @@ update msg model =
         Tick now ->
             ( { model | nowish = Just now }, Effect.none )
 
+        GotResizeEvent _ _ ->
+            -- rather than keeping two copies of this info in memory, chain a resize event
+            -- to the existing flow on first page render. This should avoid strange resizing
+            -- frames from being rendered.. at least I hope so!
+            ( { model | renderStatus = AwaitingDomInfo }, Effect.fromCmd (Task.perform GotViewport Browser.Dom.getViewport) )
+
         GotViewport viewport ->
-            ( { model | viewport = Just viewport }, Effect.none )
+            ( { model | viewport = Just viewport, renderStatus = Ready }, Effect.none )
 
         GotDuckDbTableRefsResponse response ->
             case response of
@@ -544,6 +558,7 @@ subscriptions model =
     Sub.batch
         [ contextualKeystrokes
         , Time.every 500 Tick
+        , Events.onResize GotResizeEvent
         ]
 
 
@@ -564,15 +579,20 @@ view model =
 
         elements : Model -> Element Msg
         elements mdl =
-            E.column
-                [ E.width E.fill
-                , E.height E.fill
-                , Background.color UI.palette.white
-                , Font.size 12
-                , padding 5
-                ]
-                [ content mdl
-                ]
+            case mdl.renderStatus of
+                AwaitingDomInfo ->
+                    E.none
+
+                Ready ->
+                    E.column
+                        [ E.width E.fill
+                        , E.height E.fill
+                        , Background.color UI.palette.white
+                        , Font.size 12
+                        , padding 5
+                        ]
+                        [ content mdl
+                        ]
 
         content : Model -> Element Msg
         content mdl =
@@ -1069,6 +1089,9 @@ viewCatalogPanel model =
                         Success refsResponse ->
                             column
                                 [ spacing 1
+
+                                --, clip
+                                --, scrollbarX
                                 ]
                                 ([ text "DuckDB Refs:" ]
                                     ++ List.map (\ref -> text <| "  " ++ ref) refsResponse.refs
