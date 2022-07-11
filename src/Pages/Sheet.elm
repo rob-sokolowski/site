@@ -63,7 +63,12 @@ type alias TimelineState =
     }
 
 
-type RenderStatus
+type
+    RenderStatus
+    -- Since a lot of stuff is being rendered, initialize model to be Awaiting, and start the task of fetching
+    -- browser viewport size. Once received, this will be flipped to Ready, which then renders
+    -- This avoids the "double paint" problem on initial page loads (first paint assumes default screen size, followed
+    -- by a correct paint)
     = AwaitingDomInfo
     | Ready
 
@@ -1089,9 +1094,6 @@ viewCatalogPanel model =
                         Success refsResponse ->
                             column
                                 [ spacing 1
-
-                                --, clip
-                                --, scrollbarX
                                 ]
                                 ([ text "DuckDB Refs:" ]
                                     ++ List.map (\ref -> text <| "  " ++ ref) refsResponse.refs
