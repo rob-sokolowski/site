@@ -2,12 +2,18 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/fir-sandbox-326008/site-ci-builder:latest', '--file', 'Dockerfile-Ci', '.']
 
-  # Run the app and dependencies in the background using docker-compose.
-  # Warning: this won't be cleaned up, which might be an issue if you run it
-  # with the local builder.
+  # pre-emptive cleanup, in case previous run failed etc
+  - name: 'docker/compose:1.29.2'
+    args: ['down']
+
+
+
   - name: 'docker/compose:1.29.2'
     args: ['run', 'elm-test']
 
+  # clean up after ourselves
+  - name: 'docker/compose:1.29.2'
+    args: ['down']
 
 options:
   pool:

@@ -3,6 +3,7 @@ version: "3.7"
 services:
   elm-test:
     image: gcr.io/fir-sandbox-326008/site-ci-builder:latest
+    command: elm-test
     networks:
       - site-ci-network
 
