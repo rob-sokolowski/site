@@ -5,16 +5,16 @@ steps:
 
   # pre-emptive cleanup, in case previous run failed etc
   - name: 'docker/compose:1.29.2'
-    directory: '.cloudbuild'
+    dir: '.cloudbuild'
     args: ['down']
 
   - name: 'docker/compose:1.29.2'
-    directory: '.cloudbuild'
+    dir: '.cloudbuild'
     args: ['run', 'elm-test']
 
   # clean up after ourselves
   - name: 'docker/compose:1.29.2'
-    directory: '.cloudbuild'
+    dir: '.cloudbuild'
     args: ['down']
 
 options:
