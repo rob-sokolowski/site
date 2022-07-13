@@ -16,7 +16,7 @@ suite =
                     listOfList
                         |> fromListOfLists
                         |> getValueAt ( 1, 2 )
-                        |> Expect.equal (Just 122)
+                        |> Expect.equal (Just 109)
                 )
             , test "build an Array2D from list of lists, set a value at (rix, cix)"
                 (\_ ->
