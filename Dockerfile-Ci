@@ -1,4 +1,4 @@
-FROM gcr.io/cloud-builders/npm
+FROM gcr.io/cloud-builders/nodejs
 
 RUN npm install -g npm
 RUN npm install elm elm-test elm-review elm-spa
