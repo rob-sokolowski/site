@@ -16,7 +16,7 @@ steps:
       '--image',
       'gcr.io/fir-sandbox-326008/site-nginx:latest',
       '--region',
-      'us-east4'
+      'us-east4',
       '--min-instances',
       '0',
       '--max-instances',
