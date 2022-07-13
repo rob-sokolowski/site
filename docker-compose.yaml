@@ -6,10 +6,20 @@ services:
     ports:
       - 80:80
     networks:
-      - some-network
+      - site-network
+
+  shell:
+    image: site-nginx:latest
+    ports:
+      - 80:80
+    networks:
+      - site-network
+    working_dir: /usr/share/nginx/html
+    command: sh
+
 
 networks:
-  some-network:
+  site-network:
     driver: bridge
     ipam:
       driver: default
