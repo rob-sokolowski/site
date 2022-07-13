@@ -1,3 +1,7 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/fir-sandbox-326008/site-ci-builder:latest', '.']
+
+options:
+  pool:
+    name: 'projects/fir-sandbox-326008/locations/us-east4/workerPools/pool-1'
