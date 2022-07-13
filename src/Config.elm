@@ -5,11 +5,6 @@ env =
     Production
 
 
-
---| Production
---Production
-
-
 type Env
     = LocalDev
     | LocalGunicorn
