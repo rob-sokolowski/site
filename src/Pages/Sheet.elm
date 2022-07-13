@@ -290,17 +290,28 @@ type alias KeyCode =
 mapColumnsToSheet : List Column -> SheetData
 mapColumnsToSheet cols =
     let
-        mapVal : Val -> CellElement
+        mapVal : Maybe Val -> CellElement
         mapVal v =
             case v of
-                Varchar_ var ->
-                    String_ var
-
-                Int__ i ->
-                    Int_ i
-
-                Unknown ->
+                Nothing ->
                     Empty
+
+                Just val ->
+                    case val of
+                        Varchar_ var ->
+                            String_ var
+
+                        Int__ i ->
+                            Int_ i
+
+                        Bool__ b ->
+                            Bool_ b
+
+                        Float__ f ->
+                            Float_ f
+
+                        Unknown ->
+                            Empty
 
         -- lol is "list of lists", but I'm also laughing at how inefficient this is
         -- TODO: I think it'd be worthwhile to refactor Array2D to accept column lists not row-lists
@@ -1345,13 +1356,32 @@ queryDuckDb query allowFallback refs =
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
 
                         "INTEGER" ->
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.map Int__ JD.int)))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
+
+                        "BOOLEAN" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Bool__ JD.bool))))
+
+                        "DOUBLE" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Float__ JD.float))))
+
+                        "DATE" ->
+                            -- TODO: Need to think about Elm date / time types
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
 
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
@@ -1359,7 +1389,7 @@ queryDuckDb query allowFallback refs =
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.list (JD.succeed Unknown))
+                                (JD.list (JD.maybe (JD.succeed Unknown)))
             in
             JD.map DuckDbQueryResponse
                 (JD.field "columns" (JD.list columnDecoderHelper))
@@ -1396,13 +1426,13 @@ queryDuckDbMeta query allowFallback refs =
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.map Varchar_ JD.string)))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
 
                         "INTEGER" ->
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.map Int__ JD.int)))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
 
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
@@ -1410,7 +1440,7 @@ queryDuckDbMeta query allowFallback refs =
                             JD.map3 Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.list (JD.succeed Unknown))
+                                (JD.list (JD.maybe (JD.succeed Unknown)))
             in
             JD.map DuckDbQueryResponse
                 (JD.field "columns" (JD.list columnDecoderHelper))
@@ -1425,14 +1455,14 @@ queryDuckDbMeta query allowFallback refs =
 type alias Column =
     { name : String
     , type_ : String
-    , vals : List Val
+    , vals : List (Maybe Val)
     }
 
 
 type Val
     = Varchar_ String
-      --| Bool_ Bool
-      --| Float_ Float
+    | Bool__ Bool
+    | Float__ Float
     | Int__ Int
     | Unknown
 
