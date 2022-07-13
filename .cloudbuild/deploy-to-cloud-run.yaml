@@ -7,6 +7,22 @@ steps:
     id: Push up to gcr
     args: ['push', 'gcr.io/fir-sandbox-326008/site-nginx:latest']
 
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run',
+      'deploy',
+      'site-nginx',
+      '--image',
+      'gcr.io/fir-sandbox-326008/site-nginx:latest',
+      '--region',
+      'us-east4'
+      '--min-instances',
+      '0',
+      '--max-instances',
+      '1'
+    ]
+
 options:
   pool:
     name: 'projects/fir-sandbox-326008/locations/us-east4/workerPools/pool-1'
