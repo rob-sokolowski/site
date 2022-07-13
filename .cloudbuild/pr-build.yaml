@@ -3,23 +3,18 @@ steps:
     id: Build Elm CI image
     args: ['build', '-t', 'gcr.io/fir-sandbox-326008/site-ci-builder:latest', '--file', 'Dockerfile-Ci', '.']
 
-  - name: 'gcr.io/cloud-builders/git'
-    id: Change directory
-    entrypoint: /bin/sh
-    args:
-      - '-c'
-      - |
-        cd .cloudbuild
-
   # pre-emptive cleanup, in case previous run failed etc
   - name: 'docker/compose:1.29.2'
+    directory: '.cloudbuild'
     args: ['down']
 
   - name: 'docker/compose:1.29.2'
+    directory: '.cloudbuild'
     args: ['run', 'elm-test']
 
   # clean up after ourselves
   - name: 'docker/compose:1.29.2'
+    directory: '.cloudbuild'
     args: ['down']
 
 options:
