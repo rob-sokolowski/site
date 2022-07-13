@@ -1,3 +1,5 @@
 FROM gcr.io/cloud-builders/npm
 
-RUN echo "Hello!"
+npm install -g npm
+npm install elm elm-test elm-review elm-spa
+
