@@ -1,0 +1,13 @@
+version: "3.7"
+
+services:
+  elm-test:
+    image: gcr.io/fir-sandbox-326008/site-ci-builder:latest
+    networks:
+      - site-ci-network
+
+networks:
+  site-ci-network:
+    driver: bridge
+    ipam:
+      driver: default
