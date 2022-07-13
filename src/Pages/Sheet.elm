@@ -177,34 +177,38 @@ str2Cell s =
     String_ s
 
 
-cell2Str : CellElement -> String
+type alias CellTypeDisplayName =
+    String
+
+
+cell2Str : CellElement -> ( String, CellTypeDisplayName )
 cell2Str cd =
     case cd of
         Empty ->
             -- HACK: single space vs empty str yields 'expected' elm-ui table styling
-            " "
+            ( " ", "Empty" )
 
         String_ s ->
             if s == "" then
                 -- HACK: single space vs empty str yields 'expected' elm-ui table styling
-                " "
+                ( " ", "Empty" )
 
             else
-                s
+                ( s, "String" )
 
         Float_ f ->
-            String.fromFloat f
+            ( String.fromFloat f, "Float" )
 
         Int_ i ->
-            String.fromInt i
+            ( String.fromInt i, "Integer" )
 
         Bool_ b ->
             case b of
                 True ->
-                    "TRUE"
+                    ( "TRUE", "Boolean" )
 
                 False ->
-                    "FALSE"
+                    ( "FALSE", "Boolean" )
 
 
 buildSqlText : Maybe TableRef -> String
@@ -898,7 +902,7 @@ viewSheet model =
                                 el (cellAttrs rix)
                                     (el (cellContentAttrs cellElement)
                                         (E.column (cellContentAttrs cellElement)
-                                            [ viewCell model.selectedCell (cell2Str cellElement) rix model.promptMode
+                                            [ viewCell model.selectedCell (Tuple.first (cell2Str cellElement)) rix model.promptMode
                                             ]
                                         )
                                     )
@@ -1130,7 +1134,11 @@ viewDebugPanel model =
                     "No selected value"
 
                 Just ( _, v ) ->
-                    "Value: " ++ cell2Str v
+                    let
+                        ( value, typeDisplayName ) =
+                            cell2Str v
+                    in
+                    "Value: " ++ value ++ " [" ++ typeDisplayName ++ "]"
 
         viewPromptHistory : List RawPrompt -> Element Msg
         viewPromptHistory history =

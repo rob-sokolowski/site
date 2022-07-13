@@ -8,6 +8,7 @@ steps:
     args: ['push', 'gcr.io/fir-sandbox-326008/site-nginx:latest']
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: Deploy to Cloud Run
     entrypoint: gcloud
     args: [
       'run',
