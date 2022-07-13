@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: Compile Elm code, package into slimmer 2nd stage image
+    args: ['build', '-t', 'gcr.io/fir-sandbox-326008/site-nginx:latest', '--file', 'Dockerfile', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: Push up to gcr
+    args: ['push', 'gcr.io/fir-sandbox-326008/site-nginx:latest']
+
+options:
+  pool:
+    name: 'projects/fir-sandbox-326008/locations/us-east4/workerPools/pool-1'
