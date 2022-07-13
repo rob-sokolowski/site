@@ -1,0 +1,12 @@
+FROM node:latest
+
+RUN npm install -g npm
+RUN npm install -g elm elm-test elm-review elm-spa
+
+RUN mkdir /build
+RUN cd /build
+
+COPY ./ .
+
+RUN elm-spa gen
+RUN elm-spa build
