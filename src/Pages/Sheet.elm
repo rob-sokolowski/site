@@ -557,7 +557,7 @@ update msg model =
                 newSheetCols : SheetEnvelope
                 newSheetCols =
                     { data = setValueAt ( rix, cix ) ( ( rix, cix ), str2Cell rawSub ) model.sheet.data
-                    , columnLabels = []
+                    , columnLabels = model.sheet.columnLabels
                     }
 
                 newHistory : List RawPrompt
