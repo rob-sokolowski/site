@@ -21,7 +21,7 @@ elm-spa server
 
 elm-spa owns client-side routing, and build steps for deployment. Refer to [elm-spa's guide](https://www.elm-spa.dev/guide) for more information.
 
-I usually open another console to run `elm-test`
+I usually open another console to run `elm-test`:
 ```shell script
 elm-test --watch
 ```
@@ -30,7 +30,7 @@ elm-test --watch
 #### Local nginx debugging
 To mimic the build process used by the deployment script do the following:
 ```shell script
-./scripts/build.sh
+./scripts/build-local.sh
 ```
 
 To run the nginx server:
