@@ -1,6 +1,7 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
 import Array as A
+import Array.Extra as AE
 import Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
 import Browser.Dom
 import Browser.Events as Events
@@ -25,7 +26,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
 import Shared
-import SheetModel exposing (Cell, CellCoords, CellElement(..), RawPromptString, SheetData, array2DToSheet, elementAt)
+import SheetModel exposing (Cell, CellCoords, CellElement(..), ColumnLabel, RawPromptString, SheetEnvelope, array2DToSheet, elementAt)
 import String exposing (fromInt)
 import Task
 import Time exposing (Posix)
@@ -74,7 +75,7 @@ type
 
 
 type alias Model =
-    { sheetData : SheetData
+    { sheet : SheetEnvelope
     , keysDown : Set KeyCode
     , selectedCell : Maybe Cell
     , promptMode : PromptMode
@@ -157,19 +158,7 @@ type Msg
 
 
 type alias RawPrompt =
-    ( RawPromptString, ( RowIx, ColumnLabel ) )
-
-
-type alias ColumnLabel =
-    Int
-
-
-type alias ColumnData =
-    { label : ColumnLabel
-
-    -- TODO: IndexedList might be a better fit
-    , col : List ( RowIx, CellElement )
-    }
+    ( RawPromptString, ( RowIx, ColIx ) )
 
 
 str2Cell : String -> CellElement
@@ -242,15 +231,15 @@ init =
             in
             fromListOfLists rows
 
-        sheetData : SheetData
+        sheetData : SheetEnvelope
         sheetData =
-            array2DToSheet data
+            array2DToSheet data (List.map (\i -> String.fromInt i) (List.range 0 (Array2D.colCount data - 1)))
 
         -- NB: timeline is recursive, so we save the initial model state in this let expression, and return
         --     a partially updated model containing this one
         model : Model
         model =
-            { sheetData = sheetData
+            { sheet = sheetData
             , keysDown = Set.empty
             , selectedCell = Just <| ( ( 0, 0 ), Empty ) -- TODO: DRY up the ini
             , promptMode = Idle
@@ -291,7 +280,7 @@ type alias KeyCode =
 --| NewTime Time.Posix
 
 
-mapColumnsToSheet : List Column -> SheetData
+mapColumnsToSheet : List Column -> SheetEnvelope
 mapColumnsToSheet cols =
     let
         mapVal : Maybe Val -> CellElement
@@ -324,8 +313,11 @@ mapColumnsToSheet cols =
 
         lolTransposed =
             LE.transpose lolWrong
+
+        colLabels =
+            List.map (\col -> col.name) cols
     in
-    array2DToSheet <| fromListOfLists lolTransposed
+    array2DToSheet (fromListOfLists lolTransposed) colLabels
 
 
 uploadFile : Model -> File -> Cmd Msg
@@ -423,7 +415,7 @@ update msg model =
                 Ok data ->
                     ( { model
                         | duckDbResponse = Success data
-                        , sheetData = mapColumnsToSheet data.columns
+                        , sheet = mapColumnsToSheet data.columns
                       }
                     , Effect.none
                     )
@@ -494,7 +486,7 @@ update msg model =
 
                                 newVal : CellElement
                                 newVal =
-                                    case elementAt ( newRix_, newLbl_ ) model.sheetData of
+                                    case elementAt ( newRix_, newLbl_ ) model.sheet of
                                         Nothing ->
                                             Empty
 
@@ -535,7 +527,7 @@ update msg model =
             let
                 selectedValue : CellElement
                 selectedValue =
-                    case elementAt ( rix, cix ) model.sheetData of
+                    case elementAt ( rix, cix ) model.sheet of
                         Nothing ->
                             Empty
 
@@ -562,9 +554,11 @@ update msg model =
 
         PromptSubmitted ( rawSub, ( rix, cix ) ) ->
             let
-                newSheetCols : SheetData
+                newSheetCols : SheetEnvelope
                 newSheetCols =
-                    setValueAt ( rix, cix ) ( ( rix, cix ), str2Cell rawSub ) model.sheetData
+                    { data = setValueAt ( rix, cix ) ( ( rix, cix ), str2Cell rawSub ) model.sheet.data
+                    , columnLabels = []
+                    }
 
                 newHistory : List RawPrompt
                 newHistory =
@@ -574,7 +568,7 @@ update msg model =
                     ( rix + 1, cix )
 
                 newSelectedValue =
-                    case elementAt ( rix + 1, cix ) model.sheetData of
+                    case elementAt ( rix + 1, cix ) model.sheet of
                         Nothing ->
                             Empty
 
@@ -586,7 +580,7 @@ update msg model =
                     A.append model.timeline (A.fromList [ Timeline model ])
             in
             ( { model
-                | sheetData = newSheetCols
+                | sheet = newSheetCols
                 , promptMode = Idle -- TODO: Is this redundant to key input handling?
                 , submissionHistory = newHistory
                 , selectedCell = Just ( newSelectedCoords, newSelectedValue )
@@ -770,34 +764,33 @@ view model =
 viewSheet : Model -> Element Msg
 viewSheet model =
     let
-        viewSheetIndex : SheetData -> Element Msg
-        viewSheetIndex sheetData =
-            E.table []
-                { data = List.range 0 (rowCount sheetData - 1)
-                , columns =
-                    [ { header = E.text " "
-                      , width = px 30
-                      , view =
-                            \rix ->
-                                el
-                                    [ Border.color UI.palette.darkishGrey
-                                    , Border.width 1
-                                    , Background.color UI.palette.lightGrey
-                                    ]
-                                    (el
-                                        [ centerX
-                                        , paddingEach { top = 1, bottom = 1, left = 0, right = 0 }
-                                        ]
-                                     <|
-                                        E.text <|
-                                            fromInt rix
-                                    )
-                      }
-                    ]
-                }
-
-        viewSheetColumn : ColIx -> A.Array Cell -> Element Msg
-        viewSheetColumn cix column =
+        --viewSheetIndex : SheetData -> Element Msg
+        --viewSheetIndex sheetData =
+        --    E.table []
+        --        { data = List.range 0 (rowCount sheetData - 1)
+        --        , columns =
+        --            [ { header = E.text " "
+        --              , width = px 30
+        --              , view =
+        --                    \rix ->
+        --                        el
+        --                            [ Border.color UI.palette.darkishGrey
+        --                            , Border.width 1
+        --                            , Background.color UI.palette.lightGrey
+        --                            ]
+        --                            (el
+        --                                [ centerX
+        --                                , paddingEach { top = 1, bottom = 1, left = 0, right = 0 }
+        --                                ]
+        --                             <|
+        --                                E.text <|
+        --                                    fromInt rix
+        --                            )
+        --              }
+        --            ]
+        --        }
+        viewSheetColumn : ColIx -> ColumnLabel -> A.Array Cell -> Element Msg
+        viewSheetColumn cix lbl column =
             let
                 cellAttrs : RowIx -> List (Attribute Msg)
                 cellAttrs rix =
@@ -895,7 +888,7 @@ viewSheet model =
                 [ padding 0 ]
                 { data = A.toList column
                 , columns =
-                    [ { header = E.text <| String.fromInt cix
+                    [ { header = E.text <| "[" ++ lbl ++ "]"
                       , width = px 80
                       , view =
                             \( ( rix, _ ), cellElement ) ->
@@ -911,10 +904,11 @@ viewSheet model =
                 }
     in
     row [ padding 5 ] <|
-        [ viewSheetIndex model.sheetData ]
-            ++ (A.toList <|
-                    A.map (\cix -> viewSheetColumn cix (getCol cix model.sheetData)) (A.fromList (List.range 0 (colCount model.sheetData - 1)))
-               )
+        A.toList <|
+            AE.map2
+                (\cix lbl -> viewSheetColumn cix lbl (getCol cix model.sheet.data))
+                (A.fromList (List.range 0 (colCount model.sheet.data - 1)))
+                (A.fromList model.sheet.columnLabels)
 
 
 viewSqlInputPanel : Model -> Element Msg
