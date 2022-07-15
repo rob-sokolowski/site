@@ -943,9 +943,7 @@ viewDataInspectPanel model =
                 )
     in
     column
-        [ height fill
-        , width fill
-        , padding 5
+        [ padding 5
         ]
         [ viewSheet
         ]
