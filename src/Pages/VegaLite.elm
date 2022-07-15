@@ -1,5 +1,7 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
+import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..))
+import Config exposing (apiHost)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -9,11 +11,15 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
 import Html.Attributes as HA
+import Http exposing (Error(..))
+import Json.Decode as JD
+import Json.Encode as JE
 import Page
+import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
 import UI
-import VegaLite exposing (Position(..), Spec, circle, dataColumn, dataFromColumns, encoding, nums, pName, pQuant, position, title, toVegaLite)
+import VegaLite as VL
 import VegaPort exposing (elmToJS)
 import View exposing (View)
 
@@ -33,12 +39,18 @@ page shared req =
 
 
 type alias Model =
-    Spec
+    { spec : Maybe VL.Spec
+    , duckDbForPlotResponse : WebData DuckDbQueryResponse
+    }
 
 
 init : ( Model, Effect Msg )
 init =
-    ( myVis, Effect.fromCmd <| elmToJS myVis )
+    ( { spec = Nothing
+      , duckDbForPlotResponse = NotAsked
+      }
+    , Effect.none
+    )
 
 
 
@@ -47,14 +59,35 @@ init =
 
 
 type Msg
-    = ReplaceMe
+    = FetchPlotData
+    | RenderPlot VL.Spec
+    | GotDuckDbForPlotResponse (Result Http.Error DuckDbQueryResponse)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ReplaceMe ->
-            ( model, Effect.none )
+        GotDuckDbForPlotResponse response ->
+            case response of
+                Ok data ->
+                    ( { model
+                        | duckDbForPlotResponse = Success data
+                      }
+                    , Effect.none
+                    )
+
+                Err err ->
+                    ( { model | duckDbForPlotResponse = Failure err }, Effect.none )
+
+        FetchPlotData ->
+            let
+                queryStr =
+                    "select rank, spi from elm_test_1657819905432"
+            in
+            ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr False [] )
+
+        RenderPlot spec ->
+            ( model, Effect.fromCmd <| elmToJS spec )
 
 
 
@@ -119,20 +152,144 @@ elements model =
         ]
 
 
-myVis : Spec
+viewQueryBuilder : Element Msg
+viewQueryBuilder =
+    let
+        vegaLiteDiv =
+            el
+                [ htmlAttribute <| HA.id "elm-ui-viz"
+                , Border.color UI.palette.black
+                , Border.width 2
+
+                --, width <| px 10
+                --, height <| px 10
+                ]
+                E.none
+    in
+    column
+        [ --htmlAttribute <| HA.id "elm-ui-viz"
+          Border.width 2
+        , Border.color UI.palette.black
+        , padding 10
+        , spacing 10
+
+        --, width <| px 200
+        --, height <| px 400
+        --, alignTop
+        ]
+        [ -- HACK: in order to 'send' our vega spec to elmToJs, we must trigger a Cmd Msg
+          Input.button
+            [ Border.color UI.palette.black
+            , Border.width 1
+            , Border.rounded 4
+            , padding 4
+            , alignTop
+            , alignRight
+            , Background.color UI.palette.lightGrey
+            ]
+            { onPress = Just <| RenderPlot myVis
+            , label = text "Render Plot"
+            }
+        , Input.button
+            [ Border.color UI.palette.black
+            , Border.width 1
+            , Border.rounded 4
+            , padding 4
+            , alignTop
+            , alignRight
+            , Background.color UI.palette.lightGrey
+            ]
+            { onPress = Just <| FetchPlotData
+            , label = text "Fetch Plot Data"
+            }
+        , vegaLiteDiv
+        ]
+
+
+myVis : VL.Spec
 myVis =
     let
         data =
-            dataFromColumns []
-                << dataColumn "x" (nums [ 10, 20, 30 ])
+            VL.dataFromColumns []
+                << VL.dataColumn "x" (VL.nums [ 10, 20, 30 ])
 
         enc =
-            encoding
-                << position X [ pName "x", pQuant ]
+            VL.encoding
+                << VL.position VL.X [ VL.pName "x", VL.pQuant ]
     in
-    toVegaLite
-        [ title "Hello, World!" []
+    VL.toVegaLite
+        [ VL.title "Hello, World!" []
         , data []
         , enc []
-        , circle []
+        , VL.circle []
         ]
+
+
+queryDuckDbForPlot : String -> Bool -> List TableRef -> Cmd Msg
+queryDuckDbForPlot query allowFallback refs =
+    let
+        duckDbQueryEncoder : JE.Value
+        duckDbQueryEncoder =
+            JE.object
+                [ ( "query_str", JE.string query )
+                , ( "allow_blob_fallback", JE.bool allowFallback )
+                , ( "fallback_table_refs", JE.list JE.string refs )
+                ]
+
+        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+        duckDbQueryResponseDecoder =
+            let
+                columnDecoderHelper : JD.Decoder Api.Column
+                columnDecoderHelper =
+                    JD.field "type" JD.string |> JD.andThen decoderByType
+
+                decoderByType : String -> JD.Decoder Api.Column
+                decoderByType type_ =
+                    case type_ of
+                        "VARCHAR" ->
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+
+                        "INTEGER" ->
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
+
+                        "BOOLEAN" ->
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Bool__ JD.bool))))
+
+                        "DOUBLE" ->
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Float__ JD.float))))
+
+                        "DATE" ->
+                            -- TODO: Need to think about Elm date / time types
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+
+                        _ ->
+                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                            -- Should this fail loudly?
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.list (JD.maybe (JD.succeed Unknown)))
+            in
+            JD.map DuckDbQueryResponse
+                (JD.field "columns" (JD.list columnDecoderHelper))
+    in
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody duckDbQueryEncoder
+        , expect = Http.expectJson GotDuckDbForPlotResponse duckDbQueryResponseDecoder
+        }

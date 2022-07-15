@@ -1,5 +1,6 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
+import Api as Api exposing (..)
 import Array as A
 import Array.Extra as AE
 import Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
@@ -76,6 +77,7 @@ type
 
 type alias Model =
     { sheet : SheetEnvelope
+    , sheetMode : DataInspectMode
     , keysDown : Set KeyCode
     , selectedCell : Maybe Cell
     , promptMode : PromptMode
@@ -113,6 +115,11 @@ type alias CurrentFrame =
 type UiMode
     = SheetEditor
     | TimelineViewer CurrentFrame
+
+
+type DataInspectMode
+    = SpreadSheet
+    | QueryBuilder
 
 
 type Timeline
@@ -240,6 +247,7 @@ init =
         model : Model
         model =
             { sheet = sheetData
+            , sheetMode = SpreadSheet
             , keysDown = Set.empty
             , selectedCell = Just <| ( ( 0, 0 ), Empty ) -- TODO: DRY up the ini
             , promptMode = Idle
@@ -280,7 +288,7 @@ type alias KeyCode =
 --| NewTime Time.Posix
 
 
-mapColumnsToSheet : List Column -> SheetEnvelope
+mapColumnsToSheet : List Api.Column -> SheetEnvelope
 mapColumnsToSheet cols =
     let
         mapVal : Maybe Val -> CellElement
@@ -713,7 +721,7 @@ view model =
                         , clip
                         , scrollbars
                         ]
-                        (viewSheet model)
+                        (viewDataInspectPanel model)
                     , el
                         [ width <| E.fillPortion 2
                         , height E.fill
@@ -761,154 +769,184 @@ view model =
     }
 
 
-viewSheet : Model -> Element Msg
-viewSheet model =
+viewDataInspectPanel : Model -> Element Msg
+viewDataInspectPanel model =
     let
-        --viewSheetIndex : SheetData -> Element Msg
-        --viewSheetIndex sheetData =
-        --    E.table []
-        --        { data = List.range 0 (rowCount sheetData - 1)
-        --        , columns =
-        --            [ { header = E.text " "
-        --              , width = px 30
-        --              , view =
-        --                    \rix ->
-        --                        el
-        --                            [ Border.color UI.palette.darkishGrey
-        --                            , Border.width 1
-        --                            , Background.color UI.palette.lightGrey
-        --                            ]
-        --                            (el
-        --                                [ centerX
-        --                                , paddingEach { top = 1, bottom = 1, left = 0, right = 0 }
-        --                                ]
-        --                             <|
-        --                                E.text <|
-        --                                    fromInt rix
-        --                            )
-        --              }
+        -- TODO: I might come back to this idea, but kepeing the Vega stuff on a separate route for now
+        --viewTabBar : Element Msg
+        --viewTabBar =
+        --    let
+        --        tabAttrs : DataInspectMode -> List (Attribute Msg)
+        --        tabAttrs tabId =
+        --            let
+        --                borderEach =
+        --                    if model.sheetMode == tabId then
+        --                        Border.widthEach
+        --                            { top = 1
+        --                            , left = 1
+        --                            , right = 1
+        --                            , bottom = 0
+        --                            }
+        --
+        --                    else
+        --                        Border.widthEach
+        --                            { top = 0
+        --                            , left = 0
+        --                            , right = 0
+        --                            , bottom = 1
+        --                            }
+        --            in
+        --            [ borderEach
+        --            , padding 2
+        --            , onClick <| UserChangedTabs tabId
         --            ]
-        --        }
-        viewSheetColumn : ColIx -> ColumnLabel -> A.Array Cell -> Element Msg
-        viewSheetColumn cix lbl column =
+        --    in
+        --    row
+        --        [ spacing 0
+        --        , paddingXY 10 2
+        --        , Font.size 16
+        --        ]
+        --        [ el (tabAttrs SpreadSheet)
+        --            (E.text "Sheet")
+        --        , el (tabAttrs QueryBuilder)
+        --            (E.text "Viz")
+        --        ]
+        viewSheet : Element Msg
+        viewSheet =
             let
-                cellAttrs : RowIx -> List (Attribute Msg)
-                cellAttrs rix =
-                    let
-                        shouldHighlightCell : Bool
-                        shouldHighlightCell =
-                            case model.selectedCell of
-                                Nothing ->
-                                    False
-
-                                Just ( ( rix_, cix_ ), _ ) ->
-                                    (rix_ == rix) && (cix_ == cix)
-
-                        borderWidth =
-                            case shouldHighlightCell of
-                                False ->
-                                    1
-
-                                True ->
-                                    3
-
-                        borderColor =
-                            case shouldHighlightCell of
-                                False ->
-                                    UI.palette.lightGrey
-
-                                True ->
-                                    UI.palette.lightBlue
-                    in
-                    [ Border.color borderColor
-                    , Border.width borderWidth
-                    , onClick <| ClickedCell ( rix, cix )
-
-                    --, paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
+                attrs : List (Attribute Msg)
+                attrs =
+                    [ height fill
+                    , width fill
                     ]
 
-                cellContentAttrs : CellElement -> List (Attribute Msg)
-                cellContentAttrs cd =
+                viewSheetColumn : ColIx -> ColumnLabel -> A.Array Cell -> Element Msg
+                viewSheetColumn cix lbl column =
                     let
-                        alignment =
-                            case cd of
-                                Empty ->
-                                    centerX
+                        cellAttrs : RowIx -> List (Attribute Msg)
+                        cellAttrs rix =
+                            let
+                                shouldHighlightCell : Bool
+                                shouldHighlightCell =
+                                    case model.selectedCell of
+                                        Nothing ->
+                                            False
 
-                                String_ _ ->
-                                    alignLeft
+                                        Just ( ( rix_, cix_ ), _ ) ->
+                                            (rix_ == rix) && (cix_ == cix)
 
-                                Bool_ _ ->
-                                    centerX
+                                borderWidth =
+                                    case shouldHighlightCell of
+                                        False ->
+                                            1
 
-                                Float_ _ ->
-                                    alignRight
+                                        True ->
+                                            3
 
-                                Int_ _ ->
-                                    alignRight
-                    in
-                    [ alignment
-                    , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
-                    ]
+                                borderColor =
+                                    case shouldHighlightCell of
+                                        False ->
+                                            UI.palette.lightGrey
 
-                viewCell : Maybe ( CellCoords, CellElement ) -> String -> RowIx -> PromptMode -> Element Msg
-                viewCell selectedCoords cellValueAsStr rix_ promptMode =
-                    let
-                        isTargetCell : Bool
-                        isTargetCell =
-                            case selectedCoords of
-                                Nothing ->
-                                    False
+                                        True ->
+                                            UI.palette.lightBlue
+                            in
+                            [ Border.color borderColor
+                            , Border.width borderWidth
+                            , onClick <| ClickedCell ( rix, cix )
 
-                                Just ( ( rix__, cix_ ), _ ) ->
-                                    (rix_ == rix__) && (cix_ == cix)
-                    in
-                    case isTargetCell of
-                        True ->
-                            case promptMode of
-                                Idle ->
+                            --, paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
+                            ]
+
+                        cellContentAttrs : CellElement -> List (Attribute Msg)
+                        cellContentAttrs cd =
+                            let
+                                alignment =
+                                    case cd of
+                                        Empty ->
+                                            centerX
+
+                                        String_ _ ->
+                                            alignLeft
+
+                                        Bool_ _ ->
+                                            centerX
+
+                                        Float_ _ ->
+                                            alignRight
+
+                                        Int_ _ ->
+                                            alignRight
+                            in
+                            [ alignment
+                            , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
+                            ]
+
+                        viewCell : Maybe ( CellCoords, CellElement ) -> String -> RowIx -> PromptMode -> Element Msg
+                        viewCell selectedCoords cellValueAsStr rix_ promptMode =
+                            let
+                                isTargetCell : Bool
+                                isTargetCell =
+                                    case selectedCoords of
+                                        Nothing ->
+                                            False
+
+                                        Just ( ( rix__, cix_ ), _ ) ->
+                                            (rix_ == rix__) && (cix_ == cix)
+                            in
+                            case isTargetCell of
+                                True ->
+                                    case promptMode of
+                                        Idle ->
+                                            E.text cellValueAsStr
+
+                                        PromptInProgress v ->
+                                            Input.text
+                                                [ htmlAttribute <| HA.id prompt_input_dom_id
+                                                , padding 0
+                                                , Border.width 0
+                                                ]
+                                                { text = v
+                                                , onChange = PromptInputChanged
+                                                , label = Input.labelHidden ""
+                                                , placeholder = Nothing
+                                                }
+
+                                False ->
                                     E.text cellValueAsStr
-
-                                PromptInProgress v ->
-                                    Input.text
-                                        [ htmlAttribute <| HA.id prompt_input_dom_id
-                                        , padding 0
-                                        , Border.width 0
-                                        ]
-                                        { text = v
-                                        , onChange = PromptInputChanged
-                                        , label = Input.labelHidden ""
-                                        , placeholder = Nothing
-                                        }
-
-                        False ->
-                            E.text cellValueAsStr
+                    in
+                    E.table
+                        [ padding 0 ]
+                        { data = A.toList column
+                        , columns =
+                            [ { header = E.text <| "[" ++ lbl ++ "]"
+                              , width = px 80
+                              , view =
+                                    \( ( rix, _ ), cellElement ) ->
+                                        el (cellAttrs rix)
+                                            (el (cellContentAttrs cellElement)
+                                                (E.column (cellContentAttrs cellElement)
+                                                    [ viewCell model.selectedCell (Tuple.first (cell2Str cellElement)) rix model.promptMode
+                                                    ]
+                                                )
+                                            )
+                              }
+                            ]
+                        }
             in
-            E.table
-                [ padding 0 ]
-                { data = A.toList column
-                , columns =
-                    [ { header = E.text <| "[" ++ lbl ++ "]"
-                      , width = px 80
-                      , view =
-                            \( ( rix, _ ), cellElement ) ->
-                                el (cellAttrs rix)
-                                    (el (cellContentAttrs cellElement)
-                                        (E.column (cellContentAttrs cellElement)
-                                            [ viewCell model.selectedCell (Tuple.first (cell2Str cellElement)) rix model.promptMode
-                                            ]
-                                        )
-                                    )
-                      }
-                    ]
-                }
+            row attrs
+                (A.toList <|
+                    AE.map2
+                        (\cix lbl -> viewSheetColumn cix lbl (getCol cix model.sheet.data))
+                        (A.fromList (List.range 0 (colCount model.sheet.data - 1)))
+                        (A.fromList model.sheet.columnLabels)
+                )
     in
-    row [ padding 5 ] <|
-        A.toList <|
-            AE.map2
-                (\cix lbl -> viewSheetColumn cix lbl (getCol cix model.sheet.data))
-                (A.fromList (List.range 0 (colCount model.sheet.data - 1)))
-                (A.fromList model.sheet.columnLabels)
+    column
+        [ padding 5
+        ]
+        [ viewSheet
+        ]
 
 
 viewSqlInputPanel : Model -> Element Msg
@@ -1347,40 +1385,40 @@ queryDuckDb query allowFallback refs =
         duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
         duckDbQueryResponseDecoder =
             let
-                columnDecoderHelper : JD.Decoder Column
+                columnDecoderHelper : JD.Decoder Api.Column
                 columnDecoderHelper =
                     JD.field "type" JD.string |> JD.andThen decoderByType
 
-                decoderByType : String -> JD.Decoder Column
+                decoderByType : String -> JD.Decoder Api.Column
                 decoderByType type_ =
                     case type_ of
                         "VARCHAR" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
 
                         "INTEGER" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
 
                         "BOOLEAN" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Bool__ JD.bool))))
 
                         "DOUBLE" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Float__ JD.float))))
 
                         "DATE" ->
                             -- TODO: Need to think about Elm date / time types
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
@@ -1388,7 +1426,7 @@ queryDuckDb query allowFallback refs =
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
                             -- Should this fail loudly?
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.list (JD.maybe (JD.succeed Unknown)))
@@ -1417,21 +1455,21 @@ queryDuckDbMeta query allowFallback refs =
         duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
         duckDbQueryResponseDecoder =
             let
-                columnDecoderHelper : JD.Decoder Column
+                columnDecoderHelper : JD.Decoder Api.Column
                 columnDecoderHelper =
                     JD.field "type" JD.string |> JD.andThen decoderByType
 
-                decoderByType : String -> JD.Decoder Column
+                decoderByType : String -> JD.Decoder Api.Column
                 decoderByType type_ =
                     case type_ of
                         "VARCHAR" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
 
                         "INTEGER" ->
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
@@ -1439,7 +1477,7 @@ queryDuckDbMeta query allowFallback refs =
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
                             -- Should this fail loudly?
-                            JD.map3 Column
+                            JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
                                 (JD.list (JD.maybe (JD.succeed Unknown)))
@@ -1452,32 +1490,3 @@ queryDuckDbMeta query allowFallback refs =
         , body = Http.jsonBody duckDbQueryEncoder
         , expect = Http.expectJson GotDuckDbMetaResponse duckDbQueryResponseDecoder
         }
-
-
-type alias Column =
-    { name : String
-    , type_ : String
-    , vals : List (Maybe Val)
-    }
-
-
-type Val
-    = Varchar_ String
-    | Bool__ Bool
-    | Float__ Float
-    | Int__ Int
-    | Unknown
-
-
-type alias TableRef =
-    String
-
-
-type alias DuckDbQueryResponse =
-    { columns : List Column
-    }
-
-
-type alias DuckDbTableRefsResponse =
-    { refs : List TableRef
-    }
