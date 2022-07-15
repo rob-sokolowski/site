@@ -6,7 +6,6 @@ import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
@@ -114,6 +113,7 @@ view model =
         [ layout
             [ E.width E.fill
             , E.height E.fill
+            , Font.size 12
             , padding 10
             ]
             (elements model)
@@ -127,11 +127,10 @@ elements model =
         vegaLiteDiv =
             el
                 [ htmlAttribute <| HA.id "elm-ui-viz"
-                , Border.color UI.palette.black
-                , Border.width 2
-
-                --, width <| px 10
-                --, height <| px 10
+                , Border.color UI.palette.lightGrey
+                , Border.width 1
+                , width fill
+                , height fill
                 ]
                 E.none
     in
@@ -139,6 +138,10 @@ elements model =
         [ --htmlAttribute <| HA.id "elm-ui-viz"
           Border.width 2
         , Border.color UI.palette.black
+
+        --, width <| px 600
+        --, height <| px 400
+        --, alignLeft
         , padding 10
         , spacing 10
 
@@ -146,9 +149,27 @@ elements model =
         --, height <| px 400
         --, alignTop
         ]
-        [ el [] (E.text "Hi hi hi!")
+        [ Input.button
+            [ Border.color UI.palette.black
+            , Border.width 1
+            , Border.rounded 4
+            , padding 4
+            , Background.color UI.palette.lightGrey
+            ]
+            { onPress = Just <| RenderPlot myVis
+            , label = text "Render Plot"
+            }
+        , Input.button
+            [ Border.color UI.palette.black
+            , Border.width 1
+            , Border.rounded 4
+            , padding 4
+            , Background.color UI.palette.lightGrey
+            ]
+            { onPress = Just <| FetchPlotData
+            , label = text "Fetch Plot Data"
+            }
         , vegaLiteDiv
-        , el [] (E.text "Bye bye bye!")
         ]
 
 
@@ -190,38 +211,39 @@ viewQueryBuilder =
             { onPress = Just <| RenderPlot myVis
             , label = text "Render Plot"
             }
-        , Input.button
-            [ Border.color UI.palette.black
-            , Border.width 1
-            , Border.rounded 4
-            , padding 4
-            , alignTop
-            , alignRight
-            , Background.color UI.palette.lightGrey
-            ]
-            { onPress = Just <| FetchPlotData
-            , label = text "Fetch Plot Data"
-            }
         , vegaLiteDiv
         ]
+
+
+path : String
+path =
+    "https://cdn.jsdelivr.net/npm/vega-datasets@2.2/data/"
 
 
 myVis : VL.Spec
 myVis =
     let
-        data =
-            VL.dataFromColumns []
-                << VL.dataColumn "x" (VL.nums [ 10, 20, 30 ])
+        weatherColors =
+            VL.categoricalDomainMap
+                [ ( "sun", "#e7ba52" )
+                , ( "fog", "#c7c7c7" )
+                , ( "drizzle", "#aec7ea" )
+                , ( "rain", "#1f77b4" )
+                , ( "snow", "#9467bd" )
+                ]
 
         enc =
             VL.encoding
-                << VL.position VL.X [ VL.pName "x", VL.pQuant ]
+                << VL.position VL.X [ VL.pName "temp_max", VL.pBin [] ]
+                << VL.position VL.Y [ VL.pAggregate VL.opCount ]
+                << VL.color [ VL.mName "weather", VL.mScale weatherColors ]
     in
     VL.toVegaLite
-        [ VL.title "Hello, World!" []
-        , data []
+        [ VL.dataFromUrl (path ++ "seattle-weather.csv") []
+        , VL.line []
         , enc []
-        , VL.circle []
+        , VL.height 400
+        , VL.width 600
         ]
 
 
