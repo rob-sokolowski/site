@@ -20,4 +20,4 @@ apiHost =
             "http://localhost:8080"
 
         Production ->
-            "https://api.robsoko.tech"
+            "https://fir-api.robsoko.tech"
