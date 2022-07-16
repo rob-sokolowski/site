@@ -1,12 +1,12 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
 import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..))
+import Array
 import Config exposing (apiHost)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
@@ -19,8 +19,10 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
 import UI
+import Utils exposing (removeNothingsFromList)
 import VegaLite as VL
 import VegaPort exposing (elmToJS)
+import VegaUtils exposing (ColumnParamed, mapColToFloatCol, mapColToIntegerCol)
 import View exposing (View)
 
 
@@ -60,7 +62,7 @@ init =
 
 type Msg
     = FetchPlotData
-    | RenderPlot VL.Spec
+    | RenderPlot
     | GotDuckDbForPlotResponse (Result Http.Error DuckDbQueryResponse)
 
 
@@ -82,12 +84,30 @@ update msg model =
         FetchPlotData ->
             let
                 queryStr =
-                    "select rank, spi from elm_test_1657819905432"
+                    """select
+  t.rank,
+  t.spi
+from elm_test_1657972702341 t
+order by 1
+limit 100
+                """
             in
             ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr False [] )
 
-        RenderPlot spec ->
-            ( model, Effect.fromCmd <| elmToJS spec )
+        RenderPlot ->
+            let
+                newSpec =
+                    computeSpec model
+
+                elmToJsCmd =
+                    case newSpec of
+                        Nothing ->
+                            Cmd.none
+
+                        Just spec ->
+                            elmToJS spec
+            in
+            ( { model | spec = newSpec }, Effect.fromCmd elmToJsCmd )
 
 
 
@@ -114,6 +134,7 @@ view model =
         [ layout
             [ E.width E.fill
             , E.height E.fill
+            , Font.size 12
             , padding 10
             ]
             (elements model)
@@ -127,11 +148,10 @@ elements model =
         vegaLiteDiv =
             el
                 [ htmlAttribute <| HA.id "elm-ui-viz"
-                , Border.color UI.palette.black
-                , Border.width 2
-
-                --, width <| px 10
-                --, height <| px 10
+                , Border.color UI.palette.lightGrey
+                , Border.width 1
+                , width fill
+                , height fill
                 ]
                 E.none
     in
@@ -139,6 +159,10 @@ elements model =
         [ --htmlAttribute <| HA.id "elm-ui-viz"
           Border.width 2
         , Border.color UI.palette.black
+
+        --, width <| px 600
+        --, height <| px 400
+        --, alignLeft
         , padding 10
         , spacing 10
 
@@ -146,48 +170,14 @@ elements model =
         --, height <| px 400
         --, alignTop
         ]
-        [ el [] (E.text "Hi hi hi!")
-        , vegaLiteDiv
-        , el [] (E.text "Bye bye bye!")
-        ]
-
-
-viewQueryBuilder : Element Msg
-viewQueryBuilder =
-    let
-        vegaLiteDiv =
-            el
-                [ htmlAttribute <| HA.id "elm-ui-viz"
-                , Border.color UI.palette.black
-                , Border.width 2
-
-                --, width <| px 10
-                --, height <| px 10
-                ]
-                E.none
-    in
-    column
-        [ --htmlAttribute <| HA.id "elm-ui-viz"
-          Border.width 2
-        , Border.color UI.palette.black
-        , padding 10
-        , spacing 10
-
-        --, width <| px 200
-        --, height <| px 400
-        --, alignTop
-        ]
-        [ -- HACK: in order to 'send' our vega spec to elmToJs, we must trigger a Cmd Msg
-          Input.button
+        [ Input.button
             [ Border.color UI.palette.black
             , Border.width 1
             , Border.rounded 4
             , padding 4
-            , alignTop
-            , alignRight
             , Background.color UI.palette.lightGrey
             ]
-            { onPress = Just <| RenderPlot myVis
+            { onPress = Just RenderPlot
             , label = text "Render Plot"
             }
         , Input.button
@@ -195,8 +185,6 @@ viewQueryBuilder =
             , Border.width 1
             , Border.rounded 4
             , padding 4
-            , alignTop
-            , alignRight
             , Background.color UI.palette.lightGrey
             ]
             { onPress = Just <| FetchPlotData
@@ -206,22 +194,65 @@ viewQueryBuilder =
         ]
 
 
-myVis : VL.Spec
-myVis =
+computeSpec : Model -> Maybe VL.Spec
+computeSpec model =
+    case model.duckDbForPlotResponse of
+        NotAsked ->
+            Nothing
+
+        Loading ->
+            Nothing
+
+        Failure err ->
+            Nothing
+
+        Success data ->
+            let
+                collArray =
+                    Array.fromList data.columns
+
+                col1 =
+                    case Array.get 0 collArray of
+                        Nothing ->
+                            { name = "error"
+                            , vals = []
+                            }
+
+                        Just col ->
+                            mapColToIntegerCol col
+
+                col2 =
+                    case Array.get 1 collArray of
+                        Nothing ->
+                            { name = "error"
+                            , vals = []
+                            }
+
+                        Just col ->
+                            mapColToFloatCol col
+            in
+            Just (spec0 col1 col2)
+
+
+spec0 : ColumnParamed Int -> ColumnParamed Float -> VL.Spec
+spec0 col1 col2 =
     let
         data =
             VL.dataFromColumns []
-                << VL.dataColumn "x" (VL.nums [ 10, 20, 30 ])
+                << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
+                << VL.dataColumn col2.name (VL.nums col2.vals)
 
         enc =
             VL.encoding
-                << VL.position VL.X [ VL.pName "x", VL.pQuant ]
+                << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
+                << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
     in
     VL.toVegaLite
-        [ VL.title "Hello, World!" []
-        , data []
+        [ data []
+        , VL.line []
         , enc []
-        , VL.circle []
+        , VL.height 400
+        , VL.width 600
         ]
 
 

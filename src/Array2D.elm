@@ -6,7 +6,7 @@ module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCo
 
 import Array as A
 import List as L
-import Utils exposing (removeNothingFromList)
+import Utils exposing (removeNothingsFromList)
 
 
 type alias Array2D e =
@@ -78,7 +78,7 @@ getCol cix arr2d =
         colWithMaybes =
             List.map (\rix -> getValueAt ( rix, cix ) arr2d) (L.range 0 (nRows - 1))
     in
-    A.fromList <| removeNothingFromList colWithMaybes
+    A.fromList <| removeNothingsFromList colWithMaybes
 
 
 rowCount : Array2D e -> Int
