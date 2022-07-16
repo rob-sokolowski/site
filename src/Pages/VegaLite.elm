@@ -18,6 +18,7 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
 import UI
+import Utils exposing (removeNothingFromList)
 import VegaLite as VL
 import VegaPort exposing (elmToJS)
 import View exposing (View)
@@ -81,7 +82,11 @@ update msg model =
         FetchPlotData ->
             let
                 queryStr =
-                    "select rank, spi from elm_test_1657819905432"
+                    """select
+  t.rank,
+  t.spi
+from elm_test_1657963390784 t
+                """
             in
             ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr False [] )
 
@@ -156,7 +161,17 @@ elements model =
             , padding 4
             , Background.color UI.palette.lightGrey
             ]
-            { onPress = Just <| RenderPlot myVis
+            { onPress =
+                Just <|
+                    RenderPlot
+                        (spec0
+                            { name = "X"
+                            , vals = [ 1, 2, 3, 4, 5 ]
+                            }
+                            { name = "Y"
+                            , vals = [ 100, 50, 76, 10, 6 ]
+                            }
+                        )
             , label = text "Render Plot"
             }
         , Input.button
@@ -173,73 +188,21 @@ elements model =
         ]
 
 
-viewQueryBuilder : Element Msg
-viewQueryBuilder =
+spec0 : Api.Column2 Float -> Api.Column2 Float -> VL.Spec
+spec0 col0 col1 =
     let
-        vegaLiteDiv =
-            el
-                [ htmlAttribute <| HA.id "elm-ui-viz"
-                , Border.color UI.palette.black
-                , Border.width 2
-
-                --, width <| px 10
-                --, height <| px 10
-                ]
-                E.none
-    in
-    column
-        [ --htmlAttribute <| HA.id "elm-ui-viz"
-          Border.width 2
-        , Border.color UI.palette.black
-        , padding 10
-        , spacing 10
-
-        --, width <| px 200
-        --, height <| px 400
-        --, alignTop
-        ]
-        [ -- HACK: in order to 'send' our vega spec to elmToJs, we must trigger a Cmd Msg
-          Input.button
-            [ Border.color UI.palette.black
-            , Border.width 1
-            , Border.rounded 4
-            , padding 4
-            , alignTop
-            , alignRight
-            , Background.color UI.palette.lightGrey
-            ]
-            { onPress = Just <| RenderPlot myVis
-            , label = text "Render Plot"
-            }
-        , vegaLiteDiv
-        ]
-
-
-path : String
-path =
-    "https://cdn.jsdelivr.net/npm/vega-datasets@2.2/data/"
-
-
-myVis : VL.Spec
-myVis =
-    let
-        weatherColors =
-            VL.categoricalDomainMap
-                [ ( "sun", "#e7ba52" )
-                , ( "fog", "#c7c7c7" )
-                , ( "drizzle", "#aec7ea" )
-                , ( "rain", "#1f77b4" )
-                , ( "snow", "#9467bd" )
-                ]
+        data =
+            VL.dataFromColumns []
+                << VL.dataColumn "X" (VL.nums col0.vals)
+                << VL.dataColumn "Y" (VL.nums col1.vals)
 
         enc =
             VL.encoding
-                << VL.position VL.X [ VL.pName "temp_max", VL.pBin [] ]
-                << VL.position VL.Y [ VL.pAggregate VL.opCount ]
-                << VL.color [ VL.mName "weather", VL.mScale weatherColors ]
+                << VL.position VL.X [ VL.pName "X", VL.pQuant ]
+                << VL.position VL.Y [ VL.pName "Y", VL.pQuant ]
     in
     VL.toVegaLite
-        [ VL.dataFromUrl (path ++ "seattle-weather.csv") []
+        [ data []
         , VL.line []
         , enc []
         , VL.height 400
