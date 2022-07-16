@@ -1,6 +1,6 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
-import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..), mapColToFloatCol, mapColToIntegerCol)
+import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..))
 import Array
 import Config exposing (apiHost)
 import Effect exposing (Effect)
@@ -19,9 +19,10 @@ import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
 import UI
-import Utils exposing (removeNothingFromList)
+import Utils exposing (removeNothingsFromList)
 import VegaLite as VL
 import VegaPort exposing (elmToJS)
+import VegaUtils exposing (ColumnParamed, mapColToFloatCol, mapColToIntegerCol)
 import View exposing (View)
 
 
@@ -233,7 +234,7 @@ computeSpec model =
             Just (spec0 col1 col2)
 
 
-spec0 : Api.Column2 Int -> Api.Column2 Float -> VL.Spec
+spec0 : ColumnParamed Int -> ColumnParamed Float -> VL.Spec
 spec0 col1 col2 =
     let
         data =

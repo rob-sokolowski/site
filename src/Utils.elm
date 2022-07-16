@@ -1,6 +1,6 @@
 module Utils exposing (..)
 
 
-removeNothingFromList : List (Maybe a) -> List a
-removeNothingFromList list =
+removeNothingsFromList : List (Maybe a) -> List a
+removeNothingsFromList list =
     List.filterMap identity list
