@@ -8,11 +8,17 @@ type alias Column =
     }
 
 
+type alias ColumnDescription =
+    { name : String
+    , type_ : String
+    }
+
+
 type Val
     = Varchar_ String
-    | Bool__ Bool
-    | Float__ Float
-    | Int__ Int
+    | Bool_ Bool
+    | Float_ Float
+    | Int_ Int
     | Unknown
 
 
@@ -22,6 +28,11 @@ type alias TableRef =
 
 type alias DuckDbQueryResponse =
     { columns : List Column
+    }
+
+
+type alias DuckDbMetaResponse =
+    { colDescs : List ColumnDescription
     }
 
 

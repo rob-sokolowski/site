@@ -51,10 +51,10 @@ mapColToFloatCol col =
                 mapToFloatList : List Float -> List Val -> List Float
                 mapToFloatList accum vals__ =
                     case vals__ of
-                        [ Float__ f ] ->
+                        [ Float_ f ] ->
                             accum ++ [ f ]
 
-                        (Float__ f) :: fs ->
+                        (Float_ f) :: fs ->
                             [ f ] ++ mapToFloatList accum fs
 
                         _ ->
@@ -81,10 +81,10 @@ mapColToIntegerCol col =
                 mapToIntList : List Int -> List Val -> List Int
                 mapToIntList accum vals__ =
                     case vals__ of
-                        [ Int__ i ] ->
+                        [ Int_ i ] ->
                             accum ++ [ i ]
 
-                        (Int__ i) :: is ->
+                        (Int_ i) :: is ->
                             [ i ] ++ mapToIntList accum is
 
                         _ ->
