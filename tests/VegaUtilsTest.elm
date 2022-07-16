@@ -52,9 +52,9 @@ integerColumn =
     { name = "an int column"
     , type_ = "INTEGER"
     , vals =
-        [ Just (Int__ 1)
-        , Just (Int__ 2)
-        , Just (Int__ 3)
+        [ Just (Int_ 1)
+        , Just (Int_ 2)
+        , Just (Int_ 3)
         ]
     }
 
@@ -70,9 +70,9 @@ floatColumn =
     { name = "a float column"
     , type_ = "DOUBLE"
     , vals =
-        [ Just (Float__ 3.1)
-        , Just (Float__ 3.14)
-        , Just (Float__ 3.2)
+        [ Just (Float_ 3.1)
+        , Just (Float_ 3.14)
+        , Just (Float_ 3.2)
         ]
     }
 

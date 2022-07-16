@@ -1,12 +1,13 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
-import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..))
+import Api
 import Array
 import Config exposing (apiHost)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
@@ -42,7 +43,11 @@ page shared req =
 
 type alias Model =
     { spec : Maybe VL.Spec
-    , duckDbForPlotResponse : WebData DuckDbQueryResponse
+    , duckDbForPlotResponse : WebData Api.DuckDbQueryResponse
+    , duckDbMetaResponse : WebData Api.DuckDbMetaResponse
+    , duckDbTableRefs : WebData Api.DuckDbTableRefsResponse
+    , selectedTableRef : Maybe Api.TableRef
+    , hoveredOnTableRef : Maybe Api.TableRef
     }
 
 
@@ -50,8 +55,12 @@ init : ( Model, Effect Msg )
 init =
     ( { spec = Nothing
       , duckDbForPlotResponse = NotAsked
+      , duckDbMetaResponse = NotAsked
+      , duckDbTableRefs = Loading -- Must also fetch table refs below
+      , selectedTableRef = Nothing
+      , hoveredOnTableRef = Nothing
       }
-    , Effect.none
+    , Effect.fromCmd fetchDuckDbTableRefs
     )
 
 
@@ -63,23 +72,49 @@ init =
 type Msg
     = FetchPlotData
     | RenderPlot
-    | GotDuckDbForPlotResponse (Result Http.Error DuckDbQueryResponse)
+    | FetchTableRefs
+    | FetchMetaDataForRef Api.TableRef
+    | GotDuckDbForPlotResponse (Result Http.Error Api.DuckDbQueryResponse)
+    | GotDuckDbMetaResponse (Result Http.Error Api.DuckDbMetaResponse)
+    | GotDuckDbTableRefsResponse (Result Http.Error Api.DuckDbTableRefsResponse)
+    | UserSelectedTableRef Api.TableRef
+    | UserMouseEnteredTableRef Api.TableRef
+    | UserMouseLeftTableRef
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        GotDuckDbForPlotResponse response ->
+        FetchTableRefs ->
+            ( { model | duckDbTableRefs = Loading }, Effect.fromCmd <| fetchDuckDbTableRefs )
+
+        GotDuckDbTableRefsResponse response ->
+            case response of
+                Ok refs ->
+                    ( { model | duckDbTableRefs = Success refs }, Effect.none )
+
+                Err err ->
+                    ( { model | duckDbTableRefs = Failure err }, Effect.none )
+
+        FetchMetaDataForRef ref ->
+            let
+                -- NB: A bit hacky, but we submit a query with limit 0, and use the same response without vals
+                queryStr =
+                    "select * from " ++ ref ++ " limit 0"
+            in
+            ( { model | duckDbTableRefs = Loading }, Effect.fromCmd <| queryDuckDbMeta queryStr True [ ref ] )
+
+        GotDuckDbMetaResponse response ->
             case response of
                 Ok data ->
                     ( { model
-                        | duckDbForPlotResponse = Success data
+                        | duckDbMetaResponse = Success data
                       }
                     , Effect.none
                     )
 
                 Err err ->
-                    ( { model | duckDbForPlotResponse = Failure err }, Effect.none )
+                    ( { model | duckDbMetaResponse = Failure err }, Effect.none )
 
         FetchPlotData ->
             let
@@ -92,7 +127,19 @@ order by 1
 limit 100
                 """
             in
-            ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr False [] )
+            ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr True [ "elm_test_1657972702341" ] )
+
+        GotDuckDbForPlotResponse response ->
+            case response of
+                Ok data ->
+                    ( { model
+                        | duckDbForPlotResponse = Success data
+                      }
+                    , Effect.none
+                    )
+
+                Err err ->
+                    ( { model | duckDbForPlotResponse = Failure err }, Effect.none )
 
         RenderPlot ->
             let
@@ -109,6 +156,22 @@ limit 100
             in
             ( { model | spec = newSpec }, Effect.fromCmd elmToJsCmd )
 
+        UserSelectedTableRef ref ->
+            let
+                -- NB: A bit hacky, but we submit a query with limit 0, and use the same response without vals
+                queryStr =
+                    "select * from " ++ ref ++ " limit 0"
+            in
+            ( { model | duckDbMetaResponse = Loading, selectedTableRef = Just ref }
+            , Effect.fromCmd <| queryDuckDbMeta queryStr True [ ref ]
+            )
+
+        UserMouseEnteredTableRef ref ->
+            ( { model | hoveredOnTableRef = Just ref }, Effect.none )
+
+        UserMouseLeftTableRef ->
+            ( { model | hoveredOnTableRef = Nothing }, Effect.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -120,7 +183,7 @@ subscriptions model =
 
 
 
--- VIEW
+-- begin region view
 
 
 view : Model -> View Msg
@@ -135,7 +198,7 @@ view model =
             [ E.width E.fill
             , E.height E.fill
             , Font.size 12
-            , padding 10
+            , padding 5
             ]
             (elements model)
         ]
@@ -155,47 +218,239 @@ elements model =
                 ]
                 E.none
     in
-    column
-        [ --htmlAttribute <| HA.id "elm-ui-viz"
-          Border.width 2
-        , Border.color UI.palette.black
-
-        --, width <| px 600
-        --, height <| px 400
-        --, alignLeft
-        , padding 10
-        , spacing 10
-
-        --, width <| px 200
-        --, height <| px 400
-        --, alignTop
+    row
+        [ Border.width 1
+        , Border.color UI.palette.darkishGrey
+        , width fill
+        , height fill
         ]
-        [ Input.button
-            [ Border.color UI.palette.black
+        [ column
+            [ height fill
+            , width <| fillPortion 8
             , Border.width 1
-            , Border.rounded 4
-            , padding 4
-            , Background.color UI.palette.lightGrey
+            , Border.color UI.palette.darkishGrey
+            , padding 5
             ]
-            { onPress = Just RenderPlot
-            , label = text "Render Plot"
-            }
-        , Input.button
-            [ Border.color UI.palette.black
+            [ el
+                [ width fill
+                , height <| fillPortion 3
+                , Border.width 1
+                , Border.color UI.palette.darkishGrey
+                ]
+                (viewQueryBuilderPanel model)
+            , el
+                [ width fill
+                , height <| fillPortion 7
+                , Border.width 1
+                , Border.color UI.palette.darkishGrey
+                ]
+                (viewPlotPanel model)
+            ]
+        , el
+            [ height fill
+            , width <| fillPortion 2
             , Border.width 1
-            , Border.rounded 4
-            , padding 4
-            , Background.color UI.palette.lightGrey
+            , Border.color UI.palette.darkishGrey
+            , padding 5
             ]
-            { onPress = Just <| FetchPlotData
-            , label = text "Fetch Plot Data"
-            }
-        , vegaLiteDiv
+            (viewTableRefs model)
         ]
+
+
+viewQueryBuilderPanel : Model -> Element Msg
+viewQueryBuilderPanel model =
+    case model.duckDbMetaResponse of
+        NotAsked ->
+            el [] (text "Select a table to plot from the right nav")
+
+        Loading ->
+            el [] (text "Loading")
+
+        Success data ->
+            let
+                viewColDescriptor : Api.ColumnDescription -> Element Msg
+                viewColDescriptor colDesc =
+                    column
+                        [ Border.width 1
+                        , Border.color UI.palette.darkishGrey
+                        , spacing 2
+                        , padding 5
+                        ]
+                        [ text colDesc.name, text colDesc.type_ ]
+            in
+            row
+                [ spacing 5
+                , padding 5
+                ]
+                (List.map viewColDescriptor data.colDescs)
+
+        Failure err ->
+            el [] (text "Error!")
+
+
+viewPlotPanel : Model -> Element Msg
+viewPlotPanel model =
+    el [] (text "Plot panel")
+
+
+viewTableRefs : Model -> Element Msg
+viewTableRefs model =
+    case model.duckDbTableRefs of
+        NotAsked ->
+            text "Didn't request data yet"
+
+        Loading ->
+            text "Fetching..."
+
+        Success refsResponse ->
+            let
+                refsSelector : List Api.TableRef -> Element Msg
+                refsSelector refs =
+                    let
+                        backgroundColorFor ref =
+                            case model.hoveredOnTableRef of
+                                Nothing ->
+                                    UI.palette.white
+
+                                Just ref_ ->
+                                    if ref == ref_ then
+                                        UI.palette.lightGrey
+
+                                    else
+                                        UI.palette.white
+
+                        borderColorFor ref =
+                            case model.hoveredOnTableRef of
+                                Nothing ->
+                                    UI.palette.white
+
+                                Just ref_ ->
+                                    if ref == ref_ then
+                                        UI.palette.darkishGrey
+
+                                    else
+                                        UI.palette.white
+
+                        borderFor ref =
+                            case model.hoveredOnTableRef of
+                                Nothing ->
+                                    { top = 1, left = 0, right = 0, bottom = 1 }
+
+                                Just ref_ ->
+                                    if ref == ref_ then
+                                        { top = 1, left = 0, right = 0, bottom = 1 }
+
+                                    else
+                                        { top = 1, left = 0, right = 0, bottom = 1 }
+
+                        innerBlobColorFor ref =
+                            case model.hoveredOnTableRef of
+                                Nothing ->
+                                    UI.palette.white
+
+                                Just ref_ ->
+                                    if ref == ref_ then
+                                        UI.palette.black
+
+                                    else
+                                        UI.palette.white
+
+                        ui : Api.TableRef -> Element Msg
+                        ui ref =
+                            row
+                                [ width E.fill
+                                , paddingXY 0 2
+                                , spacingXY 2 0
+                                , onClick <| UserSelectedTableRef ref
+                                , onMouseEnter <| UserMouseEnteredTableRef ref
+                                , onMouseLeave <| UserMouseLeftTableRef
+                                , Background.color (backgroundColorFor ref)
+                                , Border.widthEach (borderFor ref)
+                                , Border.color (borderColorFor ref)
+                                ]
+                                [ el
+                                    [ width <| px 5
+                                    , height <| px 5
+                                    , Border.width 1
+                                    , Background.color (innerBlobColorFor ref)
+                                    ]
+                                    E.none
+                                , text ref
+                                ]
+                    in
+                    column
+                        [ width E.fill
+                        , height E.fill
+                        , paddingXY 5 0
+                        ]
+                    <|
+                        List.map (\ref -> ui ref) refs
+            in
+            column
+                [ width E.fill
+                , height E.fill
+                , spacing 2
+                ]
+                [ text "DuckDB Refs:"
+                , refsSelector refsResponse.refs
+                ]
+
+        Failure err ->
+            text "Error"
+
+
+
+--[ Input.button
+--    [ Border.color UI.palette.black
+--    , Border.width 1
+--    , Border.rounded 4
+--    , padding 4
+--    , Background.color UI.palette.lightGrey
+--    ]
+--    { onPress = Just RenderPlot
+--    , label = text "Render Plot"
+--    }
+--
+--, Input.button
+--    [ Border.color UI.palette.black
+--    , Border.width 1
+--    , Border.rounded 4
+--    , padding 4
+--    , Background.color UI.palette.lightGrey
+--    ]
+--    { onPress = Just <| FetchPlotData
+--    , label = text "Fetch Plot Data"
+--    }
+--, vegaLiteDiv
+--]
+-- end region view
+-- begin region vega-lite
 
 
 computeSpec : Model -> Maybe VL.Spec
 computeSpec model =
+    let
+        spec0 : ColumnParamed Int -> ColumnParamed Float -> VL.Spec
+        spec0 col1 col2 =
+            let
+                data =
+                    VL.dataFromColumns []
+                        << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
+                        << VL.dataColumn col2.name (VL.nums col2.vals)
+
+                enc =
+                    VL.encoding
+                        << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
+                        << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
+            in
+            VL.toVegaLite
+                [ data []
+                , VL.line []
+                , enc []
+                , VL.height 400
+                , VL.width 600
+                ]
+    in
     case model.duckDbForPlotResponse of
         NotAsked ->
             Nothing
@@ -234,29 +489,14 @@ computeSpec model =
             Just (spec0 col1 col2)
 
 
-spec0 : ColumnParamed Int -> ColumnParamed Float -> VL.Spec
-spec0 col1 col2 =
-    let
-        data =
-            VL.dataFromColumns []
-                << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
-                << VL.dataColumn col2.name (VL.nums col2.vals)
 
-        enc =
-            VL.encoding
-                << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
-                << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
-    in
-    VL.toVegaLite
-        [ data []
-        , VL.line []
-        , enc []
-        , VL.height 400
-        , VL.width 600
-        ]
+-- end region vega-lite
+-- begin region query building
+-- end region query building
+-- begin region API
 
 
-queryDuckDbForPlot : String -> Bool -> List TableRef -> Cmd Msg
+queryDuckDbForPlot : String -> Bool -> List Api.TableRef -> Cmd Msg
 queryDuckDbForPlot query allowFallback refs =
     let
         duckDbQueryEncoder : JE.Value
@@ -267,7 +507,7 @@ queryDuckDbForPlot query allowFallback refs =
                 , ( "fallback_table_refs", JE.list JE.string refs )
                 ]
 
-        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+        duckDbQueryResponseDecoder : JD.Decoder Api.DuckDbQueryResponse
         duckDbQueryResponseDecoder =
             let
                 columnDecoderHelper : JD.Decoder Api.Column
@@ -281,32 +521,32 @@ queryDuckDbForPlot query allowFallback refs =
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
 
                         "INTEGER" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Int_ JD.int))))
 
                         "BOOLEAN" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Bool__ JD.bool))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Bool_ JD.bool))))
 
                         "DOUBLE" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Float__ JD.float))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Float_ JD.float))))
 
                         "DATE" ->
                             -- TODO: Need to think about Elm date / time types
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
 
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
@@ -314,9 +554,9 @@ queryDuckDbForPlot query allowFallback refs =
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.list (JD.maybe (JD.succeed Unknown)))
+                                (JD.list (JD.maybe (JD.succeed Api.Unknown)))
             in
-            JD.map DuckDbQueryResponse
+            JD.map Api.DuckDbQueryResponse
                 (JD.field "columns" (JD.list columnDecoderHelper))
     in
     Http.post
@@ -324,3 +564,69 @@ queryDuckDbForPlot query allowFallback refs =
         , body = Http.jsonBody duckDbQueryEncoder
         , expect = Http.expectJson GotDuckDbForPlotResponse duckDbQueryResponseDecoder
         }
+
+
+queryDuckDbMeta : String -> Bool -> List Api.TableRef -> Cmd Msg
+queryDuckDbMeta query allowFallback refs =
+    let
+        duckDbQueryEncoder : JE.Value
+        duckDbQueryEncoder =
+            JE.object
+                [ ( "query_str", JE.string query )
+                , ( "allow_blob_fallback", JE.bool allowFallback )
+                , ( "fallback_table_refs", JE.list JE.string refs )
+                ]
+
+        duckDbMetaResponseDecoder : JD.Decoder Api.DuckDbMetaResponse
+        duckDbMetaResponseDecoder =
+            let
+                columnDecoderHelper : JD.Decoder Api.ColumnDescription
+                columnDecoderHelper =
+                    JD.field "type" JD.string |> JD.andThen decoderByType
+
+                decoderByType : String -> JD.Decoder Api.ColumnDescription
+                decoderByType type_ =
+                    case type_ of
+                        "VARCHAR" ->
+                            JD.map2 Api.ColumnDescription
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+
+                        "INTEGER" ->
+                            JD.map2 Api.ColumnDescription
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+
+                        _ ->
+                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
+                            -- Should this fail loudly?
+                            JD.map2 Api.ColumnDescription
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+            in
+            JD.map Api.DuckDbMetaResponse
+                (JD.field "columns" (JD.list columnDecoderHelper))
+    in
+    Http.post
+        { url = apiHost ++ "/duckdb"
+        , body = Http.jsonBody duckDbQueryEncoder
+        , expect = Http.expectJson GotDuckDbMetaResponse duckDbMetaResponseDecoder
+        }
+
+
+fetchDuckDbTableRefs : Cmd Msg
+fetchDuckDbTableRefs =
+    let
+        duckDbTableRefsResponseDecoder : JD.Decoder Api.DuckDbTableRefsResponse
+        duckDbTableRefsResponseDecoder =
+            JD.map Api.DuckDbTableRefsResponse
+                (JD.field "refs" (JD.list JD.string))
+    in
+    Http.get
+        { url = apiHost ++ "/duckdb/table_refs"
+        , expect = Http.expectJson GotDuckDbTableRefsResponse duckDbTableRefsResponseDecoder
+        }
+
+
+
+-- end region API

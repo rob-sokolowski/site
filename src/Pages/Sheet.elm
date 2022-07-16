@@ -1,6 +1,6 @@
 module Pages.Sheet exposing (Model, Msg, page)
 
-import Api as Api exposing (..)
+import Api
 import Array as A
 import Array.Extra as AE
 import Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, rowCount, setValueAt)
@@ -84,16 +84,16 @@ type alias Model =
     , submissionHistory : List RawPrompt
     , timeline : A.Array Timeline
     , uiMode : UiMode
-    , duckDbResponse : WebData DuckDbQueryResponse
-    , duckDbMetaResponse : WebData DuckDbQueryResponse
-    , duckDbTableRefs : WebData DuckDbTableRefsResponse
+    , duckDbResponse : WebData Api.DuckDbQueryResponse
+    , duckDbMetaResponse : WebData Api.DuckDbQueryResponse
+    , duckDbTableRefs : WebData Api.DuckDbTableRefsResponse
     , userSqlText : String
     , fileUploadStatus : FileUploadStatus
     , nowish : Maybe Posix
     , viewport : Maybe Browser.Dom.Viewport
     , renderStatus : RenderStatus
-    , selectedTableRef : Maybe TableRef
-    , hoveredOnTableRef : Maybe TableRef
+    , selectedTableRef : Maybe Api.TableRef
+    , hoveredOnTableRef : Maybe Api.TableRef
     }
 
 
@@ -132,8 +132,8 @@ type Msg
     | GotResizeEvent Int Int
     | KeyWentDown KeyCode
     | KeyReleased KeyCode
-    | UserSelectedTableRef TableRef
-    | UserMouseEnteredTableRef TableRef
+    | UserSelectedTableRef Api.TableRef
+    | UserMouseEnteredTableRef Api.TableRef
     | UserMouseLeftTableRef
     | ClickedCell CellCoords
     | PromptInputChanged String
@@ -145,9 +145,9 @@ type Msg
     | QueryDuckDb String
     | UserSqlTextChanged String
       -- API response stuff:
-    | GotDuckDbResponse (Result Http.Error DuckDbQueryResponse)
-    | GotDuckDbMetaResponse (Result Http.Error DuckDbQueryResponse)
-    | GotDuckDbTableRefsResponse (Result Http.Error DuckDbTableRefsResponse)
+    | GotDuckDbResponse (Result Http.Error Api.DuckDbQueryResponse)
+    | GotDuckDbMetaResponse (Result Http.Error Api.DuckDbQueryResponse)
+    | GotDuckDbTableRefsResponse (Result Http.Error Api.DuckDbTableRefsResponse)
       -- Timeline stuff:
       -- TODO: Should Msg take in a `model` param?
     | JumpToFirstFrame
@@ -207,7 +207,7 @@ cell2Str cd =
                     ( "FALSE", "Boolean" )
 
 
-buildSqlText : Maybe TableRef -> String
+buildSqlText : Maybe Api.TableRef -> String
 buildSqlText ref =
     let
         tableRef =
@@ -291,7 +291,7 @@ type alias KeyCode =
 mapColumnsToSheet : List Api.Column -> SheetEnvelope
 mapColumnsToSheet cols =
     let
-        mapVal : Maybe Val -> CellElement
+        mapVal : Maybe Api.Val -> CellElement
         mapVal v =
             case v of
                 Nothing ->
@@ -299,19 +299,19 @@ mapColumnsToSheet cols =
 
                 Just val ->
                     case val of
-                        Varchar_ var ->
+                        Api.Varchar_ var ->
                             String_ var
 
-                        Int__ i ->
+                        Api.Int_ i ->
                             Int_ i
 
-                        Bool__ b ->
+                        Api.Bool_ b ->
                             Bool_ b
 
-                        Float__ f ->
+                        Api.Float_ f ->
                             Float_ f
 
-                        Unknown ->
+                        Api.Unknown ->
                             Empty
 
         -- lol is "list of lists", but I'm also laughing at how inefficient this is
@@ -372,15 +372,11 @@ update msg model =
             ( { model | viewport = Just viewport, renderStatus = Ready }, Effect.none )
 
         UserSelectedTableRef ref ->
-            let
-                queryStr =
-                    "select * from " ++ ref ++ " limit 0"
-            in
             ( { model
                 | selectedTableRef = Just ref
                 , userSqlText = buildSqlText (Just ref)
               }
-            , Effect.fromCmd (queryDuckDbMeta queryStr True [ ref ])
+            , Effect.none
             )
 
         UserMouseEnteredTableRef ref ->
@@ -1218,7 +1214,7 @@ viewCatalogPanel model =
 
                 Success refsResponse ->
                     let
-                        refsSelector : List TableRef -> Element Msg
+                        refsSelector : List Api.TableRef -> Element Msg
                         refsSelector refs =
                             let
                                 backgroundColorFor ref =
@@ -1269,7 +1265,7 @@ viewCatalogPanel model =
                                             else
                                                 UI.palette.white
 
-                                ui : TableRef -> Element Msg
+                                ui : Api.TableRef -> Element Msg
                                 ui ref =
                                     row
                                         [ width E.fill
@@ -1360,9 +1356,9 @@ prompt_input_dom_id =
 fetchDuckDbTableRefs : Cmd Msg
 fetchDuckDbTableRefs =
     let
-        duckDbTableRefsResponseDecoder : JD.Decoder DuckDbTableRefsResponse
+        duckDbTableRefsResponseDecoder : JD.Decoder Api.DuckDbTableRefsResponse
         duckDbTableRefsResponseDecoder =
-            JD.map DuckDbTableRefsResponse
+            JD.map Api.DuckDbTableRefsResponse
                 (JD.field "refs" (JD.list JD.string))
     in
     Http.get
@@ -1371,7 +1367,7 @@ fetchDuckDbTableRefs =
         }
 
 
-queryDuckDb : String -> Bool -> List TableRef -> Cmd Msg
+queryDuckDb : String -> Bool -> List Api.TableRef -> Cmd Msg
 queryDuckDb query allowFallback refs =
     let
         duckDbQueryEncoder : JE.Value
@@ -1382,7 +1378,7 @@ queryDuckDb query allowFallback refs =
                 , ( "fallback_table_refs", JE.list JE.string refs )
                 ]
 
-        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
+        duckDbQueryResponseDecoder : JD.Decoder Api.DuckDbQueryResponse
         duckDbQueryResponseDecoder =
             let
                 columnDecoderHelper : JD.Decoder Api.Column
@@ -1396,32 +1392,32 @@ queryDuckDb query allowFallback refs =
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
 
                         "INTEGER" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Int_ JD.int))))
 
                         "BOOLEAN" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Bool__ JD.bool))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Bool_ JD.bool))))
 
                         "DOUBLE" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Float__ JD.float))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Float_ JD.float))))
 
                         "DATE" ->
                             -- TODO: Need to think about Elm date / time types
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
 
                         _ ->
                             -- This feels wrong to me, but unsure how else to workaround the string pattern matching
@@ -1429,64 +1425,13 @@ queryDuckDb query allowFallback refs =
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
-                                (JD.list (JD.maybe (JD.succeed Unknown)))
+                                (JD.list (JD.maybe (JD.succeed Api.Unknown)))
             in
-            JD.map DuckDbQueryResponse
+            JD.map Api.DuckDbQueryResponse
                 (JD.field "columns" (JD.list columnDecoderHelper))
     in
     Http.post
         { url = apiHost ++ "/duckdb"
         , body = Http.jsonBody duckDbQueryEncoder
         , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
-        }
-
-
-queryDuckDbMeta : String -> Bool -> List TableRef -> Cmd Msg
-queryDuckDbMeta query allowFallback refs =
-    let
-        duckDbQueryEncoder : JE.Value
-        duckDbQueryEncoder =
-            JE.object
-                [ ( "query_str", JE.string query )
-                , ( "allow_blob_fallback", JE.bool allowFallback )
-                , ( "fallback_table_refs", JE.list JE.string refs )
-                ]
-
-        duckDbQueryResponseDecoder : JD.Decoder DuckDbQueryResponse
-        duckDbQueryResponseDecoder =
-            let
-                columnDecoderHelper : JD.Decoder Api.Column
-                columnDecoderHelper =
-                    JD.field "type" JD.string |> JD.andThen decoderByType
-
-                decoderByType : String -> JD.Decoder Api.Column
-                decoderByType type_ =
-                    case type_ of
-                        "VARCHAR" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Varchar_ JD.string))))
-
-                        "INTEGER" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Int__ JD.int))))
-
-                        _ ->
-                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
-                            -- Should this fail loudly?
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.list (JD.maybe (JD.succeed Unknown)))
-            in
-            JD.map DuckDbQueryResponse
-                (JD.field "columns" (JD.list columnDecoderHelper))
-    in
-    Http.post
-        { url = apiHost ++ "/duckdb"
-        , body = Http.jsonBody duckDbQueryEncoder
-        , expect = Http.expectJson GotDuckDbMetaResponse duckDbQueryResponseDecoder
         }
