@@ -1,6 +1,7 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
-import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..))
+import Api as Api exposing (DuckDbQueryResponse, TableRef, Val(..), mapColToFloatCol, mapColToIntegerCol)
+import Array
 import Config exposing (apiHost)
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -60,7 +61,7 @@ init =
 
 type Msg
     = FetchPlotData
-    | RenderPlot VL.Spec
+    | RenderPlot
     | GotDuckDbForPlotResponse (Result Http.Error DuckDbQueryResponse)
 
 
@@ -85,13 +86,27 @@ update msg model =
                     """select
   t.rank,
   t.spi
-from elm_test_1657963390784 t
+from elm_test_1657972702341 t
+order by 1
+limit 100
                 """
             in
             ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr False [] )
 
-        RenderPlot spec ->
-            ( model, Effect.fromCmd <| elmToJS spec )
+        RenderPlot ->
+            let
+                newSpec =
+                    computeSpec model
+
+                elmToJsCmd =
+                    case newSpec of
+                        Nothing ->
+                            Cmd.none
+
+                        Just spec ->
+                            elmToJS spec
+            in
+            ( { model | spec = newSpec }, Effect.fromCmd elmToJsCmd )
 
 
 
@@ -161,17 +176,7 @@ elements model =
             , padding 4
             , Background.color UI.palette.lightGrey
             ]
-            { onPress =
-                Just <|
-                    RenderPlot
-                        (spec0
-                            { name = "X"
-                            , vals = [ 1, 2, 3, 4, 5 ]
-                            }
-                            { name = "Y"
-                            , vals = [ 100, 50, 76, 10, 6 ]
-                            }
-                        )
+            { onPress = Just RenderPlot
             , label = text "Render Plot"
             }
         , Input.button
@@ -188,18 +193,58 @@ elements model =
         ]
 
 
-spec0 : Api.Column2 Float -> Api.Column2 Float -> VL.Spec
-spec0 col0 col1 =
+computeSpec : Model -> Maybe VL.Spec
+computeSpec model =
+    case model.duckDbForPlotResponse of
+        NotAsked ->
+            Nothing
+
+        Loading ->
+            Nothing
+
+        Failure err ->
+            Nothing
+
+        Success data ->
+            let
+                collArray =
+                    Array.fromList data.columns
+
+                col1 =
+                    case Array.get 0 collArray of
+                        Nothing ->
+                            { name = "error"
+                            , vals = []
+                            }
+
+                        Just col ->
+                            mapColToIntegerCol col
+
+                col2 =
+                    case Array.get 1 collArray of
+                        Nothing ->
+                            { name = "error"
+                            , vals = []
+                            }
+
+                        Just col ->
+                            mapColToFloatCol col
+            in
+            Just (spec0 col1 col2)
+
+
+spec0 : Api.Column2 Int -> Api.Column2 Float -> VL.Spec
+spec0 col1 col2 =
     let
         data =
             VL.dataFromColumns []
-                << VL.dataColumn "X" (VL.nums col0.vals)
-                << VL.dataColumn "Y" (VL.nums col1.vals)
+                << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
+                << VL.dataColumn col2.name (VL.nums col2.vals)
 
         enc =
             VL.encoding
-                << VL.position VL.X [ VL.pName "X", VL.pQuant ]
-                << VL.position VL.Y [ VL.pName "Y", VL.pQuant ]
+                << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
+                << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
     in
     VL.toVegaLite
         [ data []

@@ -93,6 +93,36 @@ mapColToFloatCol col =
             }
 
         _ ->
+            { name = "ERROR - FLOAT MAP"
+            , vals = []
+            }
+
+
+mapColToIntegerCol : Column -> Column2 Int
+mapColToIntegerCol col =
+    case col.type_ of
+        "INTEGER" ->
+            let
+                vals_ =
+                    removeNothingFromList col.vals
+
+                mapToIntList : List Int -> List Val -> List Int
+                mapToIntList accum vals__ =
+                    case vals__ of
+                        [ Int__ i ] ->
+                            accum ++ [ i ]
+
+                        (Int__ i) :: [ Int__ is ] ->
+                            [ i ] ++ mapToIntList accum [ Int__ is ]
+
+                        _ ->
+                            []
+            in
             { name = col.name
+            , vals = mapToIntList [] vals_
+            }
+
+        _ ->
+            { name = "ERROR - INT MAP"
             , vals = []
             }
