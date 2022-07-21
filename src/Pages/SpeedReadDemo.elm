@@ -40,7 +40,7 @@ type alias FrameMs =
 
 
 type SpeedReadState
-    = Paused CurrentIndex
+    = Paused CurrentIndex FrameMs
     | Playing CurrentIndex FrameMs
 
 
@@ -55,9 +55,12 @@ freshModel =
     let
         textList =
             String.split " " greatGatsbyChapter1
+
+        textList2 =
+            List.filter (\e -> not <| String.startsWith "\n" e) textList
     in
-    { text = A.fromList textList
-    , state = Paused 0
+    { text = A.fromList textList2
+    , state = Paused 0 250
     }
 
 
@@ -90,8 +93,8 @@ update msg model =
                         Playing ix frameMs ->
                             Playing ix frameMs
 
-                        Paused ix ->
-                            Playing ix 50
+                        Paused ix frameMs ->
+                            Playing ix frameMs
             in
             ( { model | state = newState }, Effect.none )
 
@@ -99,11 +102,11 @@ update msg model =
             let
                 newState =
                     case model.state of
-                        Playing ix _ ->
-                            Paused ix
+                        Playing ix frameMs ->
+                            Paused ix frameMs
 
-                        Paused ix ->
-                            Paused ix
+                        Paused ix frameMs ->
+                            Paused ix frameMs
             in
             ( { model | state = newState }, Effect.none )
 
@@ -111,9 +114,8 @@ update msg model =
             let
                 newState =
                     case model.state of
-                        Paused ix ->
-                            -- noop, but if we want to resume at a different speed maybe I want this.
-                            Paused ix
+                        Paused ix _ ->
+                            Paused ix newFrameMs
 
                         Playing ix _ ->
                             -- throw away current frameMs, use new
@@ -128,8 +130,8 @@ update msg model =
                         Playing ix frameMs ->
                             Playing (modBy (A.length model.text) (ix + 1)) frameMs
 
-                        Paused ix ->
-                            Paused ix
+                        Paused ix newFrameMs ->
+                            Paused ix newFrameMs
             in
             ( { model | state = newState }, Effect.none )
 
@@ -147,16 +149,20 @@ subscriptions model =
         frameMs : Float
         frameMs =
             case model.state of
-                Paused _ ->
-                    -- dummy value.. makes me think there's a better way to do this.
-                    toFloat 10
+                Paused _ frameMs_ ->
+                    toFloat frameMs_
 
                 Playing _ frameMs_ ->
                     toFloat frameMs_
     in
-    Sub.batch
-        [ Time.every frameMs FrameTick
-        ]
+    case model.state of
+        Paused _ _ ->
+            Sub.none
+
+        Playing _ _ ->
+            Sub.batch
+                [ Time.every frameMs FrameTick
+                ]
 
 
 
@@ -171,7 +177,7 @@ elements model =
             let
                 ( buttonCmd, buttonLbl ) =
                     case model.state of
-                        Paused _ ->
+                        Paused _ _ ->
                             ( StartSpeedReading, "|>" )
 
                         Playing _ _ ->
@@ -184,7 +190,46 @@ elements model =
                 , Border.width 1
                 , centerX
                 ]
-                [ Input.button
+                [ Input.slider
+                    [ height <| px 30
+                    , behindContent <|
+                        -- Slider track
+                        el
+                            [ width fill
+                            , height <| px 20
+                            , centerY
+                            , Background.color UI.palette.blue
+                            , Border.rounded 6
+                            ]
+                            E.none
+                    ]
+                    { onChange = round >> ChangeFrameMs
+                    , label =
+                        Input.labelAbove [] <|
+                            text "TODO frameMS"
+                    , min = 0
+                    , max = 100
+                    , step = Just 10
+                    , value =
+                        toFloat
+                            (case model.state of
+                                Paused ix frameMs ->
+                                    frameMs
+
+                                Playing ix frameMs ->
+                                    frameMs
+                            )
+                    , thumb =
+                        Input.thumb
+                            [ width <| px 60
+                            , height <| px 24
+                            , Border.width 2
+                            , Border.rounded 6
+                            , Border.color UI.palette.darkCharcoal
+                            , Background.color UI.palette.white
+                            ]
+                    }
+                , Input.button
                     [ Border.color UI.palette.lightGrey
                     , Border.width 1
                     , Border.rounded 4
@@ -211,7 +256,7 @@ elements model =
                                 Just v ->
                                     v
 
-                        Paused ix ->
+                        Paused ix _ ->
                             case A.get ix model.text of
                                 Nothing ->
                                     "ERROR!"
