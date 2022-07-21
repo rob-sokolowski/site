@@ -235,7 +235,7 @@ elements model =
                     , thumb =
                         Input.thumb
                             [ width <| px 60
-                            , height <| px 12
+                            , height <| px 60
                             , Border.width 2
                             , Border.rounded 6
                             , Border.color UI.palette.darkCharcoal
