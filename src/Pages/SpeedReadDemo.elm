@@ -178,25 +178,38 @@ elements model =
                 ( buttonCmd, buttonLbl ) =
                     case model.state of
                         Paused _ _ ->
-                            ( StartSpeedReading, "|>" )
+                            ( StartSpeedReading, "    |>    " )
 
                         Playing _ _ ->
-                            ( PauseSpeedReading, "||" )
+                            ( PauseSpeedReading, "    ||    " )
             in
-            row
-                [ width <| px 600
-                , height <| px 70
+            column
+                [ width fill
+                , height <| px 150
                 , Border.color UI.palette.black
                 , Border.width 1
                 , centerX
+                , padding 10
                 ]
-                [ Input.slider
-                    [ height <| px 30
+                [ Input.button
+                    [ Border.color UI.palette.lightGrey
+                    , Border.width 1
+                    , Border.rounded 4
+                    , padding 4
+                    , centerX
+                    , centerY
+                    , Background.color UI.palette.darkishGrey
+                    ]
+                    { onPress = Just buttonCmd
+                    , label = text buttonLbl
+                    }
+                , Input.slider
+                    [ height fill
                     , behindContent <|
                         -- Slider track
                         el
                             [ width fill
-                            , height <| px 20
+                            , height <| px 5
                             , centerY
                             , Background.color UI.palette.blue
                             , Border.rounded 6
@@ -222,24 +235,12 @@ elements model =
                     , thumb =
                         Input.thumb
                             [ width <| px 60
-                            , height <| px 24
+                            , height <| px 12
                             , Border.width 2
                             , Border.rounded 6
                             , Border.color UI.palette.darkCharcoal
                             , Background.color UI.palette.white
                             ]
-                    }
-                , Input.button
-                    [ Border.color UI.palette.lightGrey
-                    , Border.width 1
-                    , Border.rounded 4
-                    , padding 4
-                    , centerX
-                    , centerY
-                    , Background.color UI.palette.darkishGrey
-                    ]
-                    { onPress = Just buttonCmd
-                    , label = text buttonLbl
                     }
                 ]
 
