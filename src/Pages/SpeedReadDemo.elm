@@ -60,7 +60,7 @@ freshModel =
             List.filter (\e -> not <| String.startsWith "\n" e) textList
     in
     { text = A.fromList textList2
-    , state = Paused 0 150
+    , state = Playing 0 150
     }
 
 
@@ -212,19 +212,6 @@ elements model =
                         , alignLeft
                         ]
                         (text <| "Current speed: " ++ String.fromInt wpm ++ " words per minute")
-                    , Input.button
-                        [ Border.color UI.palette.lightGrey
-                        , Border.width 1
-                        , Border.rounded 4
-                        , alignRight
-                        , width <| px 100
-                        , padding 4
-                        , Background.color UI.palette.darkishGrey
-                        , Border.color UI.palette.darkCharcoal
-                        ]
-                        { onPress = Just buttonCmd
-                        , label = el [ centerX ] <| text buttonLbl
-                        }
                     ]
                 , Input.slider
                     [ height fill
@@ -241,10 +228,10 @@ elements model =
                     ]
                     { onChange = round >> ChangeFrameMs
                     , label =
-                        Input.labelBelow [] <|
+                        Input.labelBelow [ Font.size 10 ] <|
                             text "Move slider to adjust speed"
                     , min = 10
-                    , max = 500
+                    , max = 750
                     , step = Just 10
                     , value =
                         toFloat
@@ -264,6 +251,20 @@ elements model =
                             , Border.color UI.palette.darkCharcoal
                             , Background.color UI.palette.white
                             ]
+                    }
+                , Input.button
+                    [ Border.color UI.palette.lightGrey
+                    , Border.width 1
+                    , Border.rounded 4
+                    , alignRight
+                    , width <| px 100
+                    , padding 4
+                    , Background.color UI.palette.darkishGrey
+                    , Border.color UI.palette.darkCharcoal
+                    , moveUp 15
+                    ]
+                    { onPress = Just buttonCmd
+                    , label = el [ centerX ] <| text buttonLbl
                     }
                 ]
 
@@ -298,16 +299,13 @@ elements model =
                 , Background.color UI.palette.lightGrey
                 ]
             <|
-                (el [ centerX, centerY, Font.size 24 ] <| text message)
+                (el [ centerX, centerY, Font.size 28 ] <| text message)
     in
     column
         [ width (fill |> maximum 800)
         , height fill
         , centerX
         , Font.size 14
-        , Border.color UI.palette.darkishGrey
-        , Border.width 2
-        , padding 10
         ]
         [ promptPanel
         , controlPanel
@@ -322,7 +320,7 @@ view model =
             [ E.width E.fill
             , E.height E.fill
             , centerX
-            , padding 10
+            , padding 5
             ]
             (elements model)
         ]
