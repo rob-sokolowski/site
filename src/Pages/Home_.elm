@@ -1,26 +1,42 @@
 module Pages.Home_ exposing (view)
 
 import Color as C exposing (..)
-import Element exposing (..)
+import Element as E exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Html
+import UI
 import View exposing (View)
 
 
 view : View msg
 view =
     { title = "Homepage"
-    , body = [ layout [] viewElement ]
+    , body =
+        [ layout
+            [ padding 2
+            , Font.size 16
+            ]
+            elements
+        ]
     }
 
 
-viewElement : Element msg
-viewElement =
-    column [ padding 25, spacing 10 ]
+elements : Element msg
+elements =
+    column
+        [ width (fill |> maximum 800)
+        , height fill
+        , padding 25
+        , spacing 10
+        , centerX
+        , Border.width 1
+        , Border.rounded 5
+        , Border.color UI.palette.darkishGrey
+        ]
         [ text <| "Hello world, some WIP links.."
 
         --, link [ Font.color blue ]
@@ -31,16 +47,26 @@ viewElement =
         --    { url = "/game-dev"
         --    , label = text "Game Sandbox"
         --    }
+        , row []
+            [ link [ Font.color blue ]
+                { url = "/sheet"
+                , label = text "Sheet"
+                }
+            , text " (intended for large screens)"
+            ]
+        , row []
+            [ link [ Font.color blue ]
+                { url = "/speed-read-demo"
+                , label = text "Speed read demo"
+                }
+            , text " (intended for small screens)"
+            ]
         , link [ Font.color blue ]
             { url = "/pops"
             , label = text "Pops"
-            }
-        , link [ Font.color blue ]
-            { url = "/sheet"
-            , label = text "Sheet"
             }
         ]
 
 
 blue =
-    Element.rgb 0 0.4 0.7
+    E.rgb 0 0.4 0.7
