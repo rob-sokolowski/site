@@ -412,7 +412,16 @@ update msg model =
             ( { model | userSqlText = newText }, Effect.none )
 
         QueryDuckDb queryStr ->
-            ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr False [] )
+            let
+                ( shouldFallback, fallBackRef ) =
+                    case model.selectedTableRef of
+                        Nothing ->
+                            ( False, [] )
+
+                        Just v ->
+                            ( True, [ v ] )
+            in
+            ( { model | duckDbResponse = Loading }, Effect.fromCmd <| queryDuckDb queryStr shouldFallback fallBackRef )
 
         GotDuckDbResponse response ->
             case response of
