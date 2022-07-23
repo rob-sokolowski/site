@@ -316,38 +316,6 @@ content model =
 elements : Model -> Element Msg
 elements model =
     let
-        header : Element msg
-        header =
-            row
-                [ E.width E.fill
-                , padding 10
-                , spacing 10
-                , Background.color UI.palette.lightGrey
-                ]
-                [ logo
-                , el [ alignRight ] <| text "Header"
-                , el [ alignRight ] <| text "Stuff"
-                , el [ alignRight ] <| text "Goes"
-                , el [ alignRight ] <| text "Here"
-                ]
-
-        logo : Element msg
-        logo =
-            el
-                [ E.width <| E.px 80
-                , E.height <| E.px 40
-                , Border.width 2
-                , Border.rounded 6
-                , Border.color UI.palette.blue
-                ]
-                (el
-                    [ centerX
-                    , centerY
-                    ]
-                 <|
-                    text "LOGO"
-                )
-
         footer : Element msg
         footer =
             row
@@ -373,7 +341,6 @@ elements model =
         , Font.size 12
         ]
     <|
-        [ header
-        , content model
+        [ content model
         , footer
         ]
