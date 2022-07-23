@@ -54,7 +54,11 @@ elements =
                 { url = "/sheet"
                 , label = text "Sheet"
                 }
-            , text " (intended for large screens)"
+            , text " (intended for large screens). And related page, "
+            , link [ Font.color blue ]
+                { url = "/vega-lite"
+                , label = text "Vega lite"
+                }
             ]
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
