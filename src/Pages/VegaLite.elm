@@ -220,7 +220,7 @@ elements model =
     in
     row
         [ Border.width 1
-        , Border.color UI.palette.darkishGrey
+        , Border.color UI.palette.red
         , width fill
         , height fill
         ]
@@ -230,6 +230,8 @@ elements model =
             , Border.width 1
             , Border.color UI.palette.darkishGrey
             , padding 5
+            , clipX
+            , scrollbarX
             ]
             [ el
                 [ width fill
@@ -257,6 +259,43 @@ elements model =
         ]
 
 
+type KimballColumn
+    = Dimension
+    | Measure Aggregation
+    | Time
+    | Error
+
+
+type Aggregation
+    = Sum
+    | Mean
+    | Median
+    | Min
+    | Max
+
+
+mapToKimball : Api.ColumnDescription -> KimballColumn
+mapToKimball colDesc =
+    case colDesc.type_ of
+        "VARCHAR" ->
+            Dimension
+
+        "DATE" ->
+            Time
+
+        "BOOLEAN" ->
+            Dimension
+
+        "INTEGER" ->
+            Measure Sum
+
+        "DOUBLE" ->
+            Measure Sum
+
+        _ ->
+            Error
+
+
 viewQueryBuilderPanel : Model -> Element Msg
 viewQueryBuilderPanel model =
     case model.duckDbMetaResponse of
@@ -268,21 +307,85 @@ viewQueryBuilderPanel model =
 
         Success data ->
             let
-                viewColDescriptor : Api.ColumnDescription -> Element Msg
-                viewColDescriptor colDesc =
+                dimCols : List Api.ColumnDescription -> List Api.ColumnDescription
+                dimCols cols =
+                    List.filter (\c -> mapToKimball c == Dimension) cols
+
+                timeCols : List Api.ColumnDescription -> List Api.ColumnDescription
+                timeCols cols =
+                    List.filter (\c -> mapToKimball c == Time) cols
+
+                measureCols : List Api.ColumnDescription -> List Api.ColumnDescription
+                measureCols cols =
+                    List.filter
+                        (\c ->
+                            -- accept all sub-variants of measures
+                            List.member (mapToKimball c)
+                                [ Measure Sum
+                                , Measure Mean
+                                , Measure Median
+                                , Measure Min
+                                , Measure Max
+                                ]
+                        )
+                        cols
+
+                errorCols : List Api.ColumnDescription -> List Api.ColumnDescription
+                errorCols cols =
+                    List.filter (\c -> mapToKimball c == Error) cols
+
+                viewColDescTab : Api.ColumnDescription -> Element Msg
+                viewColDescTab colDesc =
                     column
                         [ Border.width 1
                         , Border.color UI.palette.darkishGrey
                         , spacing 2
                         , padding 5
                         ]
-                        [ text colDesc.name, text colDesc.type_ ]
+                        [ text colDesc.name
+                        , text colDesc.type_
+                        ]
             in
             row
-                [ spacing 5
-                , padding 5
+                [ spacing 10
                 ]
-                (List.map viewColDescriptor data.colDescs)
+                [ column
+                    [ alignTop
+                    , width fill
+                    , Border.width 1
+                    , Border.color UI.palette.black
+                    ]
+                    [ text "Dimensions:"
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (dimCols data.colDescs)
+                    ]
+                , column
+                    [ alignTop
+                    , width fill
+                    , Border.width 1
+                    , Border.color UI.palette.black
+                    ]
+                    [ text "Time:"
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (timeCols data.colDescs)
+                    ]
+                , column
+                    [ alignTop
+                    , width fill
+                    , Border.width 1
+                    , Border.color UI.palette.black
+                    ]
+                    [ text "Measures:"
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (measureCols data.colDescs)
+                    ]
+                , column
+                    [ alignTop
+                    , width fill
+                    , Border.width 1
+                    , Border.color UI.palette.black
+                    ]
+                    [ text "Errors:"
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (errorCols data.colDescs)
+                    ]
+                ]
 
         Failure err ->
             el [] (text "Error!")
