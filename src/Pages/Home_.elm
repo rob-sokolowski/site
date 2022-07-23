@@ -37,7 +37,9 @@ elements =
         , Border.rounded 5
         , Border.color UI.palette.darkishGrey
         ]
-        [ text <| "Hello world, some WIP links.."
+        [ el [ Font.size 20 ] <| text "Hello world, welcome to my website."
+        , text " "
+        , text <| "Below are various applets I've been working on"
 
         --, link [ Font.color blue ]
         --    { url = "/animation"
@@ -47,24 +49,34 @@ elements =
         --    { url = "/game-dev"
         --    , label = text "Game Sandbox"
         --    }
-        , row []
+        , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
                 { url = "/sheet"
                 , label = text "Sheet"
                 }
             , text " (intended for large screens)"
             ]
-        , row []
+        , row [ paddingXY 10 0 ]
+            [ link [ Font.color blue ]
+                { url = "https://hippo.lamdera.app"
+                , label = text "Hippo flash cards"
+                }
+            , text " (intended for medium to large screens)"
+            ]
+        , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
                 { url = "/speed-read-demo"
                 , label = text "Speed read demo"
                 }
             , text " (intended for small screens)"
             ]
-        , link [ Font.color blue ]
-            { url = "/pops"
-            , label = text "Pops"
-            }
+        , row [ paddingXY 10 0 ]
+            [ link [ Font.color blue ]
+                { url = "/pops"
+                , label = text "Pops"
+                }
+            , text " This one is ambitious. I have much to learn before I can proceed!"
+            ]
         ]
 
 

@@ -47,6 +47,7 @@ type SpeedReadState
 type alias Model =
     { text : A.Array String
     , state : SpeedReadState
+    , sliderVal : Float
     }
 
 
@@ -61,6 +62,7 @@ freshModel =
     in
     { text = A.fromList textList2
     , state = Playing 0 150
+    , sliderVal = 0.5
     }
 
 
@@ -71,6 +73,12 @@ init =
     )
 
 
+config =
+    { maxWpm = 1500
+    , minWpm = 60
+    }
+
+
 
 -- UPDATE
 
@@ -78,7 +86,7 @@ init =
 type Msg
     = StartSpeedReading
     | PauseSpeedReading
-    | ChangeFrameMs FrameMs
+    | ChangeFrameMs Float
     | Restart
     | FrameTick Time.Posix
 
@@ -110,8 +118,11 @@ update msg model =
             in
             ( { model | state = newState }, Effect.none )
 
-        ChangeFrameMs newFrameMs ->
+        ChangeFrameMs pct ->
             let
+                newFrameMs =
+                    round <| ((config.maxWpm - config.minWpm) * pct) + config.minWpm
+
                 newState =
                     case model.state of
                         Paused ix _ ->
@@ -121,7 +132,12 @@ update msg model =
                             -- throw away current frameMs, use new
                             Playing ix newFrameMs
             in
-            ( { model | state = newState }, Effect.none )
+            ( { model
+                | state = newState
+                , sliderVal = pct
+              }
+            , Effect.none
+            )
 
         FrameTick _ ->
             let
@@ -226,22 +242,14 @@ elements model =
                             ]
                             E.none
                     ]
-                    { onChange = round >> ChangeFrameMs
+                    { onChange = ChangeFrameMs
                     , label =
                         Input.labelBelow [ Font.size 10 ] <|
                             text "Move slider to adjust speed"
-                    , min = 10
-                    , max = 750
-                    , step = Just 10
-                    , value =
-                        toFloat
-                            (case model.state of
-                                Paused ix frameMs ->
-                                    frameMs
-
-                                Playing ix frameMs ->
-                                    frameMs
-                            )
+                    , min = 0.0
+                    , max = 1.0
+                    , step = Just 0.01
+                    , value = model.sliderVal
                     , thumb =
                         Input.thumb
                             [ width <| px 60
