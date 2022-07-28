@@ -11,18 +11,20 @@ import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
+import Html as H
 import Html.Attributes as HA
+import Html5.DragDrop as DragDrop
 import Http exposing (Error(..))
 import Json.Decode as JD
 import Json.Encode as JE
 import Page
+import PortDefs exposing (dragStart, elmToJS)
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
 import UI
 import Utils exposing (removeNothingsFromList)
 import VegaLite as VL
-import VegaPort exposing (elmToJS)
 import VegaUtils exposing (ColumnParamed, mapColToFloatCol, mapColToIntegerCol)
 import View exposing (View)
 
@@ -37,6 +39,12 @@ page shared req =
         }
 
 
+type Position
+    = Up
+    | Middle
+    | Down
+
+
 
 -- INIT
 
@@ -48,7 +56,17 @@ type alias Model =
     , duckDbTableRefs : WebData Api.DuckDbTableRefsResponse
     , selectedTableRef : Maybe Api.TableRef
     , hoveredOnTableRef : Maybe Api.TableRef
+    , dragDrop : DragDrop.Model Int Position
+    , data : { count : Int, position : Position }
     }
+
+
+type alias DragId =
+    String
+
+
+type alias DropId =
+    String
 
 
 init : ( Model, Effect Msg )
@@ -59,6 +77,8 @@ init =
       , duckDbTableRefs = Loading -- Must also fetch table refs below
       , selectedTableRef = Nothing
       , hoveredOnTableRef = Nothing
+      , dragDrop = DragDrop.init
+      , data = { count = 1, position = Middle }
       }
     , Effect.fromCmd fetchDuckDbTableRefs
     )
@@ -80,11 +100,34 @@ type Msg
     | UserSelectedTableRef Api.TableRef
     | UserMouseEnteredTableRef Api.TableRef
     | UserMouseLeftTableRef
+    | DragDropMsg (DragDrop.Msg Int Position)
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        DragDropMsg msg_ ->
+            let
+                ( model_, result ) =
+                    DragDrop.update msg_ model.dragDrop
+            in
+            ( { model
+                | dragDrop = model_
+                , data =
+                    case result of
+                        Nothing ->
+                            model.data
+
+                        Just ( count, position, _ ) ->
+                            { count = count + 1, position = position }
+              }
+            , Effect.fromCmd
+                (DragDrop.getDragstartEvent msg_
+                    |> Maybe.map (.event >> dragStart)
+                    |> Maybe.withDefault Cmd.none
+                )
+            )
+
         FetchTableRefs ->
             ( { model | duckDbTableRefs = Loading }, Effect.fromCmd <| fetchDuckDbTableRefs )
 
@@ -339,7 +382,7 @@ viewQueryBuilderPanel model =
                     column
                         [ Border.width 1
                         , Border.color UI.palette.darkishGrey
-                        , spacing 2
+                        , spacing 15
                         , padding 5
                         ]
                         [ text colDesc.name
@@ -393,7 +436,78 @@ viewQueryBuilderPanel model =
 
 viewPlotPanel : Model -> Element Msg
 viewPlotPanel model =
-    el [] (text "Plot panel")
+    let
+        viewDragDropHtml : Model -> H.Html Msg
+        viewDragDropHtml model_ =
+            let
+                dropId =
+                    DragDrop.getDropId model_.dragDrop
+
+                position =
+                    DragDrop.getDroppablePosition model_.dragDrop
+            in
+            H.div []
+                [ viewDiv Up model_.data dropId position
+                , viewDiv Middle model_.data dropId position
+                , viewDiv Down model_.data dropId position
+                ]
+
+        isNothing maybe =
+            case maybe of
+                Just _ ->
+                    False
+
+                Nothing ->
+                    True
+
+        divStyle =
+            [ HA.style "border" "1px solid black"
+            , HA.style "padding" "50px"
+            , HA.style "text-align" "center"
+            ]
+
+        viewDiv position data dropId droppablePosition =
+            let
+                highlight =
+                    if dropId |> Maybe.map ((==) position) |> Maybe.withDefault False then
+                        case droppablePosition of
+                            Nothing ->
+                                []
+
+                            Just pos ->
+                                if pos.y < pos.height // 2 then
+                                    [ HA.style "background-color" "cyan" ]
+
+                                else
+                                    [ HA.style "background-color" "magenta" ]
+
+                    else
+                        []
+            in
+            H.div
+                (divStyle
+                    ++ highlight
+                    ++ (if data.position /= position then
+                            DragDrop.droppable DragDropMsg position
+
+                        else
+                            []
+                       )
+                )
+                (if data.position == position then
+                    [ H.img (HA.src "https://upload.wikimedia.org/wikipedia/commons/f/f3/Elm_logo.svg" :: HA.width 100 :: DragDrop.draggable DragDropMsg data.count) []
+                    , H.text (String.fromInt data.count)
+                    ]
+
+                 else
+                    []
+                )
+    in
+    el
+        [ width (px 800)
+        , height (px 800)
+        ]
+        (E.html (viewDragDropHtml model))
 
 
 viewTableRefs : Model -> Element Msg
