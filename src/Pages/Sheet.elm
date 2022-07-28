@@ -260,7 +260,7 @@ init =
             , fileUploadStatus = Idle_
             , nowish = Nothing
             , viewport = Nothing
-            , duckDbTableRefs = NotAsked
+            , duckDbTableRefs = Loading -- NB: this is coupled to fetchingDuckDbTable refs below
             , renderStatus = AwaitingDomInfo
             , selectedTableRef = Nothing
             , hoveredOnTableRef = Nothing
@@ -1216,7 +1216,7 @@ viewCatalogPanel model =
         viewTableRefs mdl =
             case mdl.duckDbTableRefs of
                 NotAsked ->
-                    text "Didn't request data yet"
+                    text " "
 
                 Loading ->
                     text "Fetching..."
