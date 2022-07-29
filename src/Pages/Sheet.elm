@@ -1304,15 +1304,11 @@ viewCatalogPanel model =
 
 textWithEllipsis : String -> Element Msg
 textWithEllipsis displayText =
+    -- Workaround, see link for info: https://github.com/mdgriffith/elm-ui/issues/112
     E.html
         (H.div
             [ HA.style "text-overflow" "ellipsis"
-
-            --, HA.style "white-space" "nowrap"
             , HA.style "overflow" "hidden"
-
-            --, HA.style "width" "100%"
-            --, HA.style "flex-basis" "auto"
             ]
             [ H.text displayText ]
         )
@@ -1320,8 +1316,7 @@ textWithEllipsis displayText =
 
 
 -- end region view utils
--- API
--- utils
+-- begin region misc utils
 
 
 send : Msg -> Cmd Msg
@@ -1337,7 +1332,8 @@ prompt_input_dom_id =
 
 
 
--- API - TODO: I'd like for these to be in it's own tested module
+-- end region misc utils
+-- begin region API
 
 
 fetchDuckDbTableRefs : Cmd Msg
@@ -1422,3 +1418,7 @@ queryDuckDb query allowFallback refs =
         , body = Http.jsonBody duckDbQueryEncoder
         , expect = Http.expectJson GotDuckDbResponse duckDbQueryResponseDecoder
         }
+
+
+
+-- end region API
