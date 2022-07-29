@@ -11,10 +11,10 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.Pops exposing (Params)
 import Page
+import Palette
 import Request
 import Shared
 import Time
-import UI
 import View exposing (View)
 
 
@@ -451,7 +451,7 @@ table model =
               , view =
                     \poly ->
                         el
-                            [ Border.color UI.palette.darkCharcoal
+                            [ Border.color Palette.darkCharcoal
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
@@ -462,7 +462,7 @@ table model =
               , view =
                     \poly ->
                         el
-                            [ Border.color UI.palette.darkCharcoal
+                            [ Border.color Palette.darkCharcoal
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
@@ -473,7 +473,7 @@ table model =
               , view =
                     \poly ->
                         el
-                            [ Border.color UI.palette.darkCharcoal
+                            [ Border.color Palette.darkCharcoal
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
@@ -484,7 +484,7 @@ table model =
               , view =
                     \poly ->
                         el
-                            [ Border.color UI.palette.darkCharcoal
+                            [ Border.color Palette.darkCharcoal
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
@@ -495,7 +495,7 @@ table model =
               , view =
                     \poly ->
                         el
-                            [ Border.color UI.palette.darkCharcoal
+                            [ Border.color Palette.darkCharcoal
                             , Border.width 1
                             , onClick <| ClickedInspectPolygon poly.id
                             ]
@@ -537,8 +537,8 @@ content model =
                 , alignRight
                 , Border.width 2
                 , Border.rounded 6
-                , Border.color UI.palette.blue
-                , Background.color UI.palette.lightBlue
+                , Border.color Palette.blue
+                , Background.color Palette.lightBlue
                 ]
                 { onPress = Just ToggleSimStatus
                 , label = text label
@@ -550,8 +550,8 @@ content model =
                 , alignRight
                 , Border.width 2
                 , Border.rounded 6
-                , Border.color UI.palette.blue
-                , Background.color UI.palette.lightBlue
+                , Border.color Palette.blue
+                , Background.color Palette.lightBlue
                 ]
                 { onPress = Just ResetSimulation
                 , label = text "Reset."
@@ -566,9 +566,9 @@ content model =
             , playPauseButton
             ]
         , el
-            [ Background.color UI.palette.white
+            [ Background.color Palette.white
             , Border.width 2
-            , Border.color UI.palette.lightGrey
+            , Border.color Palette.lightGrey
             ]
           <|
             table model
@@ -581,7 +581,7 @@ elements model =
     E.column
         [ E.width E.fill
         , E.height E.fill
-        , Background.color UI.palette.lightGrey
+        , Background.color Palette.lightGrey
         , Font.size 12
         ]
         [ content model

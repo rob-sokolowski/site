@@ -8,7 +8,7 @@ import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Html
-import UI
+import Palette
 import View exposing (View)
 
 
@@ -35,7 +35,7 @@ elements =
         , centerX
         , Border.width 1
         , Border.rounded 5
-        , Border.color UI.palette.darkishGrey
+        , Border.color Palette.darkishGrey
         ]
         [ el [ Font.size 20 ] <| text "Hello world, welcome to my website."
         , text " "

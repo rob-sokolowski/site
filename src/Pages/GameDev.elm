@@ -13,6 +13,7 @@ import Gen.Params.GameDev exposing (Params)
 import Html exposing (Html)
 import Json.Decode as Decode
 import Page
+import Palette
 import Request
 import Set
 import Shared
@@ -23,7 +24,6 @@ import TypedSvg as S exposing (..)
 import TypedSvg.Attributes as SA exposing (cx, cy, fill, height, r, rx, ry, stroke, strokeWidth, viewBox, width, x, y)
 import TypedSvg.Core as SC exposing (Svg)
 import TypedSvg.Types as ST exposing (Paint(..), px)
-import UI
 import View exposing (View)
 
 
@@ -239,7 +239,7 @@ borderedRow =
         , Font.size 16
         , Border.width 2
         , Border.rounded 6
-        , Border.color UI.palette.blue
+        , Border.color Palette.blue
         ]
 
 
@@ -303,9 +303,9 @@ content model =
         , E.height <| E.px viewPortHeight
         , centerX
         , centerY
-        , Background.color UI.palette.white
+        , Background.color Palette.white
         , Border.width 5
-        , Border.color UI.palette.lightBlue
+        , Border.color Palette.lightBlue
         , Border.rounded 3
         ]
         [ E.text <| "Use the arrow keys to move around"
@@ -321,9 +321,9 @@ elements model =
             row
                 [ E.width E.fill
                 , padding 5
-                , Background.color UI.palette.lightGrey
+                , Background.color Palette.lightGrey
                 , Border.widthEach { top = 1, bottom = 0, left = 0, right = 0 }
-                , Border.color UI.palette.lightGrey
+                , Border.color Palette.lightGrey
                 ]
                 [ row
                     [ alignLeft
@@ -337,7 +337,7 @@ elements model =
     E.column
         [ E.width E.fill
         , E.height E.fill
-        , Background.color UI.palette.darkCharcoal
+        , Background.color Palette.darkCharcoal
         , Font.size 12
         ]
     <|

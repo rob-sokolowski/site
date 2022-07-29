@@ -23,6 +23,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import List.Extra as LE
 import Page
+import Palette
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
@@ -31,7 +32,6 @@ import SheetModel exposing (Cell, CellCoords, CellElement(..), ColumnLabel, RawP
 import String exposing (fromInt)
 import Task
 import Time exposing (Posix)
-import UI
 import View exposing (View)
 
 
@@ -141,7 +141,7 @@ type Msg
     | ManualDom__AttemptFocus String
     | ManualDom__FocusResult (Result Browser.Dom.Error ())
     | EnterTimelineViewerMode
-    | EnterSheetEditorMode -- TODO: Just toggle UI mode?
+    | EnterSheetEditorMode -- TODO: Just toggle Palette mode?
     | QueryDuckDb String
     | UserSqlTextChanged String
       -- API response stuff:
@@ -664,7 +664,7 @@ view model =
                     E.column
                         [ E.width E.fill
                         , E.height E.fill
-                        , Background.color UI.palette.white
+                        , Background.color Palette.white
                         , Font.size 12
                         , padding 5
                         ]
@@ -709,7 +709,7 @@ view model =
                 [ width (E.fill |> maximum w)
                 , height (E.fill |> maximum h)
                 , Border.width 1
-                , Border.color UI.palette.black
+                , Border.color Palette.black
                 , padding 5
                 , spacing 5
                 ]
@@ -722,7 +722,7 @@ view model =
                         [ width <| E.fillPortion 8
                         , height <| E.fill
                         , Border.width 2
-                        , Border.color UI.palette.blue
+                        , Border.color Palette.blue
                         , clip
                         , scrollbars
                         ]
@@ -735,27 +735,27 @@ view model =
                             [ height E.fill
                             , width E.fill
                             , Border.width 1
-                            , Border.color UI.palette.lightGrey
+                            , Border.color Palette.lightGrey
                             ]
                             [ el
                                 [ width E.fill
                                 , height <| E.fillPortion 4
                                 , Border.width 1
-                                , Border.color UI.palette.lightGrey
+                                , Border.color Palette.lightGrey
                                 ]
                                 (viewCatalogPanel model)
                             , el
                                 [ width E.fill
                                 , height <| E.fillPortion 4
                                 , Border.width 1
-                                , Border.color UI.palette.lightGrey
+                                , Border.color Palette.lightGrey
                                 ]
                                 (viewSqlInputPanel model)
                             , el
                                 [ width E.fill
                                 , height <| E.fillPortion 2
                                 , Border.width 1
-                                , Border.color UI.palette.lightGrey
+                                , Border.color Palette.lightGrey
                                 ]
                                 (viewDebugPanel model)
                             ]
@@ -851,10 +851,10 @@ viewDataInspectPanel model =
                                 borderColor =
                                     case shouldHighlightCell of
                                         False ->
-                                            UI.palette.lightGrey
+                                            Palette.lightGrey
 
                                         True ->
-                                            UI.palette.lightBlue
+                                            Palette.lightBlue
                             in
                             [ Border.color borderColor
                             , Border.width borderWidth
@@ -960,13 +960,13 @@ viewSqlInputPanel model =
         viewDuckDbButton : Element Msg
         viewDuckDbButton =
             Input.button
-                [ Border.color UI.palette.black
+                [ Border.color Palette.black
                 , Border.width 1
                 , Border.rounded 4
                 , padding 4
                 , alignTop
                 , alignRight
-                , Background.color UI.palette.lightGrey
+                , Background.color Palette.lightGrey
                 ]
                 { onPress = Just <| QueryDuckDb model.userSqlText
                 , label = text "Query DuckDB"
@@ -1002,9 +1002,9 @@ viewSqlInputPanel model =
             let
                 errAttrs =
                     el
-                        [ Background.color UI.palette.lightGrey
+                        [ Background.color Palette.lightGrey
                         , Border.width 2
-                        , Border.color UI.palette.darkishGrey
+                        , Border.color Palette.darkishGrey
                         ]
             in
             case model.duckDbResponse of
@@ -1043,12 +1043,12 @@ viewTimelinePanel model =
     case model.uiMode of
         SheetEditor ->
             Input.button
-                [ Border.color UI.palette.black
+                [ Border.color Palette.black
                 , Border.width 1
                 , Border.rounded 4
                 , padding 4
                 , alignTop
-                , Background.color UI.palette.lightGrey
+                , Background.color Palette.lightGrey
                 ]
                 { onPress = Just <| EnterTimelineViewerMode
                 , label = text "Enter Timeline Mode"
@@ -1079,67 +1079,67 @@ viewTimelinePanel model =
                     , spacing 5
                     ]
                     [ Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| EnterSheetEditorMode
                         , label = text "Back to Edit Mode"
                         }
                     , Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| JumpToFirstFrame
                         , label = text "<|-"
                         }
                     , Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| JumpToFrame previousFrame
                         , label = text "<"
                         }
                     , Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| TogglePauseResume
                         , label = text "||"
                         }
                     , Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| JumpToFrame nextFrame
                         , label = text ">"
                         }
                     , Input.button
-                        [ Border.color UI.palette.black
+                        [ Border.color Palette.black
                         , Border.width 1
                         , Border.rounded 4
                         , padding 4
                         , alignTop
-                        , Background.color UI.palette.lightGrey
+                        , Background.color Palette.lightGrey
                         ]
                         { onPress = Just <| JumpToLastFrame
                         , label = text "-|>"
@@ -1229,26 +1229,26 @@ viewCatalogPanel model =
                                 backgroundColorFor ref =
                                     case model.hoveredOnTableRef of
                                         Nothing ->
-                                            UI.palette.white
+                                            Palette.white
 
                                         Just ref_ ->
                                             if ref == ref_ then
-                                                UI.palette.lightGrey
+                                                Palette.lightGrey
 
                                             else
-                                                UI.palette.white
+                                                Palette.white
 
                                 borderColorFor ref =
                                     case model.hoveredOnTableRef of
                                         Nothing ->
-                                            UI.palette.white
+                                            Palette.white
 
                                         Just ref_ ->
                                             if ref == ref_ then
-                                                UI.palette.darkishGrey
+                                                Palette.darkishGrey
 
                                             else
-                                                UI.palette.white
+                                                Palette.white
 
                                 borderFor ref =
                                     case model.hoveredOnTableRef of
@@ -1265,14 +1265,14 @@ viewCatalogPanel model =
                                 innerBlobColorFor ref =
                                     case model.hoveredOnTableRef of
                                         Nothing ->
-                                            UI.palette.white
+                                            Palette.white
 
                                         Just ref_ ->
                                             if ref == ref_ then
-                                                UI.palette.black
+                                                Palette.black
 
                                             else
-                                                UI.palette.white
+                                                Palette.white
 
                                 ui : Api.TableRef -> Element Msg
                                 ui ref =
@@ -1323,10 +1323,10 @@ viewCatalogPanel model =
                 [ alignBottom
                 , alignRight
                 , padding 5
-                , Border.color UI.palette.black
+                , Border.color Palette.black
                 , Border.width 1
                 , Border.rounded 3
-                , Background.color UI.palette.lightGrey
+                , Background.color Palette.lightGrey
                 ]
                 { onPress = Just FileUpload_UserClickedSelectFile
                 , label = text "Upload CSV File"

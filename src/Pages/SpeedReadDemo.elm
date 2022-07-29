@@ -10,10 +10,10 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.SpeedReadDemo exposing (Params)
 import Page
+import Palette
 import Request
 import Shared
 import Time
-import UI
 import View exposing (View)
 
 
@@ -214,7 +214,7 @@ elements model =
             column
                 [ width fill
                 , height <| px 150
-                , Border.color UI.palette.black
+                , Border.color Palette.black
                 , Border.width 1
                 , centerX
                 , alignBottom
@@ -237,7 +237,7 @@ elements model =
                             [ width fill
                             , height <| px 5
                             , centerY
-                            , Background.color UI.palette.darkishGrey
+                            , Background.color Palette.darkishGrey
                             , Border.rounded 6
                             ]
                             E.none
@@ -256,19 +256,19 @@ elements model =
                             , height <| px 60
                             , Border.width 2
                             , Border.rounded 6
-                            , Border.color UI.palette.darkCharcoal
-                            , Background.color UI.palette.white
+                            , Border.color Palette.darkCharcoal
+                            , Background.color Palette.white
                             ]
                     }
                 , Input.button
-                    [ Border.color UI.palette.lightGrey
+                    [ Border.color Palette.lightGrey
                     , Border.width 1
                     , Border.rounded 4
                     , alignRight
                     , width <| px 100
                     , padding 4
-                    , Background.color UI.palette.darkishGrey
-                    , Border.color UI.palette.darkCharcoal
+                    , Background.color Palette.darkishGrey
+                    , Border.color Palette.darkCharcoal
                     , moveUp 15
                     ]
                     { onPress = Just buttonCmd
@@ -303,8 +303,8 @@ elements model =
                 , width fill
                 , height fill
                 , Border.width 1
-                , Border.color UI.palette.black
-                , Background.color UI.palette.lightGrey
+                , Border.color Palette.black
+                , Background.color Palette.lightGrey
                 ]
             <|
                 (el [ centerX, centerY, Font.size 28 ] <| text message)
