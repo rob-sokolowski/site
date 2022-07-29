@@ -17,6 +17,7 @@ import Element.Input as Input
 import File exposing (File)
 import File.Select as Select
 import Gen.Params.Sheet exposing (Params)
+import Html as H
 import Html.Attributes as HA
 import Http exposing (Error(..))
 import Json.Decode as JD
@@ -777,45 +778,6 @@ view model =
 viewDataInspectPanel : Model -> Element Msg
 viewDataInspectPanel model =
     let
-        -- TODO: I might come back to this idea, but kepeing the Vega stuff on a separate route for now
-        --viewTabBar : Element Msg
-        --viewTabBar =
-        --    let
-        --        tabAttrs : DataInspectMode -> List (Attribute Msg)
-        --        tabAttrs tabId =
-        --            let
-        --                borderEach =
-        --                    if model.sheetMode == tabId then
-        --                        Border.widthEach
-        --                            { top = 1
-        --                            , left = 1
-        --                            , right = 1
-        --                            , bottom = 0
-        --                            }
-        --
-        --                    else
-        --                        Border.widthEach
-        --                            { top = 0
-        --                            , left = 0
-        --                            , right = 0
-        --                            , bottom = 1
-        --                            }
-        --            in
-        --            [ borderEach
-        --            , padding 2
-        --            , onClick <| UserChangedTabs tabId
-        --            ]
-        --    in
-        --    row
-        --        [ spacing 0
-        --        , paddingXY 10 2
-        --        , Font.size 16
-        --        ]
-        --        [ el (tabAttrs SpreadSheet)
-        --            (E.text "Sheet")
-        --        , el (tabAttrs QueryBuilder)
-        --            (E.text "Viz")
-        --        ]
         viewSheet : Element Msg
         viewSheet =
             let
@@ -864,10 +826,10 @@ viewDataInspectPanel model =
                             ]
 
                         cellContentAttrs : CellElement -> List (Attribute Msg)
-                        cellContentAttrs cd =
+                        cellContentAttrs ce =
                             let
                                 alignment =
-                                    case cd of
+                                    case ce of
                                         Empty ->
                                             centerX
 
@@ -887,8 +849,8 @@ viewDataInspectPanel model =
                             , paddingEach { top = 1, left = 0, right = 0, bottom = 1 }
                             ]
 
-                        viewCell : Maybe ( CellCoords, CellElement ) -> String -> RowIx -> PromptMode -> Element Msg
-                        viewCell selectedCoords cellValueAsStr rix_ promptMode =
+                        viewCell : Maybe ( CellCoords, CellElement ) -> CellElement -> String -> RowIx -> PromptMode -> Element Msg
+                        viewCell selectedCoords ce cellValueAsStr rix_ promptMode =
                             let
                                 isTargetCell : Bool
                                 isTargetCell =
@@ -918,23 +880,18 @@ viewDataInspectPanel model =
                                                 }
 
                                 False ->
-                                    E.text cellValueAsStr
+                                    el (cellContentAttrs ce ++ [ width fill ]) (textWithEllipsis cellValueAsStr)
                     in
                     E.table
                         [ padding 0 ]
                         { data = A.toList column
                         , columns =
-                            [ { header = E.text <| "[" ++ lbl ++ "]"
+                            [ { header = textWithEllipsis <| "[" ++ lbl ++ "]"
                               , width = px 80
                               , view =
                                     \( ( rix, _ ), cellElement ) ->
-                                        el (cellAttrs rix)
-                                            (el (cellContentAttrs cellElement)
-                                                (E.column (cellContentAttrs cellElement)
-                                                    [ viewCell model.selectedCell (Tuple.first (cell2Str cellElement)) rix model.promptMode
-                                                    ]
-                                                )
-                                            )
+                                        E.el (cellAttrs rix)
+                                            (viewCell model.selectedCell cellElement (Tuple.first (cell2Str cellElement)) rix model.promptMode)
                               }
                             ]
                         }
@@ -1342,6 +1299,27 @@ viewCatalogPanel model =
 
 
 
+-- begin region view utils
+
+
+textWithEllipsis : String -> Element Msg
+textWithEllipsis displayText =
+    E.html
+        (H.div
+            [ HA.style "text-overflow" "ellipsis"
+
+            --, HA.style "white-space" "nowrap"
+            , HA.style "overflow" "hidden"
+
+            --, HA.style "width" "100%"
+            --, HA.style "flex-basis" "auto"
+            ]
+            [ H.text displayText ]
+        )
+
+
+
+-- end region view utils
 -- API
 -- utils
 

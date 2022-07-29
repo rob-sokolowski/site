@@ -36,7 +36,7 @@ red =
 
 
 
--- THEME
+-- THEME - inspired by Elm logo
 
 
 blue_light : Element.Color
