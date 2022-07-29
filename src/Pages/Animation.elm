@@ -102,7 +102,7 @@ hoverAnimation =
 
 
 
--- Elm UI Animated Helpers
+-- Elm Palette Animated Helpers
 
 
 animatedEl : Animation -> List (Attribute msg) -> Element msg -> Element msg

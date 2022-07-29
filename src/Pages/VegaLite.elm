@@ -18,11 +18,11 @@ import Http exposing (Error(..))
 import Json.Decode as JD
 import Json.Encode as JE
 import Page
+import Palette
 import PortDefs exposing (dragStart, elmToJS)
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
-import UI
 import Utils exposing (removeNothingsFromList)
 import VegaLite as VL
 import VegaUtils exposing (ColumnParamed, mapColToFloatCol, mapColToIntegerCol)
@@ -254,7 +254,7 @@ elements model =
         vegaLiteDiv =
             el
                 [ htmlAttribute <| HA.id "elm-ui-viz"
-                , Border.color UI.palette.lightGrey
+                , Border.color Palette.lightGrey
                 , Border.width 1
                 , width fill
                 , height fill
@@ -263,7 +263,7 @@ elements model =
     in
     row
         [ Border.width 1
-        , Border.color UI.palette.red
+        , Border.color Palette.red
         , width fill
         , height fill
         ]
@@ -271,7 +271,7 @@ elements model =
             [ height fill
             , width <| fillPortion 8
             , Border.width 1
-            , Border.color UI.palette.darkishGrey
+            , Border.color Palette.darkishGrey
             , padding 5
             , clipX
             , scrollbarX
@@ -280,14 +280,14 @@ elements model =
                 [ width fill
                 , height <| fillPortion 3
                 , Border.width 1
-                , Border.color UI.palette.darkishGrey
+                , Border.color Palette.darkishGrey
                 ]
                 (viewQueryBuilderPanel model)
             , el
                 [ width fill
                 , height <| fillPortion 7
                 , Border.width 1
-                , Border.color UI.palette.darkishGrey
+                , Border.color Palette.darkishGrey
                 ]
                 (viewPlotPanel model)
             ]
@@ -295,7 +295,7 @@ elements model =
             [ height fill
             , width <| fillPortion 2
             , Border.width 1
-            , Border.color UI.palette.darkishGrey
+            , Border.color Palette.darkishGrey
             , padding 5
             ]
             (viewTableRefs model)
@@ -377,13 +377,14 @@ viewQueryBuilderPanel model =
                 errorCols cols =
                     List.filter (\c -> mapToKimball c == Error) cols
 
-                viewColDescTab : Api.ColumnDescription -> Element Msg
-                viewColDescTab colDesc =
+                viewColDescTab : Api.ColumnDescription -> E.Color -> Element Msg
+                viewColDescTab colDesc color =
                     column
                         [ Border.width 1
-                        , Border.color UI.palette.darkishGrey
+                        , Border.color Palette.darkishGrey
                         , spacing 15
                         , padding 5
+                        , Background.color color
                         ]
                         [ text colDesc.name
                         , text colDesc.type_
@@ -396,37 +397,37 @@ viewQueryBuilderPanel model =
                     [ alignTop
                     , width fill
                     , Border.width 1
-                    , Border.color UI.palette.black
+                    , Border.color Palette.black
                     ]
                     [ text "Dimensions:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (dimCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.blue_light) (dimCols data.colDescs)
                     ]
                 , column
                     [ alignTop
                     , width fill
                     , Border.width 1
-                    , Border.color UI.palette.black
+                    , Border.color Palette.black
                     ]
                     [ text "Time:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (timeCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.yellow_mustard) (timeCols data.colDescs)
                     ]
                 , column
                     [ alignTop
                     , width fill
                     , Border.width 1
-                    , Border.color UI.palette.black
+                    , Border.color Palette.black
                     ]
                     [ text "Measures:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (measureCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.green_keylime) (measureCols data.colDescs)
                     ]
                 , column
                     [ alignTop
                     , width fill
                     , Border.width 1
-                    , Border.color UI.palette.black
+                    , Border.color Palette.black
                     ]
                     [ text "Errors:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (errorCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.orange_error_alert) (errorCols data.colDescs)
                     ]
                 ]
 
@@ -462,7 +463,7 @@ viewPlotPanel model =
             el
                 ([ width fill
                  , height fill
-                 , Border.color UI.palette.darkCharcoal
+                 , Border.color Palette.darkCharcoal
                  , Border.width 5
                  ]
                     ++ droppableAttrs
@@ -493,7 +494,7 @@ viewPlotPanel model =
     el
         [ width (px 800)
         , height (px 800)
-        , Border.color UI.palette.red
+        , Border.color Palette.red
         , Border.width 1
         ]
         (viewDragDropElements model)
@@ -516,26 +517,26 @@ viewTableRefs model =
                         backgroundColorFor ref =
                             case model.hoveredOnTableRef of
                                 Nothing ->
-                                    UI.palette.white
+                                    Palette.white
 
                                 Just ref_ ->
                                     if ref == ref_ then
-                                        UI.palette.lightGrey
+                                        Palette.lightGrey
 
                                     else
-                                        UI.palette.white
+                                        Palette.white
 
                         borderColorFor ref =
                             case model.hoveredOnTableRef of
                                 Nothing ->
-                                    UI.palette.white
+                                    Palette.white
 
                                 Just ref_ ->
                                     if ref == ref_ then
-                                        UI.palette.darkishGrey
+                                        Palette.darkishGrey
 
                                     else
-                                        UI.palette.white
+                                        Palette.white
 
                         borderFor ref =
                             case model.hoveredOnTableRef of
@@ -552,14 +553,14 @@ viewTableRefs model =
                         innerBlobColorFor ref =
                             case model.hoveredOnTableRef of
                                 Nothing ->
-                                    UI.palette.white
+                                    Palette.white
 
                                 Just ref_ ->
                                     if ref == ref_ then
-                                        UI.palette.black
+                                        Palette.black
 
                                     else
-                                        UI.palette.white
+                                        Palette.white
 
                         ui : Api.TableRef -> Element Msg
                         ui ref =
