@@ -437,77 +437,66 @@ viewQueryBuilderPanel model =
 viewPlotPanel : Model -> Element Msg
 viewPlotPanel model =
     let
-        viewDragDropHtml : Model -> H.Html Msg
-        viewDragDropHtml model_ =
-            let
-                dropId =
-                    DragDrop.getDropId model_.dragDrop
-
-                position =
-                    DragDrop.getDroppablePosition model_.dragDrop
-            in
-            H.div []
-                [ viewDiv Up model_.data dropId position
-                , viewDiv Middle model_.data dropId position
-                , viewDiv Down model_.data dropId position
+        viewDragDropElements : Model -> Element Msg
+        viewDragDropElements model_ =
+            column
+                [ width fill
+                , height fill
+                ]
+                [ viewDiv Up model_.data
+                , viewDiv Middle model_.data
+                , viewDiv Down model_.data
                 ]
 
-        isNothing maybe =
-            case maybe of
-                Just _ ->
-                    False
-
-                Nothing ->
-                    True
-
-        divStyle =
-            [ HA.style "border" "1px solid black"
-            , HA.style "padding" "50px"
-            , HA.style "text-align" "center"
-            ]
-
-        viewDiv position data dropId droppablePosition =
+        viewDiv : Position -> { count : Int, position : Position } -> Element Msg
+        viewDiv position data =
             let
-                highlight =
-                    if dropId |> Maybe.map ((==) position) |> Maybe.withDefault False then
-                        case droppablePosition of
-                            Nothing ->
-                                []
-
-                            Just pos ->
-                                if pos.y < pos.height // 2 then
-                                    [ HA.style "background-color" "cyan" ]
-
-                                else
-                                    [ HA.style "background-color" "magenta" ]
+                droppableAttrs : List (Attribute Msg)
+                droppableAttrs =
+                    if data.position /= position then
+                        List.map E.htmlAttribute (DragDrop.droppable DragDropMsg position)
 
                     else
                         []
             in
-            H.div
-                (divStyle
-                    ++ highlight
-                    ++ (if data.position /= position then
-                            DragDrop.droppable DragDropMsg position
-
-                        else
-                            []
-                       )
+            el
+                ([ width fill
+                 , height fill
+                 , Border.color UI.palette.darkCharcoal
+                 , Border.width 5
+                 ]
+                    ++ droppableAttrs
                 )
                 (if data.position == position then
-                    [ H.img (HA.src "https://upload.wikimedia.org/wikipedia/commons/f/f3/Elm_logo.svg" :: HA.width 100 :: DragDrop.draggable DragDropMsg data.count) []
-                    , H.text (String.fromInt data.count)
-                    ]
+                    column
+                        [ width fill
+                        , height fill
+                        ]
+                        [ image
+                            ([ width (px 200)
+                             , height (px 200)
+                             , centerX
+                             , centerY
+                             ]
+                                ++ List.map E.htmlAttribute (DragDrop.draggable DragDropMsg data.count)
+                            )
+                            { src = "https://upload.wikimedia.org/wikipedia/commons/f/f3/Elm_logo.svg"
+                            , description = "Elm logo (placeholder)"
+                            }
+                        , el [ centerX, centerY ] <| E.text (String.fromInt data.count)
+                        ]
 
                  else
-                    []
+                    E.none
                 )
     in
     el
         [ width (px 800)
         , height (px 800)
+        , Border.color UI.palette.red
+        , Border.width 1
         ]
-        (E.html (viewDragDropHtml model))
+        (viewDragDropElements model)
 
 
 viewTableRefs : Model -> Element Msg
@@ -617,29 +606,6 @@ viewTableRefs model =
 
 
 
---[ Input.button
---    [ Border.color UI.palette.black
---    , Border.width 1
---    , Border.rounded 4
---    , padding 4
---    , Background.color UI.palette.lightGrey
---    ]
---    { onPress = Just RenderPlot
---    , label = text "Render Plot"
---    }
---
---, Input.button
---    [ Border.color UI.palette.black
---    , Border.width 1
---    , Border.rounded 4
---    , padding 4
---    , Background.color UI.palette.lightGrey
---    ]
---    { onPress = Just <| FetchPlotData
---    , label = text "Fetch Plot Data"
---    }
---, vegaLiteDiv
---]
 -- end region view
 -- begin region vega-lite
 
