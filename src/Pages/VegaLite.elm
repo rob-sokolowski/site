@@ -270,26 +270,36 @@ elements model =
         [ column
             [ height fill
             , width <| fillPortion 8
-            , Border.width 1
-            , Border.color Palette.darkishGrey
             , padding 5
             , clipX
             , scrollbarX
             ]
             [ el
-                [ width fill
-                , height <| fillPortion 3
+                [ width <| fill
+                , height <| fillPortion 4
+                , clipY
+                , scrollbarY
                 , Border.width 1
                 , Border.color Palette.darkishGrey
                 ]
-                (viewQueryBuilderPanel model)
-            , el
-                [ width fill
-                , height <| fillPortion 7
-                , Border.width 1
-                , Border.color Palette.darkishGrey
+                (viewColumnPickerPanel model)
+            , row
+                [ height <| fillPortion 6
+                , width fill
+                , clipY
+                , scrollbarY
                 ]
-                (viewPlotPanel model)
+                [ el
+                    [ width <| fillPortion 5
+                    , height fill
+                    , Border.width 1
+                    , Border.color Palette.darkishGrey
+                    ]
+                    (el [ height fill, width <| fillPortion 5 ] (E.text "droppable zone"))
+
+                --(viewPlotPanel model)
+                , el [ height fill, width <| fillPortion 5 ] (E.text "QB output zone")
+                ]
             ]
         , el
             [ height fill
@@ -339,8 +349,8 @@ mapToKimball colDesc =
             Error
 
 
-viewQueryBuilderPanel : Model -> Element Msg
-viewQueryBuilderPanel model =
+viewColumnPickerPanel : Model -> Element Msg
+viewColumnPickerPanel model =
     case model.duckDbMetaResponse of
         NotAsked ->
             el [] (text "Select a table to plot from the right nav")
