@@ -377,13 +377,14 @@ viewQueryBuilderPanel model =
                 errorCols cols =
                     List.filter (\c -> mapToKimball c == Error) cols
 
-                viewColDescTab : Api.ColumnDescription -> Element Msg
-                viewColDescTab colDesc =
+                viewColDescTab : Api.ColumnDescription -> E.Color -> Element Msg
+                viewColDescTab colDesc color =
                     column
                         [ Border.width 1
                         , Border.color Palette.darkishGrey
                         , spacing 15
                         , padding 5
+                        , Background.color color
                         ]
                         [ text colDesc.name
                         , text colDesc.type_
@@ -399,7 +400,7 @@ viewQueryBuilderPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Dimensions:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (dimCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.blue_light) (dimCols data.colDescs)
                     ]
                 , column
                     [ alignTop
@@ -408,7 +409,7 @@ viewQueryBuilderPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Time:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (timeCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.yellow_mustard) (timeCols data.colDescs)
                     ]
                 , column
                     [ alignTop
@@ -417,7 +418,7 @@ viewQueryBuilderPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Measures:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (measureCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.green_keylime) (measureCols data.colDescs)
                     ]
                 , column
                     [ alignTop
@@ -426,7 +427,7 @@ viewQueryBuilderPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Errors:"
-                    , wrappedRow [] <| List.map (\col -> viewColDescTab col) (errorCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewColDescTab col Palette.orange_error_alert) (errorCols data.colDescs)
                     ]
                 ]
 
