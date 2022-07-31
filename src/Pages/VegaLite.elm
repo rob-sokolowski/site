@@ -20,6 +20,7 @@ import Json.Encode as JE
 import Page
 import Palette
 import PortDefs exposing (dragStart, elmToJS)
+import QueryBuilder exposing (Aggregation(..), KimballClassification(..))
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Shared
@@ -302,22 +303,7 @@ elements model =
         ]
 
 
-type KimballColumn
-    = Dimension
-    | Measure Aggregation
-    | Time
-    | Error
-
-
-type Aggregation
-    = Sum
-    | Mean
-    | Median
-    | Min
-    | Max
-
-
-mapToKimball : Api.ColumnDescription -> KimballColumn
+mapToKimball : Api.ColumnDescription -> KimballClassification
 mapToKimball colDesc =
     case colDesc.type_ of
         "VARCHAR" ->
