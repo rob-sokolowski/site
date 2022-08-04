@@ -32,8 +32,8 @@ page shared req =
 
 
 type alias Model =
-    { secretWord : String
-    , userGuesses : Array2D String
+    { secretWord : Array Char
+    , userGuesses : Array2D Char
     , currentGuessIndex : Int
     , currentGuess : Array Char
     , currentLetterIndex : Int
@@ -42,7 +42,7 @@ type alias Model =
 
 init : ( Model, Effect Msg )
 init =
-    ( { secretWord = "quart"
+    ( { secretWord = Array.fromList [ 'q', 'u', 'a', 'r', 't' ]
       , userGuesses = Array.empty
       , currentGuess = Array.empty
       , currentGuessIndex = 0
@@ -87,17 +87,19 @@ update msg model =
 
         UserSubmitsGuess ->
             let
-                currentGuess_ : String
-                currentGuess_ =
-                    List.foldl (\ch acc -> acc ++ String.fromChar ch) "" (Array.toList model.currentGuess)
-
-                updatedUserGuesses : Array String
+                updatedUserGuesses : Array2D Char
                 updatedUserGuesses =
-                    Array2D.fromListOfLists
-                        Array.fromList
-                    <|
-                        Array.toList model.userGuesses
-                            ++ [ currentGuess_ ]
+                    -- TODO: This logic needs testing, is there a good way to do that with elm-spa 'exposing' constraints?
+                    let
+                        lol : List (List Char)
+                        lol =
+                            Array2D.toListOfLists model.userGuesses
+
+                        lol_ : List (List Char)
+                        lol_ =
+                            lol ++ [ Array.toList model.currentGuess ]
+                    in
+                    Array2D.fromListOfLists lol_
             in
             ( { model
                 | currentGuessIndex = model.currentGuessIndex + 1
@@ -141,8 +143,6 @@ elements model =
         [ centerX
         , spacingXY 0 20
         , padding 15
-
-        --, width fill
         ]
         [ el [ centerX ]
             (paragraph

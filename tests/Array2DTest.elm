@@ -40,6 +40,13 @@ suite =
                         |> getCol 1
                         |> Expect.equal (A.fromList [ 91, 108 ])
                 )
+            , test "Array2D to a listOfLists, by transforming to Array2D and back to itself"
+                (\_ ->
+                    listOfList
+                        |> fromListOfLists
+                        |> toListOfLists
+                        |> Expect.equal listOfList
+                )
             ]
         ]
 
