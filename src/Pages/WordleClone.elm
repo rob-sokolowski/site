@@ -1,6 +1,7 @@
 module Pages.WordleClone exposing (Model, Msg, page)
 
 import Array exposing (Array)
+import Array2D exposing (Array2D)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -32,7 +33,7 @@ page shared req =
 
 type alias Model =
     { secretWord : String
-    , userGuesses : Array String
+    , userGuesses : Array2D String
     , currentGuessIndex : Int
     , currentGuess : Array Char
     , currentLetterIndex : Int
@@ -92,7 +93,11 @@ update msg model =
 
                 updatedUserGuesses : Array String
                 updatedUserGuesses =
-                    Array.fromList <| Array.toList model.userGuesses ++ [ currentGuess_ ]
+                    Array2D.fromListOfLists
+                        Array.fromList
+                    <|
+                        Array.toList model.userGuesses
+                            ++ [ currentGuess_ ]
             in
             ( { model
                 | currentGuessIndex = model.currentGuessIndex + 1
@@ -166,6 +171,16 @@ elements model =
                     text "Submit"
             }
         ]
+
+
+currentGuessAt : Model -> Int -> String
+currentGuessAt model ix =
+    case Array.get ix model.currentGuess of
+        Just ch ->
+            String.fromChar ch
+
+        Nothing ->
+            ""
 
 
 viewBoard : Model -> Element Msg
