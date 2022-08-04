@@ -1,5 +1,6 @@
 module Pages.WordleClone exposing (Model, Msg, page)
 
+import Array exposing (Array)
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -31,9 +32,9 @@ page shared req =
 
 type alias Model =
     { secretWord : String
-    , userGuesses : List String
+    , userGuesses : Array String
     , currentGuessIndex : Int
-    , currentGuess : String
+    , currentGuess : Array Char
     , currentLetterIndex : Int
     }
 
@@ -41,8 +42,8 @@ type alias Model =
 init : ( Model, Effect Msg )
 init =
     ( { secretWord = "quart"
-      , userGuesses = []
-      , currentGuess = ""
+      , userGuesses = Array.empty
+      , currentGuess = Array.empty
       , currentGuessIndex = 0
       , currentLetterIndex = 0
       }
@@ -63,19 +64,41 @@ update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         UserInputsLetter letter ->
+            let
+                letter_ : Char
+                letter_ =
+                    case String.uncons letter of
+                        Just ( ch, _ ) ->
+                            ch
+
+                        Nothing ->
+                            ' '
+
+                newCurrentGuess =
+                    Array.fromList <| Array.toList model.currentGuess ++ [ letter_ ]
+            in
             ( { model
                 | currentLetterIndex = model.currentLetterIndex + 1
-                , currentGuess = model.currentGuess ++ letter
+                , currentGuess = newCurrentGuess
               }
             , Effect.none
             )
 
         UserSubmitsGuess ->
+            let
+                currentGuess_ : String
+                currentGuess_ =
+                    List.foldl (\ch acc -> acc ++ String.fromChar ch) "" (Array.toList model.currentGuess)
+
+                updatedUserGuesses : Array String
+                updatedUserGuesses =
+                    Array.fromList <| Array.toList model.userGuesses ++ [ currentGuess_ ]
+            in
             ( { model
                 | currentGuessIndex = model.currentGuessIndex + 1
-                , currentGuess = ""
+                , currentGuess = Array.empty
                 , currentLetterIndex = 0
-                , userGuesses = model.userGuesses ++ [ model.currentGuess ]
+                , userGuesses = updatedUserGuesses
               }
             , Effect.none
             )
