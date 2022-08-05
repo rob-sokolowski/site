@@ -63,6 +63,7 @@ init =
 type Msg
     = UserSubmitsGuess
     | KeyWentDown String
+    | PressedKeyBox Char
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -96,6 +97,23 @@ update msg model =
 
                         Just ch ->
                             Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.userGuesses
+            in
+            ( { model
+                | userGuesses = newUserGuesses
+                , currentLetterIndex = nextLetterIndex
+              }
+            , Effect.none
+            )
+
+        PressedKeyBox char ->
+            let
+                newUserGuesses : Array2D Char
+                newUserGuesses =
+                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.userGuesses
+
+                nextLetterIndex : Int
+                nextLetterIndex =
+                    model.currentLetterIndex + 1
             in
             ( { model
                 | userGuesses = newUserGuesses
@@ -155,6 +173,7 @@ elements model =
                 [ text "Wordle!" ]
             )
         , viewBoard model
+        , viewKeyboard model
         , Input.button
             [ paddingXY 5 0
             , alignRight
@@ -174,6 +193,33 @@ elements model =
                 <|
                     text "Submit"
             }
+        ]
+
+
+viewKeyboard : Model -> Element Msg
+viewKeyboard model =
+    let
+        keyBoxAttrs : Char -> List (Attribute Msg)
+        keyBoxAttrs ch =
+            [ Border.width 1
+            , Border.color Palette.black
+            , width fill
+            , height fill
+            , onClick (PressedKeyBox ch)
+            ]
+
+        rowAttrs =
+            [ spaceEvenly, width fill, height fill, centerX, spacing 10 ]
+    in
+    column
+        [ width fill
+        , height (px 150)
+        , spaceEvenly
+        , spacing 10
+        ]
+        [ row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ])
+        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ])
+        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ])
         ]
 
 
@@ -213,7 +259,6 @@ viewBoard model =
                     else
                         Palette.darkishGrey
 
-                --if Array2D.getValueAt (rix, cix) model.userGuesses
                 cellAttrs =
                     [ Border.color borderColor
                     , Background.color backgroundColor
