@@ -1,4 +1,4 @@
-module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, rowCount, setValueAt)
+module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, rowCount, setValueAt, toListOfLists)
 
 -- Implements basic 2D array structure. I didn't consider performance at all, and all 2D arrays are assumed
 -- to be regular. Where "regular" means all rows have the same length and all cols have the same length
@@ -23,8 +23,12 @@ type alias ColIx =
 
 fromListOfLists : List (List e) -> Array2D e
 fromListOfLists lol =
-    A.fromList <|
-        List.map (\l -> A.fromList l) lol
+    A.fromList (List.map (\l -> A.fromList l) lol)
+
+
+toListOfLists : Array2D e -> List (List e)
+toListOfLists arr =
+    A.toList (A.map (\arr_ -> A.toList arr_) arr)
 
 
 getValueAt : ( RowIx, ColIx ) -> Array2D e -> Maybe e
