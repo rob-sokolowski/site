@@ -33,6 +33,7 @@ import SheetModel exposing (Cell, CellCoords, CellElement(..), ColumnLabel, RawP
 import String exposing (fromInt)
 import Task
 import Time exposing (Posix)
+import Utils exposing (keyDecoder)
 import View exposing (View)
 
 
@@ -638,11 +639,6 @@ subscriptions model =
         , Time.every 500 Tick
         , Events.onResize GotResizeEvent
         ]
-
-
-keyDecoder : JD.Decoder String
-keyDecoder =
-    JD.field "key" JD.string
 
 
 

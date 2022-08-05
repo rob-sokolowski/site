@@ -2,6 +2,7 @@ module Pages.WordleClone exposing (Model, Msg, page)
 
 import Array exposing (Array)
 import Array2D exposing (Array2D)
+import Browser.Events as Events
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -10,10 +11,12 @@ import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.WordleClone exposing (Params)
+import Json.Decode as JD
 import Page
 import Palette
 import Request
 import Shared
+import Utils exposing (keyDecoder)
 import View exposing (View)
 
 
@@ -35,16 +38,17 @@ type alias Model =
     { secretWord : Array Char
     , userGuesses : Array2D Char
     , currentGuessIndex : Int
-    , currentGuess : Array Char
     , currentLetterIndex : Int
     }
 
 
 init : ( Model, Effect Msg )
 init =
-    ( { secretWord = Array.fromList [ 'q', 'u', 'a', 'r', 't' ]
-      , userGuesses = Array.empty
-      , currentGuess = Array.empty
+    ( { secretWord = Array.fromList [ 'Q', 'U', 'A', 'R', 'T' ]
+
+      -- TODO: In order to have configurable word lengths and attempt counts, the array must be initialized
+      -- according to the desired configuration, and the view must also use that configuration!
+      , userGuesses = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
       , currentGuessIndex = 0
       , currentLetterIndex = 0
       }
@@ -57,55 +61,53 @@ init =
 
 
 type Msg
-    = UserInputsLetter String
-    | UserSubmitsGuess
+    = UserSubmitsGuess
+    | KeyWentDown String
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        UserInputsLetter letter ->
+        KeyWentDown key ->
             let
-                letter_ : Char
-                letter_ =
-                    case String.uncons letter of
-                        Just ( ch, _ ) ->
-                            ch
+                ( letter_, nextLetterIndex ) =
+                    if String.length key > 1 then
+                        -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
+                        ( Nothing, model.currentLetterIndex )
 
+                    else
+                        case String.uncons key of
+                            Just ( ch, _ ) ->
+                                case Char.isAlpha ch of
+                                    True ->
+                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
+
+                                    False ->
+                                        ( Nothing, model.currentLetterIndex )
+
+                            Nothing ->
+                                ( Nothing, model.currentLetterIndex )
+
+                newUserGuesses : Array2D Char
+                newUserGuesses =
+                    case letter_ of
                         Nothing ->
-                            ' '
+                            model.userGuesses
 
-                newCurrentGuess =
-                    Array.fromList <| Array.toList model.currentGuess ++ [ letter_ ]
+                        Just ch ->
+                            Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.userGuesses
             in
             ( { model
-                | currentLetterIndex = model.currentLetterIndex + 1
-                , currentGuess = newCurrentGuess
+                | userGuesses = newUserGuesses
+                , currentLetterIndex = nextLetterIndex
               }
             , Effect.none
             )
 
         UserSubmitsGuess ->
-            let
-                updatedUserGuesses : Array2D Char
-                updatedUserGuesses =
-                    -- TODO: This logic needs testing, is there a good way to do that with elm-spa 'exposing' constraints?
-                    let
-                        lol : List (List Char)
-                        lol =
-                            Array2D.toListOfLists model.userGuesses
-
-                        lol_ : List (List Char)
-                        lol_ =
-                            lol ++ [ Array.toList model.currentGuess ]
-                    in
-                    Array2D.fromListOfLists lol_
-            in
             ( { model
                 | currentGuessIndex = model.currentGuessIndex + 1
-                , currentGuess = Array.empty
                 , currentLetterIndex = 0
-                , userGuesses = updatedUserGuesses
               }
             , Effect.none
             )
@@ -116,8 +118,10 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions _ =
+    Sub.batch
+        [ Events.onKeyDown (JD.map KeyWentDown keyDecoder)
+        ]
 
 
 
@@ -173,16 +177,6 @@ elements model =
         ]
 
 
-currentGuessAt : Model -> Int -> String
-currentGuessAt model ix =
-    case Array.get ix model.currentGuess of
-        Just ch ->
-            String.fromChar ch
-
-        Nothing ->
-            ""
-
-
 viewBoard : Model -> Element Msg
 viewBoard model =
     let
@@ -202,32 +196,50 @@ viewBoard model =
                     else
                         Palette.lightGrey
 
+                targetChar : Maybe Char
+                targetChar =
+                    Array2D.getValueAt ( rix, cix ) model.userGuesses
+
+                backgroundColor =
+                    if rix >= model.currentGuessIndex then
+                        Palette.white
+
+                    else if targetChar == Array.get cix model.secretWord then
+                        Palette.green_keylime
+
+                    else if Array.length (Array.filter (\ch -> Just ch == targetChar) model.secretWord) > 0 then
+                        Palette.yellow_wordle
+
+                    else
+                        Palette.darkishGrey
+
+                --if Array2D.getValueAt (rix, cix) model.userGuesses
                 cellAttrs =
                     [ Border.color borderColor
+                    , Background.color backgroundColor
                     , Border.width 1
                     , height (px 75)
                     , width (px 75)
                     ]
 
-                inputElement =
-                    if rix == model.currentGuessIndex && cix == model.currentLetterIndex then
-                        Input.text [ width fill, height fill, Border.width 0 ]
-                            { text = ""
-                            , label = Input.labelLeft [] E.none
-                            , onChange = UserInputsLetter
-                            , placeholder = Nothing
-                            }
+                displayChar : Char
+                displayChar =
+                    case Array2D.getValueAt ( rix, cix ) model.userGuesses of
+                        Just v ->
+                            v
 
-                    else
-                        E.none
+                        Nothing ->
+                            ' '
             in
-            el cellAttrs inputElement
+            el cellAttrs (el [ centerX, centerY ] <| text (String.fromChar displayChar))
     in
     column
         [ width fill
         , height fill
         , centerX
         ]
+        -- TODO: In order to have configurable word lengths and attempt counts, the array must be initialized
+        -- according to the desired configuration, and the view must also use that configuration!
         (List.map
             (\rix ->
                 row rowAttrs
