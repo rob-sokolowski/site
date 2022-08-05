@@ -76,6 +76,13 @@ elements =
             ]
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
+                { url = "/wordle-clone"
+                , label = text "Wordle"
+                }
+            , text " (clone)"
+            ]
+        , row [ paddingXY 10 0 ]
+            [ link [ Font.color blue ]
                 { url = "/pops"
                 , label = text "Pops"
                 }
