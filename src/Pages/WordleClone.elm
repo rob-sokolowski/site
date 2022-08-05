@@ -148,7 +148,7 @@ subscriptions _ =
 
 view : Model -> View Msg
 view model =
-    { title = "Wordle Clone"
+    { title = "Wordle! (clone)"
     , body =
         [ layout
             [ E.width E.fill
@@ -168,7 +168,7 @@ elements model =
         ]
         [ el [ centerX ]
             (paragraph
-                [ Font.size 24
+                [ Font.size 18
                 ]
                 [ text "Wordle!" ]
             )
@@ -208,6 +208,7 @@ viewKeyboard model =
             , onClick (PressedKeyBox ch)
             ]
 
+        rowAttrs : List (Attribute Msg)
         rowAttrs =
             [ spaceEvenly, width fill, height fill, centerX, spacing 10 ]
     in
