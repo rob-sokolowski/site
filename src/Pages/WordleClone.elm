@@ -50,7 +50,7 @@ init =
 
       -- TODO: In order to have configurable word lengths and attempt counts, the array must be initialized
       -- according to the desired configuration, and the view must also use that configuration!
-      , charGrid = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
+      , charGrid = Array2D.fromListOfLists (List.repeat 6 (List.repeat 5 ' '))
       , currentGuessIndex = 0
       , currentLetterIndex = 0
       , userGuesses = Set.empty
@@ -72,6 +72,18 @@ type Msg
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
+    let
+        nextLetterIndex : Int
+        nextLetterIndex =
+            -- Helper function that returns what the next index would be, should we choose to increment it in the update function
+            -- this is to keep consistent behavior in various cases where we need to increment this index conditionally.
+            -- Examples are using touch vs keyboard for input
+            if model.currentLetterIndex >= 5 then
+                5
+
+            else
+                model.currentLetterIndex + 1
+    in
     case msg of
         PressedBackspace ->
             let
@@ -102,7 +114,7 @@ update msg model =
 
                         _ ->
                             let
-                                ( letter_, nextLetterIndex ) =
+                                ( letter_, nextLetterIndex_ ) =
                                     if String.length key > 1 then
                                         -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
                                         ( Nothing, model.currentLetterIndex )
@@ -112,7 +124,7 @@ update msg model =
                                             Just ( ch, _ ) ->
                                                 case Char.isAlpha ch of
                                                     True ->
-                                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
+                                                        ( Just <| Char.toUpper ch, nextLetterIndex )
 
                                                     False ->
                                                         ( Nothing, model.currentLetterIndex )
@@ -131,7 +143,7 @@ update msg model =
                             in
                             ( { model
                                 | charGrid = updatedCharGrid
-                                , currentLetterIndex = nextLetterIndex
+                                , currentLetterIndex = nextLetterIndex_
                               }
                             , Effect.none
                             )
@@ -143,10 +155,6 @@ update msg model =
                 updateCharGrid : Array2D Char
                 updateCharGrid =
                     Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.charGrid
-
-                nextLetterIndex : Int
-                nextLetterIndex =
-                    model.currentLetterIndex + 1
             in
             ( { model
                 | charGrid = updateCharGrid
@@ -271,9 +279,6 @@ viewKeyboard model =
                                 Nothing ->
                                     Nothing
 
-                --[ ( ix, _ ) :: _ :: _  ->
-                --    -- TODO: doesn't feel right, do I want Result?
-                --    Nothing
                 isCharCorrect : Bool
                 isCharCorrect =
                     case charsIndexOfSecret of
@@ -433,7 +438,7 @@ viewBoard model =
                         (List.range 0 4)
                     )
             )
-            (List.range 0 4)
+            (List.range 0 5)
         )
 
 
