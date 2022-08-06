@@ -403,11 +403,15 @@ viewBoard model =
                         Palette.darkishGrey
 
                 cellAttrs =
-                    [ Border.color borderColor
-                    , Background.color backgroundColor
+                    [ Background.color backgroundColor
+                    , Border.color borderColor
+
+                    --, Border.color Palette.red
                     , Border.width 1
                     , height (px 75)
                     , width (px 75)
+                    , centerX
+                    , centerY
                     ]
 
                 displayChar : Char
@@ -419,7 +423,8 @@ viewBoard model =
                         Nothing ->
                             ' '
             in
-            el cellAttrs (el [ centerX, centerY ] <| text (String.fromChar displayChar))
+            el cellAttrs
+                (el [ centerX, centerY ] (text (String.fromChar displayChar)))
     in
     column
         [ width fill
