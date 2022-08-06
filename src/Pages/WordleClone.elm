@@ -15,6 +15,7 @@ import Json.Decode as JD
 import Page
 import Palette
 import Request
+import Set exposing (Set)
 import Shared
 import Utils exposing (keyDecoder, send)
 import View exposing (View)
@@ -36,7 +37,8 @@ page shared req =
 
 type alias Model =
     { secretWord : Array Char
-    , userGuesses : Array2D Char
+    , charGrid : Array2D Char
+    , userGuesses : Set Char
     , currentGuessIndex : Int
     , currentLetterIndex : Int
     }
@@ -44,13 +46,14 @@ type alias Model =
 
 init : ( Model, Effect Msg )
 init =
-    ( { secretWord = Array.fromList [ 'Q', 'U', 'A', 'R', 'T' ]
+    ( { secretWord = Array.fromList [ 'A', 'S', 'S', 'E', 'T' ]
 
       -- TODO: In order to have configurable word lengths and attempt counts, the array must be initialized
       -- according to the desired configuration, and the view must also use that configuration!
-      , userGuesses = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
+      , charGrid = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
       , currentGuessIndex = 0
       , currentLetterIndex = 0
+      , userGuesses = Set.empty
       }
     , Effect.none
     )
@@ -76,72 +79,88 @@ update msg model =
                 nextCurrentIndex =
                     Maybe.withDefault 0 <| List.maximum [ 0, model.currentLetterIndex - 1 ]
 
-                nextUserGuesses : Array2D Char
-                nextUserGuesses =
-                    -- NB: we update the current index still attached to the model, not what the next value will be!
-                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ' ' model.userGuesses
+                updatedCharGrid : Array2D Char
+                updatedCharGrid =
+                    Array2D.setValueAt ( model.currentGuessIndex, nextCurrentIndex ) ' ' model.charGrid
             in
             ( { model
                 | currentLetterIndex = nextCurrentIndex
-                , userGuesses = nextUserGuesses
+                , charGrid = updatedCharGrid
               }
             , Effect.none
             )
 
         KeyWentDown key ->
             let
-                ( letter_, nextLetterIndex ) =
-                    if String.length key > 1 then
-                        -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
-                        ( Nothing, model.currentLetterIndex )
+                ( model_, effect_ ) =
+                    case key of
+                        "Backspace" ->
+                            ( model, Effect.fromCmd (send PressedBackspace) )
 
-                    else
-                        case String.uncons key of
-                            Just ( ch, _ ) ->
-                                case Char.isAlpha ch of
-                                    True ->
-                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
+                        "Enter" ->
+                            ( model, Effect.fromCmd (send UserSubmitsGuess) )
 
-                                    False ->
+                        _ ->
+                            let
+                                ( letter_, nextLetterIndex ) =
+                                    if String.length key > 1 then
+                                        -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
                                         ( Nothing, model.currentLetterIndex )
 
-                            Nothing ->
-                                ( Nothing, model.currentLetterIndex )
+                                    else
+                                        case String.uncons key of
+                                            Just ( ch, _ ) ->
+                                                case Char.isAlpha ch of
+                                                    True ->
+                                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
 
-                newUserGuesses : Array2D Char
-                newUserGuesses =
-                    case letter_ of
-                        Nothing ->
-                            model.userGuesses
+                                                    False ->
+                                                        ( Nothing, model.currentLetterIndex )
 
-                        Just ch ->
-                            Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.userGuesses
+                                            Nothing ->
+                                                ( Nothing, model.currentLetterIndex )
+
+                                updatedCharGrid : Array2D Char
+                                updatedCharGrid =
+                                    case letter_ of
+                                        Nothing ->
+                                            model.charGrid
+
+                                        Just ch ->
+                                            Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.charGrid
+                            in
+                            ( { model
+                                | charGrid = updatedCharGrid
+                                , currentLetterIndex = nextLetterIndex
+                              }
+                            , Effect.none
+                            )
             in
-            ( { model
-                | userGuesses = newUserGuesses
-                , currentLetterIndex = nextLetterIndex
-              }
-            , Effect.none
-            )
+            ( model_, effect_ )
 
         PressedKeyBox char ->
             let
-                newUserGuesses : Array2D Char
-                newUserGuesses =
-                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.userGuesses
+                updateCharGrid : Array2D Char
+                updateCharGrid =
+                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.charGrid
 
                 nextLetterIndex : Int
                 nextLetterIndex =
                     model.currentLetterIndex + 1
             in
             ( { model
-                | userGuesses = newUserGuesses
+                | charGrid = updateCharGrid
                 , currentLetterIndex = nextLetterIndex
               }
             , Effect.none
             )
 
         UserSubmitsGuess ->
+            let
+                updatedUserGuesses : Set Char
+                updatedUserGuesses =
+                    Array.foldl (\ch acc -> Set.insert ch acc) Set.empty (Array2D.flatten model.charGrid)
+            in
             case model.currentLetterIndex of
                 -- TODO: This will need to read configuration when I generalize the app
                 5 ->
@@ -149,6 +168,7 @@ update msg model =
                     ( { model
                         | currentGuessIndex = model.currentGuessIndex + 1
                         , currentLetterIndex = 0
+                        , userGuesses = updatedUserGuesses
                       }
                     , Effect.fromCmd (send UserSubmitsGuess)
                     )
@@ -200,25 +220,6 @@ elements model =
             )
         , viewBoard model
         , viewKeyboard model
-        , Input.button
-            [ paddingXY 5 0
-            , alignRight
-            , Border.rounded 5
-            , Border.color Palette.darkCharcoal
-            , Border.width 1
-            , moveLeft 5
-            , moveUp 5
-            ]
-            { onPress = Just UserSubmitsGuess
-            , label =
-                el
-                    [ alignRight
-                    , padding 5
-                    , Font.size 16
-                    ]
-                <|
-                    text "Submit"
-            }
         ]
 
 
@@ -226,24 +227,99 @@ viewKeyboard : Model -> Element Msg
 viewKeyboard model =
     let
         keyBackgroundColor : Char -> Color
-        keyBackgroundColor char =
-            if False then
-                Palette.green_keylime
-                -- TODO: if char has a correct guess somewhere
+        keyBackgroundColor ch =
+            let
+                mostRecentGuess : Array Char
+                mostRecentGuess =
+                    case model.currentGuessIndex of
+                        0 ->
+                            Array2D.getRow 0 model.charGrid
 
-            else if List.member char (Array.toList model.secretWord) then
+                        i ->
+                            Array2D.getRow (i - 1) model.charGrid
+
+                charsIndexOfSecret : Maybe Int
+                charsIndexOfSecret =
+                    let
+                        secretWord : List ( Int, Char )
+                        secretWord =
+                            List.indexedMap Tuple.pair (Array.toList model.secretWord)
+
+                        filtered =
+                            List.filter
+                                (\( _, ch_ ) ->
+                                    if ch_ == ch then
+                                        True
+
+                                    else
+                                        False
+                                )
+                                secretWord
+                    in
+                    case filtered of
+                        [] ->
+                            Nothing
+
+                        [ ( ix, _ ) ] ->
+                            Just ix
+
+                        items ->
+                            case List.head items of
+                                Just ( ix, _ ) ->
+                                    Just ix
+
+                                Nothing ->
+                                    Nothing
+
+                --[ ( ix, _ ) :: _ :: _  ->
+                --    -- TODO: doesn't feel right, do I want Result?
+                --    Nothing
+                isCharCorrect : Bool
+                isCharCorrect =
+                    case charsIndexOfSecret of
+                        Nothing ->
+                            False
+
+                        Just ix ->
+                            -- NB: Nothing == Nothing is truthy, so we avoid false positives with this nested case of
+                            case Array.get ix mostRecentGuess of
+                                Nothing ->
+                                    False
+
+                                Just lhs ->
+                                    case Array.get ix model.secretWord of
+                                        Nothing ->
+                                            False
+
+                                        Just rhs ->
+                                            lhs == rhs
+            in
+            -- TODO: This is something I'd like something like elm program test for.
+            --
+            -- NB: Ordering of this if block matters a lot. For example, if we don't first consider if this char
+            --     is in our past guesses, users can brute force their way the answer via the backspace button, since
+            --     every state change triggers a view paint!
+            if not (Set.member ch model.userGuesses) then
+                Palette.white
+
+            else if isCharCorrect then
+                Palette.green_keylime
+
+            else if Set.member ch model.userGuesses && Array.length (Array.filter (\e -> e == ch) model.secretWord) > 0 then
                 Palette.yellow_wordle
 
-            else if List.member char (Array.toList (Array.toList (Array2D.toListOfLists model.userGuesses))) then
-                Palette.darkishGrey
+            else if Set.member ch model.userGuesses then
+                Palette.lightGrey
 
             else
-                Palette.white
+                -- red indicates an error while developing, users shouldn't see this
+                Palette.red
 
         keyBoxAttrs : Char -> List (Attribute Msg)
         keyBoxAttrs ch =
             [ Border.width 1
             , Border.color Palette.black
+            , Background.color <| keyBackgroundColor ch
             , width fill
             , height fill
             , onClick (PressedKeyBox ch)
@@ -305,7 +381,7 @@ viewBoard model =
 
                 targetChar : Maybe Char
                 targetChar =
-                    Array2D.getValueAt ( rix, cix ) model.userGuesses
+                    Array2D.getValueAt ( rix, cix ) model.charGrid
 
                 backgroundColor =
                     if rix >= model.currentGuessIndex then
@@ -330,7 +406,7 @@ viewBoard model =
 
                 displayChar : Char
                 displayChar =
-                    case Array2D.getValueAt ( rix, cix ) model.userGuesses of
+                    case Array2D.getValueAt ( rix, cix ) model.charGrid of
                         Just v ->
                             v
 
