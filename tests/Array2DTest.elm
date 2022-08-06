@@ -47,6 +47,21 @@ suite =
                         |> toListOfLists
                         |> Expect.equal listOfList
                 )
+            , test "Is this element a member of our Array2d? False case"
+                (\_ ->
+                    listOfList
+                        |> fromListOfLists
+                        -- just a number unlikely to accidentally wind up in our Array2D
+                        |> member -172648256
+                        |> Expect.equal False
+                )
+            , test "Is this element a member of our Array2d? True case"
+                (\_ ->
+                    listOfList
+                        |> fromListOfLists
+                        |> member 109
+                        |> Expect.equal True
+                )
             ]
         ]
 

@@ -16,7 +16,7 @@ import Page
 import Palette
 import Request
 import Shared
-import Utils exposing (keyDecoder)
+import Utils exposing (keyDecoder, send)
 import View exposing (View)
 
 
@@ -64,11 +64,30 @@ type Msg
     = UserSubmitsGuess
     | KeyWentDown String
     | PressedKeyBox Char
+    | PressedBackspace
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        PressedBackspace ->
+            let
+                nextCurrentIndex : Int
+                nextCurrentIndex =
+                    Maybe.withDefault 0 <| List.maximum [ 0, model.currentLetterIndex - 1 ]
+
+                nextUserGuesses : Array2D Char
+                nextUserGuesses =
+                    -- NB: we update the current index still attached to the model, not what the next value will be!
+                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ' ' model.userGuesses
+            in
+            ( { model
+                | currentLetterIndex = nextCurrentIndex
+                , userGuesses = nextUserGuesses
+              }
+            , Effect.none
+            )
+
         KeyWentDown key ->
             let
                 ( letter_, nextLetterIndex ) =
@@ -123,12 +142,19 @@ update msg model =
             )
 
         UserSubmitsGuess ->
-            ( { model
-                | currentGuessIndex = model.currentGuessIndex + 1
-                , currentLetterIndex = 0
-              }
-            , Effect.none
-            )
+            case model.currentLetterIndex of
+                -- TODO: This will need to read configuration when I generalize the app
+                5 ->
+                    -- 5 is one-beyond, since we incremented "current" letter to arrive in this state
+                    ( { model
+                        | currentGuessIndex = model.currentGuessIndex + 1
+                        , currentLetterIndex = 0
+                      }
+                    , Effect.fromCmd (send UserSubmitsGuess)
+                    )
+
+                _ ->
+                    ( model, Effect.none )
 
 
 
@@ -199,6 +225,21 @@ elements model =
 viewKeyboard : Model -> Element Msg
 viewKeyboard model =
     let
+        keyBackgroundColor : Char -> Color
+        keyBackgroundColor char =
+            if False then
+                Palette.green_keylime
+                -- TODO: if char has a correct guess somewhere
+
+            else if List.member char (Array.toList model.secretWord) then
+                Palette.yellow_wordle
+
+            else if List.member char (Array.toList (Array.toList (Array2D.toListOfLists model.userGuesses))) then
+                Palette.darkishGrey
+
+            else
+                Palette.white
+
         keyBoxAttrs : Char -> List (Attribute Msg)
         keyBoxAttrs ch =
             [ Border.width 1
@@ -209,7 +250,13 @@ viewKeyboard model =
             ]
 
         rowAttrs =
-            [ spaceEvenly, width fill, height fill, centerX, spacing 10 ]
+            [ spaceEvenly
+            , width fill
+            , height fill
+            , centerX
+            , centerY
+            , spacing 10
+            ]
     in
     column
         [ width fill
@@ -219,7 +266,21 @@ viewKeyboard model =
         ]
         [ row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ])
         , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ])
-        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ])
+        , row rowAttrs
+            ([ el
+                [ Font.size 10
+                , Font.bold
+                , Border.width 1
+                , Border.color Palette.black
+                , height fill
+                , width fill
+                , onClick UserSubmitsGuess
+                ]
+                (text "ENTER")
+             ]
+                ++ List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ]
+                ++ [ el [ onClick PressedBackspace ] (text "<x|") ]
+            )
         ]
 
 

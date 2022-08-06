@@ -1,4 +1,4 @@
-module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, rowCount, setValueAt, toListOfLists)
+module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, member, rowCount, setValueAt, toListOfLists)
 
 -- Implements basic 2D array structure. I didn't consider performance at all, and all 2D arrays are assumed
 -- to be regular. Where "regular" means all rows have the same length and all cols have the same length
@@ -6,6 +6,7 @@ module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCo
 
 import Array as A
 import List as L
+import Set exposing (Set)
 import Utils exposing (removeNothingsFromList)
 
 
@@ -44,6 +45,23 @@ getValueAt ( rix, cix ) arr2d =
 
         Nothing ->
             Nothing
+
+
+sum : Array2D number -> number
+sum arr =
+    List.map (\ix -> getRow ix arr) (List.range 0 ((rowCount arr) - 1)
+
+
+member : comparable -> Array2D comparable -> Bool
+member mem arr =
+    let
+        members : Set comparable
+        members =
+            -- oy! inefficient!
+            Set.fromList <| A.toList <|
+
+    in
+    Set.member mem members
 
 
 setValueAt : ( RowIx, ColIx ) -> e -> Array2D e -> Array2D e

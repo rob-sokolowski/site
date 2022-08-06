@@ -33,7 +33,7 @@ import SheetModel exposing (Cell, CellCoords, CellElement(..), ColumnLabel, RawP
 import String exposing (fromInt)
 import Task
 import Time exposing (Posix)
-import Utils exposing (keyDecoder)
+import Utils exposing (keyDecoder, send)
 import View exposing (View)
 
 
@@ -1313,12 +1313,6 @@ textWithEllipsis displayText =
 
 -- end region view utils
 -- begin region misc utils
-
-
-send : Msg -> Cmd Msg
-send m =
-    Task.succeed m
-        |> Task.perform identity
 
 
 prompt_input_dom_id : String
