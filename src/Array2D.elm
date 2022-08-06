@@ -1,4 +1,4 @@
-module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCol, getRow, getValueAt, rowCount, setValueAt, toListOfLists)
+module Array2D exposing (Array2D, ColIx, RowIx, colCount, flatten, fromListOfLists, getCol, getRow, getValueAt, member, rowCount, setValueAt, toListOfLists)
 
 -- Implements basic 2D array structure. I didn't consider performance at all, and all 2D arrays are assumed
 -- to be regular. Where "regular" means all rows have the same length and all cols have the same length
@@ -6,6 +6,7 @@ module Array2D exposing (Array2D, ColIx, RowIx, colCount, fromListOfLists, getCo
 
 import Array as A
 import List as L
+import Set exposing (Set)
 import Utils exposing (removeNothingsFromList)
 
 
@@ -44,6 +45,16 @@ getValueAt ( rix, cix ) arr2d =
 
         Nothing ->
             Nothing
+
+
+member : comparable -> Array2D comparable -> Bool
+member el arr =
+    let
+        members : Set comparable
+        members =
+            Set.fromList <| A.toList <| A.foldl (\row acc -> A.append row acc) A.empty arr
+    in
+    Set.member el members
 
 
 setValueAt : ( RowIx, ColIx ) -> e -> Array2D e -> Array2D e
@@ -94,3 +105,8 @@ colCount : Array2D e -> Int
 colCount arr2d =
     -- Assumes square array2d!
     A.length (getRow 0 arr2d)
+
+
+flatten : Array2D e -> A.Array e
+flatten arr2d =
+    A.foldr (\row acc -> A.append row acc) A.empty arr2d

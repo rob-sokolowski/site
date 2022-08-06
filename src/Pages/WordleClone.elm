@@ -15,8 +15,9 @@ import Json.Decode as JD
 import Page
 import Palette
 import Request
+import Set exposing (Set)
 import Shared
-import Utils exposing (keyDecoder)
+import Utils exposing (keyDecoder, send)
 import View exposing (View)
 
 
@@ -36,7 +37,8 @@ page shared req =
 
 type alias Model =
     { secretWord : Array Char
-    , userGuesses : Array2D Char
+    , charGrid : Array2D Char
+    , userGuesses : Set Char
     , currentGuessIndex : Int
     , currentLetterIndex : Int
     }
@@ -44,13 +46,14 @@ type alias Model =
 
 init : ( Model, Effect Msg )
 init =
-    ( { secretWord = Array.fromList [ 'Q', 'U', 'A', 'R', 'T' ]
+    ( { secretWord = Array.fromList [ 'A', 'S', 'S', 'E', 'T' ]
 
       -- TODO: In order to have configurable word lengths and attempt counts, the array must be initialized
       -- according to the desired configuration, and the view must also use that configuration!
-      , userGuesses = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
+      , charGrid = Array2D.fromListOfLists (List.repeat 5 (List.repeat 5 ' '))
       , currentGuessIndex = 0
       , currentLetterIndex = 0
+      , userGuesses = Set.empty
       }
     , Effect.none
     )
@@ -64,71 +67,114 @@ type Msg
     = UserSubmitsGuess
     | KeyWentDown String
     | PressedKeyBox Char
+    | PressedBackspace
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        KeyWentDown key ->
+        PressedBackspace ->
             let
-                ( letter_, nextLetterIndex ) =
-                    if String.length key > 1 then
-                        -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
-                        ( Nothing, model.currentLetterIndex )
+                nextCurrentIndex : Int
+                nextCurrentIndex =
+                    Maybe.withDefault 0 <| List.maximum [ 0, model.currentLetterIndex - 1 ]
 
-                    else
-                        case String.uncons key of
-                            Just ( ch, _ ) ->
-                                case Char.isAlpha ch of
-                                    True ->
-                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
-
-                                    False ->
-                                        ( Nothing, model.currentLetterIndex )
-
-                            Nothing ->
-                                ( Nothing, model.currentLetterIndex )
-
-                newUserGuesses : Array2D Char
-                newUserGuesses =
-                    case letter_ of
-                        Nothing ->
-                            model.userGuesses
-
-                        Just ch ->
-                            Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.userGuesses
+                updatedCharGrid : Array2D Char
+                updatedCharGrid =
+                    Array2D.setValueAt ( model.currentGuessIndex, nextCurrentIndex ) ' ' model.charGrid
             in
             ( { model
-                | userGuesses = newUserGuesses
-                , currentLetterIndex = nextLetterIndex
+                | currentLetterIndex = nextCurrentIndex
+                , charGrid = updatedCharGrid
               }
             , Effect.none
             )
 
+        KeyWentDown key ->
+            let
+                ( model_, effect_ ) =
+                    case key of
+                        "Backspace" ->
+                            ( model, Effect.fromCmd (send PressedBackspace) )
+
+                        "Enter" ->
+                            ( model, Effect.fromCmd (send UserSubmitsGuess) )
+
+                        _ ->
+                            let
+                                ( letter_, nextLetterIndex ) =
+                                    if String.length key > 1 then
+                                        -- Ignore keys whose length is greater than 1, this filters out things like "backspace" and "delete"
+                                        ( Nothing, model.currentLetterIndex )
+
+                                    else
+                                        case String.uncons key of
+                                            Just ( ch, _ ) ->
+                                                case Char.isAlpha ch of
+                                                    True ->
+                                                        ( Just <| Char.toUpper ch, model.currentLetterIndex + 1 )
+
+                                                    False ->
+                                                        ( Nothing, model.currentLetterIndex )
+
+                                            Nothing ->
+                                                ( Nothing, model.currentLetterIndex )
+
+                                updatedCharGrid : Array2D Char
+                                updatedCharGrid =
+                                    case letter_ of
+                                        Nothing ->
+                                            model.charGrid
+
+                                        Just ch ->
+                                            Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) ch model.charGrid
+                            in
+                            ( { model
+                                | charGrid = updatedCharGrid
+                                , currentLetterIndex = nextLetterIndex
+                              }
+                            , Effect.none
+                            )
+            in
+            ( model_, effect_ )
+
         PressedKeyBox char ->
             let
-                newUserGuesses : Array2D Char
-                newUserGuesses =
-                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.userGuesses
+                updateCharGrid : Array2D Char
+                updateCharGrid =
+                    Array2D.setValueAt ( model.currentGuessIndex, model.currentLetterIndex ) char model.charGrid
 
                 nextLetterIndex : Int
                 nextLetterIndex =
                     model.currentLetterIndex + 1
             in
             ( { model
-                | userGuesses = newUserGuesses
+                | charGrid = updateCharGrid
                 , currentLetterIndex = nextLetterIndex
               }
             , Effect.none
             )
 
         UserSubmitsGuess ->
-            ( { model
-                | currentGuessIndex = model.currentGuessIndex + 1
-                , currentLetterIndex = 0
-              }
-            , Effect.none
-            )
+            let
+                updatedUserGuesses : Set Char
+                updatedUserGuesses =
+                    Array.foldl (\ch acc -> Set.insert ch acc) Set.empty (Array2D.flatten model.charGrid)
+            in
+            case model.currentLetterIndex of
+                -- TODO: This will need to read configuration when I generalize the app
+                5 ->
+                    -- 5 is one-beyond, since we incremented "current" letter to arrive in this state
+                    ( { model
+                        | currentGuessIndex = model.currentGuessIndex + 1
+                        , currentLetterIndex = 0
+                        , userGuesses = updatedUserGuesses
+                      }
+                    , Effect.fromCmd (send UserSubmitsGuess)
+                    )
+
+                _ ->
+                    ( model, Effect.none )
 
 
 
@@ -174,35 +220,106 @@ elements model =
             )
         , viewBoard model
         , viewKeyboard model
-        , Input.button
-            [ paddingXY 5 0
-            , alignRight
-            , Border.rounded 5
-            , Border.color Palette.darkCharcoal
-            , Border.width 1
-            , moveLeft 5
-            , moveUp 5
-            ]
-            { onPress = Just UserSubmitsGuess
-            , label =
-                el
-                    [ alignRight
-                    , padding 5
-                    , Font.size 16
-                    ]
-                <|
-                    text "Submit"
-            }
         ]
 
 
 viewKeyboard : Model -> Element Msg
 viewKeyboard model =
     let
+        keyBackgroundColor : Char -> Color
+        keyBackgroundColor ch =
+            let
+                mostRecentGuess : Array Char
+                mostRecentGuess =
+                    case model.currentGuessIndex of
+                        0 ->
+                            Array2D.getRow 0 model.charGrid
+
+                        i ->
+                            Array2D.getRow (i - 1) model.charGrid
+
+                charsIndexOfSecret : Maybe Int
+                charsIndexOfSecret =
+                    let
+                        secretWord : List ( Int, Char )
+                        secretWord =
+                            List.indexedMap Tuple.pair (Array.toList model.secretWord)
+
+                        filtered =
+                            List.filter
+                                (\( _, ch_ ) ->
+                                    if ch_ == ch then
+                                        True
+
+                                    else
+                                        False
+                                )
+                                secretWord
+                    in
+                    case filtered of
+                        [] ->
+                            Nothing
+
+                        [ ( ix, _ ) ] ->
+                            Just ix
+
+                        items ->
+                            case List.head items of
+                                Just ( ix, _ ) ->
+                                    Just ix
+
+                                Nothing ->
+                                    Nothing
+
+                --[ ( ix, _ ) :: _ :: _  ->
+                --    -- TODO: doesn't feel right, do I want Result?
+                --    Nothing
+                isCharCorrect : Bool
+                isCharCorrect =
+                    case charsIndexOfSecret of
+                        Nothing ->
+                            False
+
+                        Just ix ->
+                            -- NB: Nothing == Nothing is truthy, so we avoid false positives with this nested case of
+                            case Array.get ix mostRecentGuess of
+                                Nothing ->
+                                    False
+
+                                Just lhs ->
+                                    case Array.get ix model.secretWord of
+                                        Nothing ->
+                                            False
+
+                                        Just rhs ->
+                                            lhs == rhs
+            in
+            -- TODO: This is something I'd like something like elm program test for.
+            --
+            -- NB: Ordering of this if block matters a lot. For example, if we don't first consider if this char
+            --     is in our past guesses, users can brute force their way the answer via the backspace button, since
+            --     every state change triggers a view paint!
+            if not (Set.member ch model.userGuesses) then
+                Palette.white
+
+            else if isCharCorrect then
+                Palette.green_keylime
+
+            else if Set.member ch model.userGuesses && Array.length (Array.filter (\e -> e == ch) model.secretWord) > 0 then
+                Palette.yellow_wordle
+
+            else if Set.member ch model.userGuesses then
+                Palette.lightGrey
+
+            else
+                -- red indicates an error while developing, users shouldn't see this
+                Palette.red
+
         keyBoxAttrs : Char -> List (Attribute Msg)
         keyBoxAttrs ch =
             [ Border.width 1
             , Border.color Palette.black
+            , Background.color <| keyBackgroundColor ch
             , width fill
             , height fill
             , onClick (PressedKeyBox ch)
@@ -210,7 +327,13 @@ viewKeyboard model =
 
         rowAttrs : List (Attribute Msg)
         rowAttrs =
-            [ spaceEvenly, width fill, height fill, centerX, spacing 10 ]
+            [ spaceEvenly
+            , width fill
+            , height fill
+            , centerX
+            , centerY
+            , spacing 10
+            ]
     in
     column
         [ width fill
@@ -220,7 +343,21 @@ viewKeyboard model =
         ]
         [ row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ])
         , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ])
-        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ])
+        , row rowAttrs
+            ([ el
+                [ Font.size 10
+                , Font.bold
+                , Border.width 1
+                , Border.color Palette.black
+                , height fill
+                , width fill
+                , onClick UserSubmitsGuess
+                ]
+                (text "ENTER")
+             ]
+                ++ List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ]
+                ++ [ el [ onClick PressedBackspace ] (text "<x|") ]
+            )
         ]
 
 
@@ -245,7 +382,7 @@ viewBoard model =
 
                 targetChar : Maybe Char
                 targetChar =
-                    Array2D.getValueAt ( rix, cix ) model.userGuesses
+                    Array2D.getValueAt ( rix, cix ) model.charGrid
 
                 backgroundColor =
                     if rix >= model.currentGuessIndex then
@@ -270,7 +407,7 @@ viewBoard model =
 
                 displayChar : Char
                 displayChar =
-                    case Array2D.getValueAt ( rix, cix ) model.userGuesses of
+                    case Array2D.getValueAt ( rix, cix ) model.charGrid of
                         Just v ->
                             v
 
