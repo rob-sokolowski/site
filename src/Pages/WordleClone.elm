@@ -75,9 +75,9 @@ update msg model =
     let
         nextLetterIndex : Int
         nextLetterIndex =
-            -- helper function that returns what the next index would be, should we choose to increment it in the update function
-            -- this is to keep consistent behavior in various cases where we need to increment this letter conditionally
-            -- examples are using touch vs keyboard for input
+            -- Helper function that returns what the next index would be, should we choose to increment it in the update function
+            -- this is to keep consistent behavior in various cases where we need to increment this index conditionally.
+            -- Examples are using touch vs keyboard for input
             if model.currentLetterIndex >= 5 then
                 5
 
