@@ -55,12 +55,9 @@ suite =
                         |> member -172648256
                         |> Expect.equal False
                 )
-            , test "Is this element a member of our Array2d? True case"
+            , test "Is this element a member of our Array2d? True cases"
                 (\_ ->
-                    listOfList
-                        |> fromListOfLists
-                        |> member 109
-                        |> Expect.equal True
+                    Expect.all (List.map (\i -> Expect.equal (member i arr2d)) flattenedList) True
                 )
             ]
         ]
@@ -71,3 +68,17 @@ listOfList =
     [ [ 90, 91, 92 ]
     , [ 107, 108, 109 ]
     ]
+
+
+arr2d : Array2D number
+arr2d =
+    fromListOfLists listOfList
+
+
+flatten : List (List number) -> List number
+flatten lol =
+    List.foldl (\row acc -> row ++ acc) [] lol
+
+
+flattenedList =
+    flatten listOfList

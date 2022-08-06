@@ -47,21 +47,14 @@ getValueAt ( rix, cix ) arr2d =
             Nothing
 
 
-sum : Array2D number -> number
-sum arr =
-    List.map (\ix -> getRow ix arr) (List.range 0 ((rowCount arr) - 1)
-
-
 member : comparable -> Array2D comparable -> Bool
-member mem arr =
+member el arr =
     let
         members : Set comparable
         members =
-            -- oy! inefficient!
-            Set.fromList <| A.toList <|
-
+            Set.fromList <| A.toList <| A.foldl (\row acc -> A.append row acc) A.empty arr
     in
-    Set.member mem members
+    Set.member el members
 
 
 setValueAt : ( RowIx, ColIx ) -> e -> Array2D e -> Array2D e
