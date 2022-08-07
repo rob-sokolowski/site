@@ -2,6 +2,7 @@ module Pages.WordleClone exposing (Model, Msg, page)
 
 import Array exposing (Array)
 import Array2D exposing (Array2D)
+import Browser.Dom
 import Browser.Events as Events
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -35,12 +36,18 @@ page shared req =
 -- INIT
 
 
+type RenderStatus
+    = AwaitingViewportInfo
+    | Ready Browser.Dom.Viewport
+
+
 type alias Model =
     { secretWord : Array Char
     , charGrid : Array2D Char
     , userGuesses : Set Char
     , currentGuessIndex : Int
     , currentLetterIndex : Int
+    , renderStatus : RenderStatus
     }
 
 
@@ -54,6 +61,7 @@ init =
       , currentGuessIndex = 0
       , currentLetterIndex = 0
       , userGuesses = Set.empty
+      , renderStatus = AwaitingViewportInfo
       }
     , Effect.none
     )
@@ -215,17 +223,33 @@ view model =
 
 elements : Model -> Element Msg
 elements model =
+    let
+        viewTitleBar : Element Msg
+        viewTitleBar =
+            el
+                [ centerX
+                , width fill
+                , Border.widthEach { top = 0, right = 0, left = 0, bottom = 1 }
+                , Border.color Palette.lightGrey
+                , padding 15
+                ]
+                (el
+                    [ centerX
+                    , Font.size 20
+                    , Font.extraBold
+                    , moveUp 5
+                    ]
+                    (text "Wordle")
+                )
+    in
     column
         [ centerX
         , spacingXY 0 20
         , padding 15
+        , height fill
+        , width fill
         ]
-        [ el [ centerX ]
-            (paragraph
-                [ Font.size 18
-                ]
-                [ text "Wordle!" ]
-            )
+        [ viewTitleBar
         , viewBoard model
         , viewKeyboard model
         ]
@@ -305,7 +329,7 @@ viewKeyboard model =
             --     is in our past guesses, users can brute force their way the answer via the backspace button, since
             --     every state change triggers a view paint!
             if not (Set.member ch model.userGuesses) then
-                Palette.white
+                Palette.lightGrey
 
             else if isCharCorrect then
                 Palette.green_keylime
@@ -314,7 +338,7 @@ viewKeyboard model =
                 Palette.yellow_wordle
 
             else if Set.member ch model.userGuesses then
-                Palette.lightGrey
+                Palette.darkishGrey
 
             else
                 -- red indicates an error while developing, users shouldn't see this
@@ -325,43 +349,53 @@ viewKeyboard model =
             [ Border.width 1
             , Border.color Palette.black
             , Background.color <| keyBackgroundColor ch
-            , width fill
+            , width (px 30)
             , height fill
             , onClick (PressedKeyBox ch)
             ]
 
         rowAttrs : List (Attribute Msg)
         rowAttrs =
-            [ spaceEvenly
-            , width fill
-            , height fill
+            [ height fill
             , centerX
             , centerY
-            , spacing 10
+            , spacingXY 8 10
+            , Font.bold
+            , Font.size 16
             ]
     in
     column
         [ width fill
         , height (px 150)
-        , spaceEvenly
         , spacing 10
         ]
-        [ row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ])
-        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ])
+        [ row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (el [ centerX, centerY ] <| text <| String.fromChar l)) [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ])
+        , row rowAttrs (List.map (\l -> el (keyBoxAttrs l) (el [ centerX, centerY ] <| text <| String.fromChar l)) [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ])
         , row rowAttrs
+            -- NB: Enter and Backspace keys are supplied with their own, repetitive attrs, bc each has their own slight adjusments for the special characters
             ([ el
                 [ Font.size 10
                 , Font.bold
                 , Border.width 1
                 , Border.color Palette.black
                 , height fill
-                , width fill
+                , width (px 42)
                 , onClick UserSubmitsGuess
+                , Background.color Palette.lightGrey
                 ]
-                (text "ENTER")
+                (el [ centerX, centerY, moveUp 2 ] (text "ENTER"))
              ]
-                ++ List.map (\l -> el (keyBoxAttrs l) (text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ]
-                ++ [ el [ onClick PressedBackspace ] (text "<x|") ]
+                ++ List.map (\l -> el (keyBoxAttrs l) (el [ centerX, centerY ] <| text <| String.fromChar l)) [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ]
+                ++ [ el
+                        [ onClick PressedBackspace
+                        , Border.width 1
+                        , Border.color Palette.black
+                        , height fill
+                        , width (px 40)
+                        , Background.color Palette.lightGrey
+                        ]
+                        (el [ centerX, centerY, Font.size 18, moveUp 2 ] <| text "⌫")
+                   ]
             )
         ]
 
@@ -370,9 +404,11 @@ viewBoard : Model -> Element Msg
 viewBoard model =
     let
         rowAttrs =
-            [ Border.color Palette.lightGrey
+            [ Border.color Palette.darkCharcoal
             , Border.width 1
             , centerX
+            , height fill
+            , width fill
             ]
 
         viewCell : Int -> Int -> Element Msg
@@ -408,8 +444,8 @@ viewBoard model =
 
                     --, Border.color Palette.red
                     , Border.width 1
-                    , height (px 75)
-                    , width (px 75)
+                    , height fill
+                    , width fill
                     , centerX
                     , centerY
                     ]
@@ -427,7 +463,7 @@ viewBoard model =
                 (el [ centerX, centerY ] (text (String.fromChar displayChar)))
     in
     column
-        [ width fill
+        [ width (fill |> maximum 300)
         , height fill
         , centerX
         ]
