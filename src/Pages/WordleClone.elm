@@ -244,7 +244,7 @@ elements model =
     in
     column
         [ centerX
-        , padding 15
+        , padding 3
         , height fill
         , width fill
         , spacing 2
