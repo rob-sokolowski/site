@@ -244,13 +244,13 @@ elements model =
     in
     column
         [ centerX
-        , spacingXY 0 20
         , padding 15
         , height fill
         , width fill
+        , spacing 2
         ]
         [ viewTitleBar
-        , viewBoard model
+        , el [ height (fill |> maximum 500), centerX, centerY, width (fill |> maximum 300) ] (viewBoard model)
         , viewKeyboard model
         ]
 
