@@ -16,6 +16,22 @@ type KimballClassification
     | Error
 
 
+kimballClassificationToString : KimballClassification -> String
+kimballClassificationToString kc =
+    case kc of
+        Dimension ->
+            "dimension"
+
+        Measure _ ->
+            "measure"
+
+        Time ->
+            "time"
+
+        Error ->
+            "error"
+
+
 type Aggregation
     = Sum
     | Mean
