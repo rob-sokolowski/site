@@ -41,6 +41,7 @@ docker-compose up site
 You should be able to view the site in your browser at `localhost` (implicit port 80).
 If something is off you can run a `sh` shell (not `bash`, alpine is tiny!) by `docker exec`-ing into the running container
 
+This is also useful to test UIs on mobile. I wasn't able to get `elm-spa server` to serve on my local network, but building the above dev image works. Note this requires allowing inbound traffic (on local-network!) on port 80.
 
 ## Deployment
 
