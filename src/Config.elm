@@ -2,8 +2,11 @@ module Config exposing (apiHost)
 
 
 env =
-    --Production
-    LocalDev
+    Production
+
+
+
+--LocalDev
 
 
 type Env
