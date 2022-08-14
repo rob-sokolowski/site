@@ -1254,6 +1254,8 @@ viewCatalogPanel model =
                                 [ width E.fill
                                 , height E.fill
                                 , paddingXY 5 0
+                                , clip
+                                , scrollbarY
                                 ]
                             <|
                                 List.map (\ref -> ui ref) refs
@@ -1373,6 +1375,12 @@ queryDuckDb query allowFallback refs =
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Api.Int_ JD.int))))
 
+                        "BIGINT" ->
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Int_ JD.int))))
+
                         "BOOLEAN" ->
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
@@ -1386,6 +1394,13 @@ queryDuckDb query allowFallback refs =
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Api.Float_ JD.float))))
 
                         "DATE" ->
+                            -- TODO: Need to think about Elm date / time types
+                            JD.map3 Api.Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
+
+                        "TIMESTAMP" ->
                             -- TODO: Need to think about Elm date / time types
                             JD.map3 Api.Column
                                 (JD.field "name" JD.string)
