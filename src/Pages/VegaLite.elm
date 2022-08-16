@@ -1,6 +1,6 @@
 module Pages.VegaLite exposing (Model, Msg, page)
 
-import Api
+import Api exposing (queryDuckDb)
 import Array
 import Config exposing (apiHost)
 import Dict exposing (Dict)
@@ -99,7 +99,7 @@ type Msg
     | RenderPlot
     | FetchTableRefs
     | FetchMetaDataForRef Api.TableRef
-    | GotDuckDbForPlotResponse (Result Http.Error Api.DuckDbQueryResponse)
+    | GotDuckDbResponse (Result Http.Error Api.DuckDbQueryResponse)
     | GotDuckDbMetaResponse (Result Http.Error Api.DuckDbMetaResponse)
     | GotDuckDbTableRefsResponse (Result Http.Error Api.DuckDbTableRefsResponse)
     | UserSelectedTableRef Api.TableRef
@@ -196,9 +196,9 @@ order by 1
 limit 100
                 """
             in
-            ( model, Effect.fromCmd <| queryDuckDbForPlot queryStr True [ "elm_test_1657972702341" ] )
+            ( model, Effect.fromCmd <| queryDuckDb queryStr True [ "elm_test_1657972702341" ] GotDuckDbResponse )
 
-        GotDuckDbForPlotResponse response ->
+        GotDuckDbResponse response ->
             case response of
                 Ok data ->
                     ( { model
@@ -382,10 +382,16 @@ mapToKimball colDesc =
                 "DATE" ->
                     Time
 
+                "TIMESTAMP" ->
+                    Time
+
                 "BOOLEAN" ->
                     Dimension
 
                 "INTEGER" ->
+                    Measure Sum
+
+                "BIGINT" ->
                     Measure Sum
 
                 "DOUBLE" ->
@@ -480,19 +486,12 @@ viewColumnPickerPanel model =
                         (\c ->
                             case mapToKimball c of
                                 KimballColumn_ ( colRef, kc ) ->
-                                    if
-                                        List.member kc
-                                            [ Measure Sum
-                                            , Measure Mean
-                                            , Measure Median
-                                            , Measure Min
-                                            , Measure Max
-                                            ]
-                                    then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                                    case kc of
+                                        Measure _ ->
+                                            Just <| KimballColumn_ ( colRef, kc )
 
-                                    else
-                                        Nothing
+                                        _ ->
+                                            Nothing
                         )
                         cols
 
@@ -502,11 +501,12 @@ viewColumnPickerPanel model =
                         (\c ->
                             case mapToKimball c of
                                 KimballColumn_ ( colRef, kc ) ->
-                                    if kc == Error then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                                    case kc of
+                                        Error ->
+                                            Just <| KimballColumn_ ( colRef, kc )
 
-                                    else
-                                        Nothing
+                                        _ ->
+                                            Nothing
                         )
                         cols
             in
@@ -795,79 +795,7 @@ computeSpec model =
 
 
 -- end region vega-lite
--- begin region query building
--- end region query building
 -- begin region API
-
-
-queryDuckDbForPlot : String -> Bool -> List Api.TableRef -> Cmd Msg
-queryDuckDbForPlot query allowFallback refs =
-    let
-        duckDbQueryEncoder : JE.Value
-        duckDbQueryEncoder =
-            JE.object
-                [ ( "query_str", JE.string query )
-                , ( "allow_blob_fallback", JE.bool allowFallback )
-                , ( "fallback_table_refs", JE.list JE.string refs )
-                ]
-
-        duckDbQueryResponseDecoder : JD.Decoder Api.DuckDbQueryResponse
-        duckDbQueryResponseDecoder =
-            let
-                columnDecoderHelper : JD.Decoder Api.Column
-                columnDecoderHelper =
-                    JD.field "type" JD.string |> JD.andThen decoderByType
-
-                decoderByType : String -> JD.Decoder Api.Column
-                decoderByType type_ =
-                    case type_ of
-                        "VARCHAR" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
-
-                        "INTEGER" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Int_ JD.int))))
-
-                        "BOOLEAN" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Bool_ JD.bool))))
-
-                        "DOUBLE" ->
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Float_ JD.float))))
-
-                        "DATE" ->
-                            -- TODO: Need to think about Elm date / time types
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.field "values" (JD.list (JD.maybe (JD.map Api.Varchar_ JD.string))))
-
-                        _ ->
-                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
-                            -- Should this fail loudly?
-                            JD.map3 Api.Column
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-                                (JD.list (JD.maybe (JD.succeed Api.Unknown)))
-            in
-            JD.map Api.DuckDbQueryResponse
-                (JD.field "columns" (JD.list columnDecoderHelper))
-    in
-    Http.post
-        { url = apiHost ++ "/duckdb"
-        , body = Http.jsonBody duckDbQueryEncoder
-        , expect = Http.expectJson GotDuckDbForPlotResponse duckDbQueryResponseDecoder
-        }
 
 
 queryDuckDbMeta : String -> Bool -> List Api.TableRef -> Cmd Msg

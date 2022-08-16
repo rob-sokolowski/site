@@ -3,6 +3,7 @@ module SheetModel exposing (..)
 import Array as A
 import Array.Extra as AE
 import Array2D exposing (Array2D, ColIx, RowIx)
+import ISO8601 as Iso
 
 
 
@@ -12,6 +13,7 @@ import Array2D exposing (Array2D, ColIx, RowIx)
 type CellElement
     = Empty
     | String_ String
+    | Time_ Iso.Time
     | Float_ Float
     | Int_ Int
     | Bool_ Bool

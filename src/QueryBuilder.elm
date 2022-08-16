@@ -33,11 +33,14 @@ kimballClassificationToString kc =
 
 
 type Aggregation
-    = Sum
+    = Unspecified
+    | Sum
     | Mean
     | Median
     | Min
     | Max
+    | Count
+    | CountDistinct
 
 
 type alias SqlStr =

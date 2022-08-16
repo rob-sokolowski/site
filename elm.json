@@ -26,6 +26,7 @@
             "elm-community/typed-svg": "7.0.0",
             "gicentre/elm-vegalite": "5.0.0",
             "ianmackenzie/elm-3d-scene": "1.0.1",
+            "jweir/elm-iso8601": "7.0.1",
             "krisajenkins/remotedata": "6.0.1",
             "mdgriffith/elm-ui": "1.1.8",
             "norpan/elm-html5-drag-drop": "3.1.4",
@@ -34,6 +35,7 @@
         "indirect": {
             "elm/bytes": "1.0.8",
             "elm/random": "1.0.0",
+            "elm/regex": "1.0.0",
             "elm/virtual-dom": "1.0.2",
             "elm-explorations/linear-algebra": "1.0.3",
             "elm-explorations/webgl": "1.1.3",
