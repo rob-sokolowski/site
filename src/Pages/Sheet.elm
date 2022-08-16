@@ -20,6 +20,7 @@ import Gen.Params.Sheet exposing (Params)
 import Html as H
 import Html.Attributes as HA
 import Http exposing (Error(..))
+import ISO8601 as Iso
 import Json.Decode as JD
 import Json.Encode as JE
 import List.Extra as LE
@@ -194,6 +195,9 @@ cell2Str cd =
             else
                 ( s, "String" )
 
+        Time_ t ->
+            ( Iso.toString t, "Time" )
+
         Float_ f ->
             ( String.fromFloat f, "Float" )
 
@@ -306,6 +310,9 @@ mapColumnsToSheet cols =
 
                         Api.Int_ i ->
                             Int_ i
+
+                        Api.Time_ t ->
+                            Time_ t
 
                         Api.Bool_ b ->
                             Bool_ b
@@ -830,6 +837,9 @@ viewDataInspectPanel model =
                                             centerX
 
                                         String_ _ ->
+                                            alignLeft
+
+                                        Time_ _ ->
                                             alignLeft
 
                                         Bool_ _ ->

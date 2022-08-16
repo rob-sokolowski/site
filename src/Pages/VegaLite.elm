@@ -382,10 +382,16 @@ mapToKimball colDesc =
                 "DATE" ->
                     Time
 
+                "TIMESTAMP" ->
+                    Time
+
                 "BOOLEAN" ->
                     Dimension
 
                 "INTEGER" ->
+                    Measure Sum
+
+                "BIGINT" ->
                     Measure Sum
 
                 "DOUBLE" ->
