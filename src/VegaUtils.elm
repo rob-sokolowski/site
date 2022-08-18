@@ -30,7 +30,7 @@ mapColToStringCol col =
                         _ ->
                             []
             in
-            { name = col.name
+            { name = col.ref
             , vals = mapToStringList [] vals_
             }
 
@@ -60,7 +60,7 @@ mapColToFloatCol col =
                         _ ->
                             []
             in
-            { name = col.name
+            { name = col.ref
             , vals = mapToFloatList [] vals_
             }
 
@@ -90,7 +90,7 @@ mapColToIntegerCol col =
                         _ ->
                             []
             in
-            { name = col.name
+            { name = col.ref
             , vals = mapToIntList [] vals_
             }
 

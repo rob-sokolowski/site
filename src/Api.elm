@@ -5,19 +5,20 @@ import Http exposing (Error(..))
 import ISO8601 as Iso
 import Json.Decode as JD
 import Json.Encode as JE
+import QueryBuilder exposing (ColumnRef)
 import RemoteData exposing (RemoteData, asCmd)
 import Url exposing (fromString)
 
 
 type alias Column =
-    { name : String
+    { ref : ColumnRef
     , type_ : String
     , vals : List (Maybe Val)
     }
 
 
 type alias ColumnDescription =
-    { name : String
+    { ref : ColumnRef
     , type_ : String
     }
 

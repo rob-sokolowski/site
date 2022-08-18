@@ -21,7 +21,7 @@ import Json.Encode as JE
 import Page
 import Palette
 import PortDefs exposing (dragStart, elmToJS)
-import QueryBuilder exposing (Aggregation(..), ColumnRef, KimballClassification(..), KimballColumn(..), kimballClassificationToString, queryBuilder)
+import QueryBuilder exposing (Aggregation(..), ColumnRef, Granularity(..), KimballColumn(..), TimeClass(..), kimballClassificationToString, queryBuilder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
@@ -62,7 +62,7 @@ type alias Model =
     , dragDrop : DragDrop.Model Int Position
     , data : { count : Int, position : Position }
     , selectedColumns : Dict ColumnRef KimballColumn
-    , timeClasses : Dict ColumnRef TimeClass
+    , kimballCols : List KimballColumn
     }
 
 
@@ -85,7 +85,7 @@ init =
       , dragDrop = DragDrop.init
       , data = { count = 1, position = Middle }
       , selectedColumns = Dict.empty
-      , timeClasses = Dict.empty
+      , kimballCols = []
       }
     , Effect.fromCmd fetchDuckDbTableRefs
     )
@@ -119,7 +119,16 @@ update msg model =
                 key : ColumnRef
                 key =
                     case kc of
-                        KimballColumn_ ( colRef, _ ) ->
+                        Dimension colRef ->
+                            colRef
+
+                        Measure _ colRef ->
+                            colRef
+
+                        Time _ colRef ->
+                            colRef
+
+                        Error colRef ->
                             colRef
 
                 updatedSelectedCols : Dict ColumnRef KimballColumn
@@ -130,22 +139,8 @@ update msg model =
 
                         False ->
                             Dict.insert key kc model.selectedColumns
-
-                updatedTimeClassifications : Dict ColumnRef TimeClass
-                updatedTimeClassifications =
-                    case Dict.member key model.timeClasses of
-                        True ->
-                            model.timeClasses
-
-                        False ->
-                            Dict.insert key Continuous model.timeClasses
             in
-            ( { model
-                | selectedColumns = updatedSelectedCols
-                , timeClasses = updatedTimeClassifications
-              }
-            , Effect.none
-            )
+            ( { model | selectedColumns = updatedSelectedCols }, Effect.none )
 
         DragDropMsg msg_ ->
             let
@@ -191,8 +186,14 @@ update msg model =
         GotDuckDbMetaResponse response ->
             case response of
                 Ok data ->
+                    let
+                        kimballCols : List KimballColumn
+                        kimballCols =
+                            List.map (\cd -> mapToKimball cd) data.colDescs
+                    in
                     ( { model
                         | duckDbMetaResponse = Success data
+                        , kimballCols = kimballCols
                       }
                     , Effect.none
                     )
@@ -353,93 +354,67 @@ elements model =
         ]
 
 
-type Granularity
-    = Year
-    | Quarter
-    | Month
-    | Week
-    | Day
-    | Hour
-    | Minute
-
-
-type TimeClass
-    = Continuous
-    | Discrete Granularity
-
-
 viewDropZone : Model -> Element Msg
 viewDropZone model =
     let
         viewKimballColTab : KimballColumn -> Element Msg
         viewKimballColTab kCol =
             case kCol of
-                KimballColumn_ ( colRef, kClass ) ->
-                    case kClass of
-                        Dimension ->
-                            E.text <| kimballClassificationToString kClass
+                Dimension _ ->
+                    E.text <| kimballClassificationToString kCol
 
-                        Measure _ ->
-                            E.text <| kimballClassificationToString kClass
+                Measure _ _ ->
+                    E.text <| kimballClassificationToString kCol
 
-                        Time ->
-                            let
-                                timeClass : Maybe TimeClass
-                                timeClass =
-                                    Dict.get colRef model.timeClasses
+                Time tClass colRef ->
+                    let
+                        timeClassToStr : String
+                        timeClassToStr =
+                            case tClass of
+                                Continuous ->
+                                    "Continuous"
 
-                                timeClassToStr : Maybe TimeClass -> String
-                                timeClassToStr tClass_ =
-                                    case tClass_ of
-                                        Nothing ->
-                                            "ERROR"
+                                Discrete granularity ->
+                                    case granularity of
+                                        Year ->
+                                            "Discrete - Year"
 
-                                        Just tClass__ ->
-                                            case tClass__ of
-                                                Continuous ->
-                                                    "Continuous"
+                                        Quarter ->
+                                            "Discrete - Quarter"
 
-                                                Discrete granularity ->
-                                                    case granularity of
-                                                        Year ->
-                                                            "Discrete - Year"
+                                        Month ->
+                                            "Discrete - Month"
 
-                                                        Quarter ->
-                                                            "Discrete - Quarter"
+                                        Week ->
+                                            "Discrete - Week"
 
-                                                        Month ->
-                                                            "Discrete - Month"
+                                        Day ->
+                                            "Discrete - Day"
 
-                                                        Week ->
-                                                            "Discrete - Week"
+                                        Hour ->
+                                            "Discrete - Hour"
 
-                                                        Day ->
-                                                            "Discrete - Day"
+                                        Minute ->
+                                            "Discrete - Minute"
 
-                                                        Hour ->
-                                                            "Discrete - Hour"
+                        viewTimePanel : Element Msg
+                        viewTimePanel =
+                            column
+                                [ Background.color <| colorAssociatedWith kCol
+                                , width (px 200)
+                                , height (px 75)
+                                , spaceEvenly
+                                , padding 5
+                                ]
+                                [ E.text colRef
+                                , E.text <| kimballClassificationToString kCol
+                                , E.text <| timeClassToStr
+                                ]
+                    in
+                    viewTimePanel
 
-                                                        Minute ->
-                                                            "Discrete - Minute"
-
-                                viewTimePanel : Element Msg
-                                viewTimePanel =
-                                    column
-                                        [ Background.color <| colorAssociatedWith kCol
-                                        , width (px 200)
-                                        , height (px 75)
-                                        , spaceEvenly
-                                        , padding 5
-                                        ]
-                                        [ E.text colRef
-                                        , E.text <| kimballClassificationToString kClass
-                                        , E.text <| timeClassToStr timeClass
-                                        ]
-                            in
-                            viewTimePanel
-
-                        Error ->
-                            E.text <| kimballClassificationToString kClass
+                Error _ ->
+                    E.text <| kimballClassificationToString kCol
     in
     column []
         (Dict.values
@@ -473,53 +448,51 @@ viewQueryBuilderOutput model =
 
 mapToKimball : Api.ColumnDescription -> KimballColumn
 mapToKimball colDesc =
-    let
-        kc : KimballClassification
-        kc =
-            case colDesc.type_ of
-                "VARCHAR" ->
-                    Dimension
+    -- TODO: this function serves to be placeholder logic in lieu of persisting Kimball metadata
+    --       upon successful loading of a DuckDB Ref, columns will be mapped in a "best guess" manner
+    --       this longer term intent is for this to be a 'first pass', when persisted meta data does not exist
+    --       (which should be the case when a user is first using data!). Any user interventions should be
+    --       persisted server-side
+    case colDesc.type_ of
+        "VARCHAR" ->
+            Dimension colDesc.ref
 
-                "DATE" ->
-                    Time
+        "DATE" ->
+            Time (Discrete Day) colDesc.ref
 
-                "TIMESTAMP" ->
-                    Time
+        "TIMESTAMP" ->
+            Time Continuous colDesc.ref
 
-                "BOOLEAN" ->
-                    Dimension
+        "BOOLEAN" ->
+            Dimension colDesc.ref
 
-                "INTEGER" ->
-                    Measure Sum
+        "INTEGER" ->
+            Measure Sum colDesc.ref
 
-                "BIGINT" ->
-                    Measure Sum
+        "BIGINT" ->
+            Measure Sum colDesc.ref
 
-                "DOUBLE" ->
-                    Measure Sum
+        "DOUBLE" ->
+            Measure Sum colDesc.ref
 
-                _ ->
-                    Error
-    in
-    KimballColumn_ ( colDesc.name, kc )
+        _ ->
+            Error colDesc.ref
 
 
 colorAssociatedWith : KimballColumn -> E.Color
 colorAssociatedWith kc =
     case kc of
-        KimballColumn_ ( _, kc_ ) ->
-            case kc_ of
-                Dimension ->
-                    Palette.blue_light
+        Dimension _ ->
+            Palette.blue_light
 
-                Measure _ ->
-                    Palette.green_keylime
+        Measure _ _ ->
+            Palette.green_keylime
 
-                Time ->
-                    Palette.yellow_mustard
+        Time _ _ ->
+            Palette.yellow_mustard
 
-                Error ->
-                    Palette.orange_error_alert
+        Error _ ->
+            Palette.orange_error_alert
 
 
 viewColumnPickerPanel : Model -> Element Msg
@@ -533,71 +506,76 @@ viewColumnPickerPanel model =
 
         Success data ->
             let
-                dimCols : List Api.ColumnDescription -> List KimballColumn
+                dimCols : List KimballColumn -> List KimballColumn
                 dimCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    if kc == Dimension then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Dimension _ ->
+                                    True
 
-                                    else
-                                        Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                timeCols : List Api.ColumnDescription -> List KimballColumn
+                timeCols : List KimballColumn -> List KimballColumn
                 timeCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    if kc == Time then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Time _ _ ->
+                                    True
 
-                                    else
-                                        Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                measureCols : List Api.ColumnDescription -> List KimballColumn
+                measureCols : List KimballColumn -> List KimballColumn
                 measureCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    case kc of
-                                        Measure _ ->
-                                            Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Measure _ _ ->
+                                    True
 
-                                        _ ->
-                                            Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                errorCols : List Api.ColumnDescription -> List KimballColumn
+                errorCols : List KimballColumn -> List KimballColumn
                 errorCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    case kc of
-                                        Error ->
-                                            Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Error _ ->
+                                    True
 
-                                        _ ->
-                                            Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
                 viewKimballColTab : KimballColumn -> Element Msg
                 viewKimballColTab kc =
+                    -- TODO: leaving this logic here for now, but starting to think that this may belong in the update
+                    --       function, as a sort-of pre-computed field
                     let
                         ( nameText, typeText ) =
                             case kc of
-                                KimballColumn_ ( colRef, kc_ ) ->
-                                    ( colRef, kimballClassificationToString kc_ )
+                                Dimension colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Measure _ colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Time _ colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Error colRef ->
+                                    ( colRef, kimballClassificationToString kc )
                     in
                     column
                         [ Border.width 1
@@ -621,7 +599,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Dimensions:"
-                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (dimCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (dimCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -630,7 +608,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Time:"
-                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (timeCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (timeCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -639,7 +617,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Measures:"
-                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (measureCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (measureCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -648,7 +626,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Errors:"
-                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (errorCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (errorCols model.kimballCols)
                     ]
                 ]
 

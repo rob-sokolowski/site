@@ -332,7 +332,7 @@ mapColumnsToSheet cols =
             LE.transpose lolWrong
 
         colLabels =
-            List.map (\col -> col.name) cols
+            List.map (\col -> col.ref) cols
     in
     array2DToSheet (fromListOfLists lolTransposed) colLabels
 
