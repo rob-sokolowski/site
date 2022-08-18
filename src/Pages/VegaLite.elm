@@ -818,13 +818,13 @@ computeSpec model =
             let
                 data =
                     VL.dataFromColumns []
-                        << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
-                        << VL.dataColumn col2.name (VL.nums col2.vals)
+                        << VL.dataColumn col1.ref (VL.nums (List.map (\i -> toFloat i) col1.vals))
+                        << VL.dataColumn col2.ref (VL.nums col2.vals)
 
                 enc =
                     VL.encoding
-                        << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
-                        << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
+                        << VL.position VL.X [ VL.pName col1.ref, VL.pQuant ]
+                        << VL.position VL.Y [ VL.pName col2.ref, VL.pQuant ]
             in
             VL.toVegaLite
                 [ data []
@@ -852,7 +852,7 @@ computeSpec model =
                 col1 =
                     case Array.get 0 collArray of
                         Nothing ->
-                            { name = "error"
+                            { ref = "error"
                             , vals = []
                             }
 
@@ -862,7 +862,7 @@ computeSpec model =
                 col2 =
                     case Array.get 1 collArray of
                         Nothing ->
-                            { name = "error"
+                            { ref = "error"
                             , vals = []
                             }
 

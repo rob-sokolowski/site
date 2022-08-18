@@ -5,7 +5,7 @@ import Utils exposing (removeNothingsFromList)
 
 
 type alias ColumnParamed val =
-    { name : String
+    { ref : String
     , vals : List val
     }
 
@@ -30,12 +30,12 @@ mapColToStringCol col =
                         _ ->
                             []
             in
-            { name = col.ref
+            { ref = col.ref
             , vals = mapToStringList [] vals_
             }
 
         _ ->
-            { name = "ERROR - STRING MAP"
+            { ref = "ERROR - STRING MAP"
             , vals = []
             }
 
@@ -60,12 +60,12 @@ mapColToFloatCol col =
                         _ ->
                             []
             in
-            { name = col.ref
+            { ref = col.ref
             , vals = mapToFloatList [] vals_
             }
 
         _ ->
-            { name = "ERROR - FLOAT MAP"
+            { ref = "ERROR - FLOAT MAP"
             , vals = []
             }
 
@@ -90,11 +90,11 @@ mapColToIntegerCol col =
                         _ ->
                             []
             in
-            { name = col.ref
+            { ref = col.ref
             , vals = mapToIntList [] vals_
             }
 
         _ ->
-            { name = "ERROR - INT MAP"
+            { ref = "ERROR - INT MAP"
             , vals = []
             }
