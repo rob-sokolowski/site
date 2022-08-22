@@ -546,6 +546,9 @@ mapToKimball colDesc =
         "INTEGER" ->
             Measure Sum colDesc.ref
 
+        "HUGEINT" ->
+            Measure Sum colDesc.ref
+
         "BIGINT" ->
             Measure Sum colDesc.ref
 
@@ -973,19 +976,7 @@ queryDuckDbMeta query allowFallback refs =
                 decoderByType : String -> JD.Decoder Api.ColumnDescription
                 decoderByType type_ =
                     case type_ of
-                        "VARCHAR" ->
-                            JD.map2 Api.ColumnDescription
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-
-                        "INTEGER" ->
-                            JD.map2 Api.ColumnDescription
-                                (JD.field "name" JD.string)
-                                (JD.field "type" JD.string)
-
                         _ ->
-                            -- This feels wrong to me, but unsure how else to workaround the string pattern matching
-                            -- Should this fail loudly?
                             JD.map2 Api.ColumnDescription
                                 (JD.field "name" JD.string)
                                 (JD.field "type" JD.string)
