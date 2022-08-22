@@ -103,6 +103,12 @@ queryDuckDb query allowFallback refs onResponse =
                                 (JD.field "type" JD.string)
                                 (JD.field "values" (JD.list (JD.maybe (JD.map Int_ JD.int))))
 
+                        "HUGEINT" ->
+                            JD.map3 Column
+                                (JD.field "name" JD.string)
+                                (JD.field "type" JD.string)
+                                (JD.field "values" (JD.list (JD.maybe (JD.map Int_ JD.int))))
+
                         "BOOLEAN" ->
                             JD.map3 Column
                                 (JD.field "name" JD.string)
