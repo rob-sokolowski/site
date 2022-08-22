@@ -106,8 +106,8 @@ queryBuilder kCols tRef =
                 )
                 kCols
 
-        groupByFields : List ColumnRef
-        groupByFields =
+        measureAggregates : List ColumnRef
+        measureAggregates =
             List.filterMap
                 (\e ->
                     case e of
@@ -136,5 +136,37 @@ queryBuilder kCols tRef =
                             Nothing
                 )
                 kCols
+
+        numFields : Int
+        numFields =
+            List.length kCols
+
+        numAggregates : Int
+        numAggregates =
+            List.foldl
+                (\e accum ->
+                    case e of
+                        Measure _ _ ->
+                            accum + 1
+
+                        _ ->
+                            accum
+                )
+                0
+                kCols
+
+        groupBys : String
+        groupBys =
+            case numAggregates of
+                0 ->
+                    ""
+
+                numAggs ->
+                    "group by " ++ String.join ", " (List.map (\i_ -> String.fromInt i_) (List.range 1 (numFields - numAggs)))
     in
-    "select " ++ String.join "," selectFields ++ String.join "," groupByFields ++ " from " ++ tRef
+    "select "
+        ++ String.join ", " [ String.join ", " selectFields, String.join ", " measureAggregates ]
+        ++ " from "
+        ++ tRef
+        ++ " "
+        ++ groupBys
