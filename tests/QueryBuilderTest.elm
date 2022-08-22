@@ -17,19 +17,19 @@ suite =
             , test "one time"
                 (\_ -> queryBuilder [ time1 ] tRef |> Expect.equal "select time1 from a_table")
             , test "two times"
-                (\_ -> queryBuilder [ time1, time2 ] tRef |> Expect.equal "select time1, time2 from a_table")
+                (\_ -> queryBuilder [ time1, time2 ] tRef |> Expect.equal "select time1, date_trunc('month', time2) from a_table")
             , test "one measure agg"
-                (\_ -> queryBuilder [ measure1 ] tRef |> Expect.equal "select measure1 from a_table")
+                (\_ -> queryBuilder [ measure1 ] tRef |> Expect.equal "select sum(measure1) from a_table")
             , test "two measure aggs"
-                (\_ -> queryBuilder [ measure1, measure2 ] tRef |> Expect.equal "select measure1, measure2 from a_table")
+                (\_ -> queryBuilder [ measure1, measure2 ] tRef |> Expect.equal "select sum(measure1), avg(measure2) from a_table")
             , test "one dimension, one time"
-                (\_ -> queryBuilder [ dim1, time1 ] tRef |> Expect.equal "select measure1, measure2 from a_table")
+                (\_ -> queryBuilder [ dim1, time1 ] tRef |> Expect.equal "select dim1, time1 from a_table")
             , test "one dimension, one measure agg"
-                (\_ -> queryBuilder [ dim1, measure1 ] tRef |> Expect.equal "select measure1, measure2 from a_table")
+                (\_ -> queryBuilder [ dim1, measure1 ] tRef |> Expect.equal "select dim1, sum(measure1) from a_table group by 1")
             , test "one time, one measure agg"
-                (\_ -> queryBuilder [ time1, measure1 ] tRef |> Expect.equal "select measure1, measure2 from a_table")
+                (\_ -> queryBuilder [ time1, measure1 ] tRef |> Expect.equal "select time1, sum(measure1) from a_table group by 1")
             , test "one dimension, one time, one measure agg"
-                (\_ -> queryBuilder [ dim1, measure1, time1 ] tRef |> Expect.equal "select measure1, measure2 from a_table")
+                (\_ -> queryBuilder [ dim1, measure1, time1 ] tRef |> Expect.equal "select dim1, time1, sum(measure1) from a_table group by 1, 2")
             ]
         ]
 

@@ -21,8 +21,8 @@ send m =
         |> Task.perform identity
 
 
-collapseWhitespace : String -> String
-collapseWhitespace s =
+collapseWhitespace : String -> Bool -> String
+collapseWhitespace s trim =
     -- collapses all whitespace chains to a single " "
     -- ex: "  input  \t \n   string" -> " input string"
     case Regex.fromString "\\s+" of
@@ -30,4 +30,9 @@ collapseWhitespace s =
             s
 
         Just rex ->
-            Regex.replace rex (\_ -> " ") s
+            case trim of
+                True ->
+                    String.trim (Regex.replace rex (\_ -> " ") s)
+
+                False ->
+                    Regex.replace rex (\_ -> " ") s

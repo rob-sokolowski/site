@@ -1,5 +1,7 @@
 module QueryBuilder exposing (..)
 
+import Utils exposing (collapseWhitespace)
+
 
 type alias ColumnRef =
     String
@@ -157,16 +159,18 @@ queryBuilder kCols tRef =
 
         groupBys : String
         groupBys =
-            case numAggregates of
-                0 ->
-                    ""
+            if numAggregates > 0 && (numFields - numAggregates) > 0 then
+                "group by " ++ String.join ", " (List.map (\i_ -> String.fromInt i_) (List.range 1 (numFields - numAggregates)))
 
-                numAggs ->
-                    "group by " ++ String.join ", " (List.map (\i_ -> String.fromInt i_) (List.range 1 (numFields - numAggs)))
+            else
+                ""
     in
-    "select "
-        ++ String.join ", " [ String.join ", " selectFields, String.join ", " measureAggregates ]
-        ++ " from "
-        ++ tRef
-        ++ " "
-        ++ groupBys
+    collapseWhitespace
+        ("select "
+            ++ String.join ", " (selectFields ++ measureAggregates)
+            ++ " from "
+            ++ tRef
+            ++ " "
+            ++ groupBys
+        )
+        True

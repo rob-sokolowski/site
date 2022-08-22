@@ -8,12 +8,20 @@ import Utils exposing (collapseWhitespace)
 suite : Test
 suite =
     describe "Utils"
-        [ describe "reduce whitespace in a string to single space"
+        [ describe "reduce whitespace - untrimmed cases"
             [ test "case 1"
-                (\_ -> collapseWhitespace "\t\nsome      \t space" |> Expect.equal " some space")
+                (\_ -> collapseWhitespace "\t\nsome      \t space" False |> Expect.equal " some space")
             , test "case 2"
-                (\_ -> collapseWhitespace "\t\nsome      \t space\n" |> Expect.equal " some space ")
+                (\_ -> collapseWhitespace "\t\nsome      \t space\n" False |> Expect.equal " some space ")
             , test "case 3"
-                (\_ -> collapseWhitespace "\t\nsome  \n    \t space" |> Expect.equal " some space")
+                (\_ -> collapseWhitespace "\t\nsome  \n    \t space" False |> Expect.equal " some space")
+            ]
+        , describe "reduce whitespace - trimmed cases"
+            [ test "case 1"
+                (\_ -> collapseWhitespace "\t\nsome      \t space" True |> Expect.equal "some space")
+            , test "case 2"
+                (\_ -> collapseWhitespace "\t\nsome      \t space\n" True |> Expect.equal "some space")
+            , test "case 3"
+                (\_ -> collapseWhitespace "\t\nsome  \n    \t space" True |> Expect.equal "some space")
             ]
         ]
