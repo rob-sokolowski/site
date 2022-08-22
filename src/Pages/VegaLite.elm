@@ -21,7 +21,7 @@ import Json.Encode as JE
 import Page
 import Palette
 import PortDefs exposing (dragStart, elmToJS)
-import QueryBuilder exposing (Aggregation(..), ColumnRef, KimballClassification(..), KimballColumn(..), kimballClassificationToString, queryBuilder)
+import QueryBuilder exposing (Aggregation(..), ColumnRef, Granularity(..), KimballColumn(..), TimeClass(..), kimballClassificationToString, queryBuilder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
@@ -62,6 +62,8 @@ type alias Model =
     , dragDrop : DragDrop.Model Int Position
     , data : { count : Int, position : Position }
     , selectedColumns : Dict ColumnRef KimballColumn
+    , kimballCols : List KimballColumn
+    , openedDropDown : Maybe ColumnRef
     }
 
 
@@ -84,6 +86,8 @@ init =
       , dragDrop = DragDrop.init
       , data = { count = 1, position = Middle }
       , selectedColumns = Dict.empty
+      , kimballCols = []
+      , openedDropDown = Nothing
       }
     , Effect.fromCmd fetchDuckDbTableRefs
     )
@@ -107,22 +111,57 @@ type Msg
     | UserMouseLeftTableRef
     | DragDropMsg (DragDrop.Msg Int Position)
     | UserClickKimballColumnTab KimballColumn
+    | DropDownToggled ColumnRef
+    | DropDownSelected ColumnRef TimeClass
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        DropDownToggled colRef ->
+            ( { model
+                | openedDropDown =
+                    case model.openedDropDown of
+                        Nothing ->
+                            Just colRef
+
+                        Just _ ->
+                            Nothing
+              }
+            , Effect.none
+            )
+
+        DropDownSelected colRef timeClass ->
+            let
+                updatedSelectedCols =
+                    Dict.insert colRef (Time timeClass colRef) model.selectedColumns
+            in
+            ( { model
+                | openedDropDown = Nothing
+                , selectedColumns = updatedSelectedCols
+              }
+            , Effect.none
+            )
+
         UserClickKimballColumnTab kc ->
             let
+                key : ColumnRef
+                key =
+                    case kc of
+                        Dimension colRef ->
+                            colRef
+
+                        Measure _ colRef ->
+                            colRef
+
+                        Time _ colRef ->
+                            colRef
+
+                        Error colRef ->
+                            colRef
+
                 updatedSelectedCols : Dict ColumnRef KimballColumn
                 updatedSelectedCols =
-                    let
-                        key : ColumnRef
-                        key =
-                            case kc of
-                                KimballColumn_ ( colRef, _ ) ->
-                                    colRef
-                    in
                     case Dict.member key model.selectedColumns of
                         True ->
                             Dict.remove key model.selectedColumns
@@ -176,8 +215,14 @@ update msg model =
         GotDuckDbMetaResponse response ->
             case response of
                 Ok data ->
+                    let
+                        kimballCols : List KimballColumn
+                        kimballCols =
+                            List.map (\cd -> mapToKimball cd) data.colDescs
+                    in
                     ( { model
                         | duckDbMetaResponse = Success data
+                        , kimballCols = kimballCols
                       }
                     , Effect.none
                     )
@@ -288,9 +333,7 @@ elements model =
                 E.none
     in
     row
-        [ Border.width 1
-        , Border.color Palette.red
-        , width fill
+        [ width fill
         , height fill
         ]
         [ column
@@ -340,9 +383,119 @@ elements model =
 
 viewDropZone : Model -> Element Msg
 viewDropZone model =
-    column []
+    let
+        viewKimballColTab : KimballColumn -> Element Msg
+        viewKimballColTab kCol =
+            case kCol of
+                Dimension _ ->
+                    E.text <| kimballClassificationToString kCol
+
+                Measure _ _ ->
+                    E.text <| kimballClassificationToString kCol
+
+                Time tClass colRef ->
+                    let
+                        timeClassToStr : String
+                        timeClassToStr =
+                            case tClass of
+                                Continuous ->
+                                    "Continuous"
+
+                                Discrete granularity ->
+                                    case granularity of
+                                        Year ->
+                                            "Discrete - Year"
+
+                                        Quarter ->
+                                            "Discrete - Quarter"
+
+                                        Month ->
+                                            "Discrete - Month"
+
+                                        Week ->
+                                            "Discrete - Week"
+
+                                        Day ->
+                                            "Discrete - Day"
+
+                                        Hour ->
+                                            "Discrete - Hour"
+
+                                        Minute ->
+                                            "Discrete - Minute"
+
+                        dropdownTimeSelector : Element Msg
+                        dropdownTimeSelector =
+                            let
+                                defaultElements : Element Msg
+                                defaultElements =
+                                    el [ onClick (DropDownToggled colRef) ] (E.text "▼")
+                            in
+                            el
+                                [ Border.width 1
+                                , Border.color Palette.black
+                                , padding 2
+
+                                --, inFront
+                                ]
+                                (case model.openedDropDown of
+                                    Nothing ->
+                                        defaultElements
+
+                                    Just colRef_ ->
+                                        if colRef == colRef_ then
+                                            column
+                                                [ Border.color Palette.lightGrey
+                                                , Border.width 1
+                                                , Background.color Palette.lightBlue
+                                                , spacing 3
+                                                ]
+                                                [ el [ onClick (DropDownToggled colRef) ] (E.text "▶")
+                                                , el [ onClick (DropDownSelected colRef_ Continuous) ] <| E.text "Continuous"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Year)) ] <| E.text "Discrete - Year"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Quarter)) ] <| E.text "Discrete - Quarter"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Month)) ] <| E.text "Discrete - Month"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Week)) ] <| E.text "Discrete - Week"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Day)) ] <| E.text "Discrete - Day"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Hour)) ] <| E.text "Discrete - Hour"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Minute)) ] <| E.text "Discrete - Minute"
+                                                ]
+
+                                        else
+                                            defaultElements
+                                )
+
+                        viewTimePanel : Element Msg
+                        viewTimePanel =
+                            column
+                                [ Background.color <| colorAssociatedWith kCol
+                                , width (px 150)
+                                , height (px 50)
+                                , spaceEvenly
+                                , padding 5
+                                ]
+                                [ E.text colRef
+                                , el
+                                    [ E.onRight dropdownTimeSelector
+                                    , Border.width 1
+                                    , Border.color Palette.black
+                                    , padding 2
+                                    ]
+                                    (E.text <| (kimballClassificationToString kCol ++ " - " ++ timeClassToStr))
+                                ]
+                    in
+                    viewTimePanel
+
+                Error _ ->
+                    E.text <| kimballClassificationToString kCol
+    in
+    column
+        [ spacing 5
+        , Border.color Palette.black
+        , Border.width 1
+        ]
         (Dict.values
-            (Dict.map (\_ kc -> viewKimbalColTab kc) model.selectedColumns)
+            (Dict.map (\_ kc -> viewKimballColTab kc) model.selectedColumns)
         )
 
 
@@ -372,73 +525,51 @@ viewQueryBuilderOutput model =
 
 mapToKimball : Api.ColumnDescription -> KimballColumn
 mapToKimball colDesc =
-    let
-        kc : KimballClassification
-        kc =
-            case colDesc.type_ of
-                "VARCHAR" ->
-                    Dimension
+    -- TODO: this function serves to be placeholder logic in lieu of persisting Kimball metadata
+    --       upon successful loading of a DuckDB Ref, columns will be mapped in a "best guess" manner
+    --       this longer term intent is for this to be a 'first pass', when persisted meta data does not exist
+    --       (which should be the case when a user is first using data!). Any user interventions should be
+    --       persisted server-side
+    case colDesc.type_ of
+        "VARCHAR" ->
+            Dimension colDesc.ref
 
-                "DATE" ->
-                    Time
+        "DATE" ->
+            Time (Discrete Day) colDesc.ref
 
-                "TIMESTAMP" ->
-                    Time
+        "TIMESTAMP" ->
+            Time Continuous colDesc.ref
 
-                "BOOLEAN" ->
-                    Dimension
+        "BOOLEAN" ->
+            Dimension colDesc.ref
 
-                "INTEGER" ->
-                    Measure Sum
+        "INTEGER" ->
+            Measure Sum colDesc.ref
 
-                "BIGINT" ->
-                    Measure Sum
+        "BIGINT" ->
+            Measure Sum colDesc.ref
 
-                "DOUBLE" ->
-                    Measure Sum
+        "DOUBLE" ->
+            Measure Sum colDesc.ref
 
-                _ ->
-                    Error
-    in
-    KimballColumn_ ( colDesc.name, kc )
+        _ ->
+            Error colDesc.ref
 
 
-viewKimbalColTab : KimballColumn -> Element Msg
-viewKimbalColTab kc =
-    let
-        color : E.Color
-        color =
-            case kc of
-                KimballColumn_ ( _, kc_ ) ->
-                    case kc_ of
-                        Dimension ->
-                            Palette.blue_light
+colorAssociatedWith : KimballColumn -> E.Color
+colorAssociatedWith kc =
+    case kc of
+        Dimension _ ->
+            Palette.blue_light
 
-                        Measure _ ->
-                            Palette.green_keylime
+        Measure _ _ ->
+            Palette.green_keylime
 
-                        Time ->
-                            Palette.yellow_mustard
+        Time _ _ ->
+            Palette.yellow_mustard
 
-                        Error ->
-                            Palette.orange_error_alert
-
-        ( nameText, typeText ) =
-            case kc of
-                KimballColumn_ ( colRef, kc_ ) ->
-                    ( colRef, kimballClassificationToString kc_ )
-    in
-    column
-        [ Border.width 1
-        , Border.color Palette.darkishGrey
-        , spacing 15
-        , padding 5
-        , Background.color color
-        , onClick (UserClickKimballColumnTab kc)
-        ]
-        [ text nameText
-        , text typeText
-        ]
+        Error _ ->
+            Palette.orange_error_alert
 
 
 viewColumnPickerPanel : Model -> Element Msg
@@ -452,63 +583,88 @@ viewColumnPickerPanel model =
 
         Success data ->
             let
-                dimCols : List Api.ColumnDescription -> List KimballColumn
+                dimCols : List KimballColumn -> List KimballColumn
                 dimCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    if kc == Dimension then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Dimension _ ->
+                                    True
 
-                                    else
-                                        Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                timeCols : List Api.ColumnDescription -> List KimballColumn
+                timeCols : List KimballColumn -> List KimballColumn
                 timeCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    if kc == Time then
-                                        Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Time _ _ ->
+                                    True
 
-                                    else
-                                        Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                measureCols : List Api.ColumnDescription -> List KimballColumn
+                measureCols : List KimballColumn -> List KimballColumn
                 measureCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    case kc of
-                                        Measure _ ->
-                                            Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Measure _ _ ->
+                                    True
 
-                                        _ ->
-                                            Nothing
+                                _ ->
+                                    False
                         )
                         cols
 
-                errorCols : List Api.ColumnDescription -> List KimballColumn
+                errorCols : List KimballColumn -> List KimballColumn
                 errorCols cols =
-                    List.filterMap
-                        (\c ->
-                            case mapToKimball c of
-                                KimballColumn_ ( colRef, kc ) ->
-                                    case kc of
-                                        Error ->
-                                            Just <| KimballColumn_ ( colRef, kc )
+                    List.filter
+                        (\kc ->
+                            case kc of
+                                Error _ ->
+                                    True
 
-                                        _ ->
-                                            Nothing
+                                _ ->
+                                    False
                         )
                         cols
+
+                viewKimballColTab : KimballColumn -> Element Msg
+                viewKimballColTab kc =
+                    -- TODO: leaving this logic here for now, but starting to think that this may belong in the update
+                    --       function, as a sort-of pre-computed field
+                    let
+                        ( nameText, typeText ) =
+                            case kc of
+                                Dimension colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Measure _ colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Time _ colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+
+                                Error colRef ->
+                                    ( colRef, kimballClassificationToString kc )
+                    in
+                    column
+                        [ Border.width 1
+                        , Border.color Palette.darkishGrey
+                        , spacing 15
+                        , padding 5
+                        , Background.color <| colorAssociatedWith kc
+                        , onClick (UserClickKimballColumnTab kc)
+                        ]
+                        [ text nameText
+                        , text typeText
+                        ]
             in
             row
                 [ spacing 10
@@ -520,7 +676,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Dimensions:"
-                    , wrappedRow [] <| List.map (\col -> viewKimbalColTab col) (dimCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (dimCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -529,7 +685,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Time:"
-                    , wrappedRow [] <| List.map (\col -> viewKimbalColTab col) (timeCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (timeCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -538,7 +694,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Measures:"
-                    , wrappedRow [] <| List.map (\col -> viewKimbalColTab col) (measureCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (measureCols model.kimballCols)
                     ]
                 , column
                     [ alignTop
@@ -547,7 +703,7 @@ viewColumnPickerPanel model =
                     , Border.color Palette.black
                     ]
                     [ text "Errors:"
-                    , wrappedRow [] <| List.map (\col -> viewKimbalColTab col) (errorCols data.colDescs)
+                    , wrappedRow [] <| List.map (\col -> viewKimballColTab col) (errorCols model.kimballCols)
                     ]
                 ]
 
@@ -614,8 +770,6 @@ viewPlotPanel model =
     el
         [ width (px 800)
         , height (px 800)
-        , Border.color Palette.red
-        , Border.width 1
         ]
         (viewDragDropElements model)
 
@@ -739,13 +893,13 @@ computeSpec model =
             let
                 data =
                     VL.dataFromColumns []
-                        << VL.dataColumn col1.name (VL.nums (List.map (\i -> toFloat i) col1.vals))
-                        << VL.dataColumn col2.name (VL.nums col2.vals)
+                        << VL.dataColumn col1.ref (VL.nums (List.map (\i -> toFloat i) col1.vals))
+                        << VL.dataColumn col2.ref (VL.nums col2.vals)
 
                 enc =
                     VL.encoding
-                        << VL.position VL.X [ VL.pName col1.name, VL.pQuant ]
-                        << VL.position VL.Y [ VL.pName col2.name, VL.pQuant ]
+                        << VL.position VL.X [ VL.pName col1.ref, VL.pQuant ]
+                        << VL.position VL.Y [ VL.pName col2.ref, VL.pQuant ]
             in
             VL.toVegaLite
                 [ data []
@@ -773,7 +927,7 @@ computeSpec model =
                 col1 =
                     case Array.get 0 collArray of
                         Nothing ->
-                            { name = "error"
+                            { ref = "error"
                             , vals = []
                             }
 
@@ -783,7 +937,7 @@ computeSpec model =
                 col2 =
                     case Array.get 1 collArray of
                         Nothing ->
-                            { name = "error"
+                            { ref = "error"
                             , vals = []
                             }
 

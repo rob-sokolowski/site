@@ -30,8 +30,9 @@ suite =
         ]
 
 
+stringColumn : Column
 stringColumn =
-    { name = "a string column"
+    { ref = "a string column"
     , type_ = "VARCHAR"
     , vals =
         [ Just (Varchar_ "one")
@@ -43,13 +44,14 @@ stringColumn =
 
 colParamedString : ColumnParamed String
 colParamedString =
-    { name = "a string column"
+    { ref = "a string column"
     , vals = [ "one", "two", "three" ]
     }
 
 
+integerColumn : Column
 integerColumn =
-    { name = "an int column"
+    { ref = "an int column"
     , type_ = "INTEGER"
     , vals =
         [ Just (Int_ 1)
@@ -61,13 +63,14 @@ integerColumn =
 
 colParamedInt : ColumnParamed Int
 colParamedInt =
-    { name = "an int column"
+    { ref = "an int column"
     , vals = [ 1, 2, 3 ]
     }
 
 
+floatColumn : Column
 floatColumn =
-    { name = "a float column"
+    { ref = "a float column"
     , type_ = "DOUBLE"
     , vals =
         [ Just (Float_ 3.1)
@@ -79,6 +82,6 @@ floatColumn =
 
 colParamedFloat : ColumnParamed Float
 colParamedFloat =
-    { name = "a float column"
+    { ref = "a float column"
     , vals = [ 3.1, 3.14, 3.2 ]
     }
