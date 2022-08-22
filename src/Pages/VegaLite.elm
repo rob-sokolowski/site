@@ -63,6 +63,7 @@ type alias Model =
     , data : { count : Int, position : Position }
     , selectedColumns : Dict ColumnRef KimballColumn
     , kimballCols : List KimballColumn
+    , openedDropDown : Maybe ColumnRef
     }
 
 
@@ -86,6 +87,7 @@ init =
       , data = { count = 1, position = Middle }
       , selectedColumns = Dict.empty
       , kimballCols = []
+      , openedDropDown = Nothing
       }
     , Effect.fromCmd fetchDuckDbTableRefs
     )
@@ -109,11 +111,38 @@ type Msg
     | UserMouseLeftTableRef
     | DragDropMsg (DragDrop.Msg Int Position)
     | UserClickKimballColumnTab KimballColumn
+    | DropDownToggled ColumnRef
+    | DropDownSelected ColumnRef TimeClass
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        DropDownToggled colRef ->
+            ( { model
+                | openedDropDown =
+                    case model.openedDropDown of
+                        Nothing ->
+                            Just colRef
+
+                        Just _ ->
+                            Nothing
+              }
+            , Effect.none
+            )
+
+        DropDownSelected colRef timeClass ->
+            let
+                updatedSelectedCols =
+                    Dict.insert colRef (Time timeClass colRef) model.selectedColumns
+            in
+            ( { model
+                | openedDropDown = Nothing
+                , selectedColumns = updatedSelectedCols
+              }
+            , Effect.none
+            )
+
         UserClickKimballColumnTab kc ->
             let
                 key : ColumnRef
@@ -304,9 +333,7 @@ elements model =
                 E.none
     in
     row
-        [ Border.width 1
-        , Border.color Palette.red
-        , width fill
+        [ width fill
         , height fill
         ]
         [ column
@@ -397,18 +424,64 @@ viewDropZone model =
                                         Minute ->
                                             "Discrete - Minute"
 
+                        dropdownTimeSelector : Element Msg
+                        dropdownTimeSelector =
+                            let
+                                defaultElements : Element Msg
+                                defaultElements =
+                                    el [ onClick (DropDownToggled colRef) ] (E.text "▼")
+                            in
+                            el
+                                [ Border.width 1
+                                , Border.color Palette.black
+                                , padding 2
+
+                                --, inFront
+                                ]
+                                (case model.openedDropDown of
+                                    Nothing ->
+                                        defaultElements
+
+                                    Just colRef_ ->
+                                        if colRef == colRef_ then
+                                            column
+                                                [ Border.color Palette.lightGrey
+                                                , Border.width 1
+                                                , Background.color Palette.lightBlue
+                                                , spacing 3
+                                                ]
+                                                [ el [ onClick (DropDownToggled colRef) ] (E.text "▶")
+                                                , el [ onClick (DropDownSelected colRef_ Continuous) ] <| E.text "Continuous"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Year)) ] <| E.text "Discrete - Year"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Quarter)) ] <| E.text "Discrete - Quarter"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Month)) ] <| E.text "Discrete - Month"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Week)) ] <| E.text "Discrete - Week"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Day)) ] <| E.text "Discrete - Day"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Hour)) ] <| E.text "Discrete - Hour"
+                                                , el [ onClick (DropDownSelected colRef_ (Discrete Minute)) ] <| E.text "Discrete - Minute"
+                                                ]
+
+                                        else
+                                            defaultElements
+                                )
+
                         viewTimePanel : Element Msg
                         viewTimePanel =
                             column
                                 [ Background.color <| colorAssociatedWith kCol
-                                , width (px 200)
-                                , height (px 75)
+                                , width (px 150)
+                                , height (px 50)
                                 , spaceEvenly
                                 , padding 5
                                 ]
                                 [ E.text colRef
-                                , E.text <| kimballClassificationToString kCol
-                                , E.text <| timeClassToStr
+                                , el
+                                    [ E.onRight dropdownTimeSelector
+                                    , Border.width 1
+                                    , Border.color Palette.black
+                                    , padding 2
+                                    ]
+                                    (E.text <| (kimballClassificationToString kCol ++ " - " ++ timeClassToStr))
                                 ]
                     in
                     viewTimePanel
@@ -416,7 +489,11 @@ viewDropZone model =
                 Error _ ->
                     E.text <| kimballClassificationToString kCol
     in
-    column []
+    column
+        [ spacing 5
+        , Border.color Palette.black
+        , Border.width 1
+        ]
         (Dict.values
             (Dict.map (\_ kc -> viewKimballColTab kc) model.selectedColumns)
         )
@@ -693,8 +770,6 @@ viewPlotPanel model =
     el
         [ width (px 800)
         , height (px 800)
-        , Border.color Palette.red
-        , Border.width 1
         ]
         (viewDragDropElements model)
 
