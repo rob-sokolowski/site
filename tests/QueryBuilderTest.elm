@@ -9,10 +9,10 @@ import Test exposing (Test, describe, test)
 suite : Test
 suite =
     describe "QueryBuilder"
-        [ describe "Simple DuckDB SQL from List (KimballColumn)"
+        [ describe "Simple DuckDB SQL queries from `List KimballColumn`"
             [ test "one dimension"
                 (\_ -> queryBuilder [ dim1 ] tRef |> Expect.equal "select dim1 from a_table")
-            , test "two dimension2"
+            , test "two dimensions"
                 (\_ -> queryBuilder [ dim1, dim2 ] tRef |> Expect.equal "select dim1, dim2 from a_table")
             , test "one time"
                 (\_ -> queryBuilder [ time1 ] tRef |> Expect.equal "select time1 from a_table")
