@@ -43,9 +43,11 @@ kimballClassificationToString kc =
             "error"
 
 
-type Aggregation
-    = Unspecified
-    | Sum
+type
+    Aggregation
+    -- TODO: Something to think about, do I want to support an `Unspecified` variant?
+    --       That would add complexity, but may make the UX less "assume-y"
+    = Sum
     | Mean
     | Median
     | Min
@@ -109,8 +111,26 @@ queryBuilder kCols tRef =
             List.filterMap
                 (\e ->
                     case e of
-                        Measure _ colRef ->
-                            Just colRef
+                        Measure Sum colRef ->
+                            Just <| "sum(" ++ colRef ++ ")"
+
+                        Measure Mean colRef ->
+                            Just <| "avg(" ++ colRef ++ ")"
+
+                        Measure Median colRef ->
+                            Just <| "median(" ++ colRef ++ ")"
+
+                        Measure Count colRef ->
+                            Just <| "count(" ++ colRef ++ ")"
+
+                        Measure CountDistinct colRef ->
+                            Just <| "count(distinct" ++ colRef ++ ")"
+
+                        Measure Min colRef ->
+                            Just <| "min(" ++ colRef ++ ")"
+
+                        Measure Max colRef ->
+                            Just <| "max(" ++ colRef ++ ")"
 
                         _ ->
                             Nothing
