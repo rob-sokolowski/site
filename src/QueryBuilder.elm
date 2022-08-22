@@ -73,6 +73,32 @@ queryBuilder kCols tRef =
                         Dimension colRef ->
                             Just colRef
 
+                        Time timeClass colRef ->
+                            case timeClass of
+                                Continuous ->
+                                    Just colRef
+
+                                Discrete Year ->
+                                    Just <| "date_trunc('year', " ++ colRef ++ ")"
+
+                                Discrete Quarter ->
+                                    Just <| "date_trunc('quarter', " ++ colRef ++ ")"
+
+                                Discrete Month ->
+                                    Just <| "date_trunc('month', " ++ colRef ++ ")"
+
+                                Discrete Week ->
+                                    Just <| "date_trunc('week', " ++ colRef ++ ")"
+
+                                Discrete Day ->
+                                    Just <| "date_trunc('day', " ++ colRef ++ ")"
+
+                                Discrete Hour ->
+                                    Just <| "date_trunc('hour', " ++ colRef ++ ")"
+
+                                Discrete Minute ->
+                                    Just <| "date_trunc('minute', " ++ colRef ++ ")"
+
                         _ ->
                             Nothing
                 )
@@ -91,4 +117,4 @@ queryBuilder kCols tRef =
                 )
                 kCols
     in
-    "select " ++ String.join "," selectFields ++ "," ++ String.join "," groupByFields ++ " from " ++ tRef
+    "select " ++ String.join "," selectFields ++ String.join "," groupByFields ++ " from " ++ tRef
