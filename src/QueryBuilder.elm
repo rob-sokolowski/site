@@ -1,5 +1,7 @@
 module QueryBuilder exposing (..)
 
+import Utils exposing (collapseWhitespace)
+
 
 type alias ColumnRef =
     String
@@ -43,9 +45,11 @@ kimballClassificationToString kc =
             "error"
 
 
-type Aggregation
-    = Unspecified
-    | Sum
+type
+    Aggregation
+    -- TODO: Something to think about, do I want to support an `Unspecified` variant?
+    --       That would add complexity, but may make the UX less "assume-y"
+    = Sum
     | Mean
     | Median
     | Min
@@ -104,17 +108,69 @@ queryBuilder kCols tRef =
                 )
                 kCols
 
-        groupByFields : List ColumnRef
-        groupByFields =
+        measureAggregates : List ColumnRef
+        measureAggregates =
             List.filterMap
                 (\e ->
                     case e of
-                        Measure _ colRef ->
-                            Just colRef
+                        Measure Sum colRef ->
+                            Just <| "sum(" ++ colRef ++ ")"
+
+                        Measure Mean colRef ->
+                            Just <| "avg(" ++ colRef ++ ")"
+
+                        Measure Median colRef ->
+                            Just <| "median(" ++ colRef ++ ")"
+
+                        Measure Count colRef ->
+                            Just <| "count(" ++ colRef ++ ")"
+
+                        Measure CountDistinct colRef ->
+                            Just <| "count(distinct" ++ colRef ++ ")"
+
+                        Measure Min colRef ->
+                            Just <| "min(" ++ colRef ++ ")"
+
+                        Measure Max colRef ->
+                            Just <| "max(" ++ colRef ++ ")"
 
                         _ ->
                             Nothing
                 )
                 kCols
+
+        numFields : Int
+        numFields =
+            List.length kCols
+
+        numAggregates : Int
+        numAggregates =
+            List.foldl
+                (\e accum ->
+                    case e of
+                        Measure _ _ ->
+                            accum + 1
+
+                        _ ->
+                            accum
+                )
+                0
+                kCols
+
+        groupBys : String
+        groupBys =
+            if numAggregates > 0 && (numFields - numAggregates) > 0 then
+                "group by " ++ String.join ", " (List.map (\i_ -> String.fromInt i_) (List.range 1 (numFields - numAggregates)))
+
+            else
+                ""
     in
-    "select " ++ String.join "," selectFields ++ String.join "," groupByFields ++ " from " ++ tRef
+    collapseWhitespace
+        ("select "
+            ++ String.join ", " (selectFields ++ measureAggregates)
+            ++ " from "
+            ++ tRef
+            ++ " "
+            ++ groupBys
+        )
+        True
