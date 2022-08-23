@@ -174,3 +174,28 @@ queryBuilder kCols tRef =
             ++ groupBys
         )
         True
+
+
+aggToStr : Aggregation -> String
+aggToStr agg =
+    case agg of
+        Sum ->
+            "sum"
+
+        Mean ->
+            "mean"
+
+        Median ->
+            "median"
+
+        Min ->
+            "min"
+
+        Max ->
+            "max"
+
+        Count ->
+            "count"
+
+        CountDistinct ->
+            "count (distinct)"
