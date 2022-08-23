@@ -21,7 +21,7 @@ import Json.Encode as JE
 import Page
 import Palette
 import PortDefs exposing (dragStart, elmToJS)
-import QueryBuilder exposing (Aggregation(..), ColumnRef, Granularity(..), KimballColumn(..), TimeClass(..), kimballClassificationToString, queryBuilder)
+import QueryBuilder exposing (Aggregation(..), ColumnRef, Granularity(..), KimballColumn(..), TimeClass(..), aggToStr, kimballClassificationToString, queryBuilder)
 import RemoteData exposing (RemoteData(..), WebData)
 import Request
 import Set exposing (Set)
@@ -112,7 +112,8 @@ type Msg
     | DragDropMsg (DragDrop.Msg Int Position)
     | UserClickKimballColumnTab KimballColumn
     | DropDownToggled ColumnRef
-    | DropDownSelected ColumnRef TimeClass
+    | DropDownSelected_Time ColumnRef TimeClass
+    | DropDownSelected_Agg ColumnRef Aggregation
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -131,7 +132,19 @@ update msg model =
             , Effect.none
             )
 
-        DropDownSelected colRef timeClass ->
+        DropDownSelected_Agg colRef agg ->
+            let
+                updatedSelectedCols =
+                    Dict.insert colRef (Measure agg colRef) model.selectedColumns
+            in
+            ( { model
+                | openedDropDown = Nothing
+                , selectedColumns = updatedSelectedCols
+              }
+            , Effect.none
+            )
+
+        DropDownSelected_Time colRef timeClass ->
             let
                 updatedSelectedCols =
                     Dict.insert colRef (Time timeClass colRef) model.selectedColumns
@@ -387,11 +400,87 @@ viewDropZone model =
         viewKimballColTab : KimballColumn -> Element Msg
         viewKimballColTab kCol =
             case kCol of
-                Dimension _ ->
-                    E.text <| kimballClassificationToString kCol
+                Dimension colRef ->
+                    column
+                        [ Background.color <| colorAssociatedWith kCol
+                        , width (px 150)
+                        , height (px 50)
+                        , spaceEvenly
+                        , padding 5
+                        ]
+                        [ E.text colRef
+                        , row
+                            [ Border.width 1
+                            , Border.color Palette.black
+                            , padding 2
+                            ]
+                            [ E.text <| kimballClassificationToString kCol
+                            ]
+                        ]
 
-                Measure _ _ ->
-                    E.text <| kimballClassificationToString kCol
+                Measure agg colRef ->
+                    let
+                        dropdownTimeSelector : Element Msg
+                        dropdownTimeSelector =
+                            let
+                                defaultElements : Element Msg
+                                defaultElements =
+                                    el [ onClick (DropDownToggled colRef) ] (E.text "▼")
+                            in
+                            el
+                                [ Border.width 1
+                                , Border.color Palette.black
+                                , padding 2
+
+                                --, inFront
+                                ]
+                                (case model.openedDropDown of
+                                    Nothing ->
+                                        defaultElements
+
+                                    Just colRef_ ->
+                                        if colRef == colRef_ then
+                                            el
+                                                [ E.onRight
+                                                    (column
+                                                        [ Border.color Palette.lightGrey
+                                                        , Border.width 1
+                                                        , Background.color Palette.lightBlue
+                                                        , spacing 3
+                                                        ]
+                                                        [ el [ onClick (DropDownSelected_Agg colRef_ Sum) ] <| E.text "Sum"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ Mean) ] <| E.text "Avg"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ Median) ] <| E.text "Median"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ Min) ] <| E.text "Min"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ Max) ] <| E.text "Max"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ Count) ] <| E.text "Count"
+                                                        , el [ onClick (DropDownSelected_Agg colRef_ CountDistinct) ] <| E.text "Count (distinct)"
+                                                        ]
+                                                    )
+                                                ]
+                                                (el [ onClick (DropDownToggled colRef) ] <| E.text "▶")
+
+                                        else
+                                            defaultElements
+                                )
+                    in
+                    column
+                        [ Background.color <| colorAssociatedWith kCol
+                        , width (px 150)
+                        , height (px 50)
+                        , spaceEvenly
+                        , padding 5
+                        ]
+                        [ E.text colRef
+                        , row
+                            [ Border.width 1
+                            , Border.color Palette.black
+                            , padding 2
+                            ]
+                            [ E.text <| (kimballClassificationToString kCol ++ " - " ++ aggToStr agg)
+                            , dropdownTimeSelector
+                            ]
+                        ]
 
                 Time tClass colRef ->
                     let
@@ -444,47 +533,49 @@ viewDropZone model =
 
                                     Just colRef_ ->
                                         if colRef == colRef_ then
-                                            column
-                                                [ Border.color Palette.lightGrey
-                                                , Border.width 1
-                                                , Background.color Palette.lightBlue
-                                                , spacing 3
+                                            el
+                                                [ E.onRight
+                                                    (column
+                                                        [ Border.color Palette.lightGrey
+                                                        , Border.width 1
+                                                        , Background.color Palette.lightBlue
+                                                        , spacing 3
+                                                        ]
+                                                        [ el [ onClick (DropDownToggled colRef) ] (E.text "▶")
+                                                        , el [ onClick (DropDownSelected_Time colRef_ Continuous) ] <| E.text "Continuous"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Year)) ] <| E.text "Discrete - Year"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Quarter)) ] <| E.text "Discrete - Quarter"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Month)) ] <| E.text "Discrete - Month"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Week)) ] <| E.text "Discrete - Week"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Day)) ] <| E.text "Discrete - Day"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Hour)) ] <| E.text "Discrete - Hour"
+                                                        , el [ onClick (DropDownSelected_Time colRef_ (Discrete Minute)) ] <| E.text "Discrete - Minute"
+                                                        ]
+                                                    )
                                                 ]
-                                                [ el [ onClick (DropDownToggled colRef) ] (E.text "▶")
-                                                , el [ onClick (DropDownSelected colRef_ Continuous) ] <| E.text "Continuous"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Year)) ] <| E.text "Discrete - Year"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Quarter)) ] <| E.text "Discrete - Quarter"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Month)) ] <| E.text "Discrete - Month"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Week)) ] <| E.text "Discrete - Week"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Day)) ] <| E.text "Discrete - Day"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Hour)) ] <| E.text "Discrete - Hour"
-                                                , el [ onClick (DropDownSelected colRef_ (Discrete Minute)) ] <| E.text "Discrete - Minute"
-                                                ]
+                                                (el [ onClick <| DropDownToggled colRef_ ] (E.text "▶"))
 
                                         else
                                             defaultElements
                                 )
-
-                        viewTimePanel : Element Msg
-                        viewTimePanel =
-                            column
-                                [ Background.color <| colorAssociatedWith kCol
-                                , width (px 150)
-                                , height (px 50)
-                                , spaceEvenly
-                                , padding 5
-                                ]
-                                [ E.text colRef
-                                , el
-                                    [ E.onRight dropdownTimeSelector
-                                    , Border.width 1
-                                    , Border.color Palette.black
-                                    , padding 2
-                                    ]
-                                    (E.text <| (kimballClassificationToString kCol ++ " - " ++ timeClassToStr))
-                                ]
                     in
-                    viewTimePanel
+                    column
+                        [ Background.color <| colorAssociatedWith kCol
+                        , width (px 150)
+                        , height (px 50)
+                        , spaceEvenly
+                        , padding 5
+                        ]
+                        [ E.text colRef
+                        , row
+                            [ Border.width 1
+                            , Border.color Palette.black
+                            , padding 2
+                            ]
+                            [ E.text <| (kimballClassificationToString kCol ++ " - " ++ timeClassToStr)
+                            , dropdownTimeSelector
+                            ]
+                        ]
 
                 Error _ ->
                     E.text <| kimballClassificationToString kCol
