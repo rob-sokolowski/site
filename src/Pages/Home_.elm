@@ -51,12 +51,12 @@ elements =
         --    }
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
-                { url = "/sheet"
+                { url = "https://fir-sandbox-2.lamdera.app/sheet"
                 , label = text "Sheet"
                 }
             , text " (intended for large screens). And related page, "
             , link [ Font.color blue ]
-                { url = "/vega-lite"
+                { url = "https://fir-sandbox-2.lamdera.app/vega-lite"
                 , label = text "Vega lite"
                 }
             ]
