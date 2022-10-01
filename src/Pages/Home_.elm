@@ -72,7 +72,7 @@ elements =
                 { url = "/bouncing-ball"
                 , label = text "Bouncing ball"
                 }
-            , text " learning to animate things"
+            , text " (intended for medium to large screens) learning to animate things"
             ]
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
