@@ -47,34 +47,94 @@ type alias Pos =
 type alias Model =
     { ballPos : Pos
     , g : Float
-    , ySquash : Float
     , runningState : RunningState
     }
 
 
+
+-- begin region: constants
+
+
 g : Float
 g =
-    -0.001
+    let
+        slowDownFactor =
+            2.0
+    in
+    -- NB: y-axis is such that down is positive!
+    9.8 / slowDownFactor
 
 
 r : Float
 r =
-    100
+    0.22
+
+
+dtMs : Float
+dtMs =
+    10.0
+
+
+scaleXY : Float
+scaleXY =
+    75.1
+
+
+canvasElementWidth : Float
+canvasElementWidth =
+    meterMaxWidth * scaleXY
+
+
+canvasElementHeight : Float
+canvasElementHeight =
+    meterMaxHeight * scaleXY
+
+
+meterMaxWidth =
+    14.0
+
+
+meterMaxHeight =
+    8.0
 
 
 bounceDampen : Float
 bounceDampen =
-    0.93
+    0.9
+
+
+x_0 : Float
+x_0 =
+    0
+
+
+y_0 : Float
+y_0 =
+    2
+
+
+vx_0 : Float
+vx_0 =
+    1
+
+
+vy_0 : Float
+vy_0 =
+    -5.0
+
+
+
+-- end region: constants
 
 
 defaultPos : Pos
 defaultPos =
-    { x = 50
-    , y = 40
+    { x = x_0
+    , y = y_0
     , rx = 1.0 * r
     , ry = 1.0 * r
-    , vx = 0.09
-    , vy = 0
+    , vx = vx_0
+    , vy = vy_0
     }
 
 
@@ -82,7 +142,6 @@ refreshModel : Model
 refreshModel =
     { ballPos = defaultPos
     , g = g
-    , ySquash = 1.0
     , runningState = Playing
     }
 
@@ -106,6 +165,13 @@ type RunningState
 type Msg
     = Tick Time.Posix
     | UserClickedRefresh
+    | UserClickedPause
+    | TimeTravelToFrame Int
+
+
+epsilon =
+    -- '-3' is  'mm'
+    1.0e-4
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -114,37 +180,34 @@ update msg model =
         Tick _ ->
             let
                 vy_ =
-                    case model.ballPos.y + model.ballPos.ry >= canvasH of
+                    case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
                         True ->
                             -- we are at boundary, reverse, dampen a bit
-                            -1 * model.ballPos.vy * bounceDampen
+                            -1 * bounceDampen * (model.ballPos.vy + (g * (dtMs / 1000.0)))
 
                         False ->
                             -- we are not near boundary, gravity continues
-                            model.ballPos.vy - g
+                            model.ballPos.vy + (g * (dtMs / 1000.0))
 
-                ySquash_ =
-                    case canvasH - model.ballPos.y > 1.5 * r of
+                ry_ =
+                    case meterMaxHeight - model.ballPos.y > (1.5 * r) + epsilon of
                         True ->
-                            1.0
+                            1.0 * r
 
                         False ->
-                            (canvasH - model.ballPos.y) / ((canvasH - model.ballPos.y) + 1.5 * r)
+                            (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
 
                 vx_ =
                     model.ballPos.vx
 
                 y_ =
-                    model.ballPos.y + (vy_ * dt)
+                    model.ballPos.y + (vy_ * (dtMs / 1000.0))
 
                 x_ =
-                    model.ballPos.x + (vx_ * dt)
+                    model.ballPos.x + (vx_ * (dtMs / 1000.0))
 
                 rx_ =
                     model.ballPos.rx
-
-                ry_ =
-                    ySquash_ * r
 
                 newPos =
                     { x = x_
@@ -156,13 +219,13 @@ update msg model =
                     }
 
                 newRunningState =
-                    case newPos.x >= (1.15 * canvasW) || newPos.x < (-0.15 * canvasW) of
+                    case newPos.x >= (1.15 * meterMaxWidth) || newPos.x < (-0.15 * meterMaxWidth) of
                         -- we've run out of bounds in the x direction
                         True ->
                             Paused
 
                         False ->
-                            case newPos.y >= (1.15 * canvasH) || newPos.y < (-0.15 * canvasH) of
+                            case newPos.y >= (1.15 * meterMaxHeight) || newPos.y < (-0.15 * meterMaxHeight) of
                                 -- we've run out of bounds in the y direction
                                 True ->
                                     Paused
@@ -180,18 +243,11 @@ update msg model =
         UserClickedRefresh ->
             ( refreshModel, Effect.none )
 
+        UserClickedPause ->
+            ( { model | runningState = Paused }, Effect.none )
 
-dt : Float
-dt =
-    10
-
-
-canvasW =
-    1000
-
-
-canvasH =
-    650
+        TimeTravelToFrame int ->
+            ( model, Effect.none )
 
 
 
@@ -203,7 +259,7 @@ subscriptions model =
     case model.runningState of
         Playing ->
             Sub.batch
-                [ Time.every dt Tick
+                [ Time.every dtMs Tick
                 ]
 
         Paused ->
@@ -239,10 +295,6 @@ viewControlPanel model =
 
                 Paused ->
                     "Paused"
-
-        positionMessage : String
-        positionMessage =
-            "pos: (" ++ String.fromFloat model.ballPos.x ++ ", " ++ String.fromFloat model.ballPos.y ++ ")"
     in
     row
         [ Border.width 1
@@ -250,7 +302,7 @@ viewControlPanel model =
         , Border.rounded 5
         , Background.color Palette.white
         , width fill
-        , height (px 80)
+        , height (px 40)
         , spacing 10
         ]
         [ el [ centerX ] <| E.text displayMessage
@@ -267,7 +319,6 @@ viewControlPanel model =
                     (E.text " ↻ ")
             , onPress = Just UserClickedRefresh
             }
-        , el [ alignRight ] <| E.text positionMessage
         ]
 
 
@@ -282,19 +333,18 @@ viewSvgViewBox model =
                 , SA.rx (ST.px model.ballPos.rx)
                 , SA.ry (ST.px model.ballPos.ry)
                 , SA.fill <| ST.Paint (toAvhColor Palette.blue)
-                , SA.strokeWidth (ST.px 2)
-                , SA.stroke <| ST.Paint (toAvhColor Palette.red)
                 ]
                 []
             ]
     in
-    E.html <|
-        S.svg
-            [ SA.width (ST.px canvasW)
-            , SA.height (ST.px canvasH)
-            , SA.viewBox 0 0 canvasW canvasH
-            ]
-            svgNodes
+    el [] <|
+        E.html <|
+            S.svg
+                [ SA.width (ST.px canvasElementWidth)
+                , SA.height (ST.px canvasElementHeight)
+                , SA.viewBox 0 0 meterMaxWidth meterMaxHeight
+                ]
+                svgNodes
 
 
 viewCanvas : Model -> Element Msg
@@ -310,19 +360,56 @@ viewCanvas model =
 
 viewElements : Model -> Element Msg
 viewElements model =
-    column
-        [ height (px 800)
-        , width (px 1200)
-        , centerX
+    row
+        [ centerX
         , centerY
-        , padding 10
-        , Background.color Palette.lightGrey
-        , Border.width 1
-        , Border.color Palette.black
-        , Border.rounded 10
-
-        --, centerX
+        , height (px <| round <| canvasElementHeight + 80.0)
+        , width (px <| round <| canvasElementWidth + 340)
+        , spacing 5
         ]
-        [ viewCanvas model
-        , viewControlPanel model
+        [ column
+            [ width fill
+            , height fill
+            , centerX
+            , centerY
+            , padding 10
+            , Background.color Palette.lightGrey
+            , Border.width 1
+            , Border.color Palette.black
+            , Border.rounded 10
+
+            --, centerX
+            ]
+            [ viewCanvas model
+            , viewControlPanel model
+            ]
+        , viewDebugPanel model
+        ]
+
+
+viewDebugPanel : Model -> Element Msg
+viewDebugPanel model =
+    column
+        [ width fill
+        , height fill
+        , clipX
+        , clipY
+        , Background.color Palette.lightGrey
+        , Border.rounded 10
+        , Border.color Palette.black
+        , Border.width 1
+        , padding 10
+        , spacing 10
+        ]
+        [ el [ Font.bold ] <| E.text "Debug info:"
+        , E.text <| "g (m/s^2): " ++ String.fromFloat g
+        , E.text <| "max X (m): " ++ String.fromFloat meterMaxWidth
+        , E.text <| "max Y (m): " ++ String.fromFloat meterMaxHeight
+        , E.text <| "pos.x (m): " ++ String.fromFloat model.ballPos.x
+        , E.text <| "pos.y (m): " ++ String.fromFloat model.ballPos.y
+        , E.text <| "v_x (m/s): " ++ String.fromFloat model.ballPos.vx
+        , E.text <| "v_y (m/s): " ++ String.fromFloat model.ballPos.vy
+        , E.text <| "r (m): " ++ String.fromFloat r
+        , E.text <| "r_x (m): " ++ String.fromFloat model.ballPos.rx
+        , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
         ]
