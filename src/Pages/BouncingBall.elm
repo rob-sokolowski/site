@@ -116,7 +116,7 @@ update msg model =
                 vy_ =
                     case model.ballPos.y + model.ballPos.ry >= canvasH of
                         True ->
-                            -- we are not near boundary, reverse, without dampening
+                            -- we are at boundary, reverse, dampen a bit
                             -1 * model.ballPos.vy * bounceDampen
 
                         False ->
