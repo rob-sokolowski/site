@@ -69,6 +69,13 @@ elements =
             ]
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
+                { url = "/bouncing-ball"
+                , label = text "Bouncing ball"
+                }
+            , text " learning to animate things"
+            ]
+        , row [ paddingXY 10 0 ]
+            [ link [ Font.color blue ]
                 { url = "/speed-read-demo"
                 , label = text "Speed read demo"
                 }
