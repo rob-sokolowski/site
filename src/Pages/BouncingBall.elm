@@ -59,20 +59,20 @@ g : Float
 g =
     let
         slowDownFactor =
-            2.0
+            0.5
     in
-    -- NB: y-axis is such that down is positive!
+    -- NB: svg's y-axis is such that down is positive, therefore g is also positive!
     9.8 / slowDownFactor
 
 
 r : Float
 r =
-    0.22
+    0.5
 
 
 dtMs : Float
 dtMs =
-    10.0
+    20.0
 
 
 scaleXY : Float
@@ -120,7 +120,7 @@ vx_0 =
 
 vy_0 : Float
 vy_0 =
-    -5.0
+    -2.0
 
 
 
@@ -190,12 +190,12 @@ update msg model =
                             model.ballPos.vy + (g * (dtMs / 1000.0))
 
                 ry_ =
-                    case meterMaxHeight - model.ballPos.y > (1.5 * r) + epsilon of
+                    case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
                         True ->
                             1.0 * r
 
                         False ->
-                            (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
+                            (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
 
                 vx_ =
                     model.ballPos.vx
