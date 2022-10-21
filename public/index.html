@@ -15,9 +15,9 @@
     var app = Elm.Main.init();
 
     // This function grabs the specification from Elm (here called specs).
-    app.ports.elmToJS.subscribe(function(specs) {
-      vegaEmbed("#elm-ui-viz", specs, {actions: false}).catch(console.warn);
-    });
+    // app.ports.elmToJS.subscribe(function(specs) {
+    //   vegaEmbed("#elm-ui-viz", specs, {actions: false}).catch(console.warn);
+    // });
   </script>
 </body>
 </html>
