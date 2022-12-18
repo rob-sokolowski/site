@@ -89,6 +89,13 @@ elements =
             , text " (clone)"
             ]
         , row [ paddingXY 10 0 ]
+            [ text "Snippet 1: "
+            , link [ Font.color blue ]
+                { url = "/snippets/request-response-modes"
+                , label = text "Request Response Modes"
+                }
+            ]
+        , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
                 { url = "/pops"
                 , label = text "Pops"
