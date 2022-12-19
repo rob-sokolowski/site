@@ -66,7 +66,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Snippet - On Requests"
+    { title = "Snippet - Request Response Modes"
     , body =
         [ layout
             [ Font.family

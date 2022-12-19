@@ -96,6 +96,13 @@ elements =
                 }
             ]
         , row [ paddingXY 10 0 ]
+            [ text "Snippet 2: "
+            , link [ Font.color blue ]
+                { url = "/snippets/ant-marching"
+                , label = text "Ant Marching"
+                }
+            ]
+        , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
                 { url = "/pops"
                 , label = text "Pops"
