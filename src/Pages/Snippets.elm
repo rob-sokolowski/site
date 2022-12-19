@@ -104,5 +104,9 @@ viewElements model =
 
 
 paragraphs1 =
-    [ E.text """Snippets"""
+    [ paragraph []
+        [ E.text """To see a list of all snippets, please see the
+    """
+        , E.link [ Font.color Palette.blue, Font.underline ] { url = "/", label = E.text "homepage" }
+        ]
     ]
