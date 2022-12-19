@@ -261,13 +261,172 @@ type alias AntColors =
     }
 
 
+type alias Position =
+    { x : Float
+    , y : Float
+    }
+
+
 antColors : AntColors
 antColors =
     { bodyFill = toAvhColor (rgb255 0x7F 0xD1 0x3B)
     , bodyStroke = toAvhColor (rgb255 0x00 0x00 0x00)
-    , eyes = toAvhColor (rgb255 0x7F 0xD1 0x3B)
+    , eyes = toAvhColor (rgb255 0x00 0x00 0x00)
     , pupils = toAvhColor (rgb255 0x7F 0xD1 0x3B)
     }
+
+
+svgAnt : Position -> List (Svg Msg)
+svgAnt center =
+    let
+        body : List (Svg Msg)
+        body =
+            [ -- the hind-section of the ant
+              S.ellipse
+                [ SA.cx (ST.px <| center.x - 23)
+                , SA.cy (ST.px <| center.y)
+                , SA.rx (ST.px 20)
+                , SA.ry (ST.px 15)
+                , SA.fill <| ST.Paint antColors.bodyFill
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+
+            -- the abdomen
+            , S.ellipse
+                [ SA.cx (ST.px center.x)
+                , SA.cy (ST.px center.y)
+                , SA.rx (ST.px 18)
+                , SA.ry (ST.px 12)
+                , SA.fill <| ST.Paint antColors.bodyFill
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+
+            -- the head
+            , S.ellipse
+                [ SA.cx (ST.px <| center.x + 23)
+                , SA.cy (ST.px <| center.y)
+                , SA.rx (ST.px 20)
+                , SA.ry (ST.px 18)
+                , SA.fill <| ST.Paint antColors.bodyFill
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            ]
+
+        legs : List (Svg Msg)
+        legs =
+            [ S.line
+                [ SA.x1 (ST.px <| center.x - 25)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x - 27)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x - 20)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x - 30)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x - 15)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x - 17)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x - 18)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x - 20)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x - 3)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x + 5)
+                , SA.y1 (ST.px <| center.y + 10)
+                , SA.x2 (ST.px <| center.x)
+                , SA.y2 (ST.px <| center.y + 25)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            ]
+
+        face : List (Svg Msg)
+        face =
+            [ S.ellipse
+                [ SA.cx (ST.px <| center.x + 18)
+                , SA.cy (ST.px <| center.y - 2)
+                , SA.rx (ST.px 5)
+                , SA.ry (ST.px 5)
+                , SA.fill <| ST.Paint antColors.eyes
+                , SA.stroke <| ST.Paint antColors.eyes
+                ]
+                []
+            , S.ellipse
+                [ SA.cx (ST.px <| center.x + 32)
+                , SA.cy (ST.px <| center.y - 2)
+                , SA.rx (ST.px 5)
+                , SA.ry (ST.px 5)
+                , SA.fill <| ST.Paint antColors.eyes
+                , SA.stroke <| ST.Paint antColors.eyes
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x + 20)
+                , SA.y1 (ST.px <| center.y + 8)
+                , SA.x2 (ST.px <| center.x + 30)
+                , SA.y2 (ST.px <| center.y + 8)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            ]
+
+        antennae : List (Svg Msg)
+        antennae =
+            [ S.line
+                [ SA.x1 (ST.px <| center.x + 19)
+                , SA.y1 (ST.px <| center.y - 10)
+                , SA.x2 (ST.px <| center.x + 16)
+                , SA.y2 (ST.px <| center.y - 30)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            , S.line
+                [ SA.x1 (ST.px <| center.x + 30)
+                , SA.y1 (ST.px <| center.y - 10)
+                , SA.x2 (ST.px <| center.x + 35)
+                , SA.y2 (ST.px <| center.y - 30)
+                , SA.strokeWidth (ST.px 2)
+                , SA.stroke <| ST.Paint antColors.bodyStroke
+                ]
+                []
+            ]
+    in
+    body ++ legs ++ face ++ antennae
 
 
 viewSvgViewBox : LayoutInfo -> Element Msg
@@ -286,36 +445,9 @@ viewSvgViewBox layoutInfo =
                 []
             ]
 
-        svgNodes : List (Svg Msg)
-        svgNodes =
-            [ S.ellipse
-                [ SA.cx (ST.px 50)
-                , SA.cy (ST.px 300)
-                , SA.rx (ST.px 20)
-                , SA.ry (ST.px 15)
-                , SA.fill <| ST.Paint antColors.bodyFill
-                , SA.stroke <| ST.Paint antColors.bodyStroke
-                ]
-                []
-            , S.ellipse
-                [ SA.cx (ST.px 75)
-                , SA.cy (ST.px 300)
-                , SA.rx (ST.px 18)
-                , SA.ry (ST.px 12)
-                , SA.fill <| ST.Paint antColors.bodyFill
-                , SA.stroke <| ST.Paint antColors.bodyStroke
-                ]
-                []
-            , S.ellipse
-                [ SA.cx (ST.px 105)
-                , SA.cy (ST.px 295)
-                , SA.rx (ST.px 20)
-                , SA.ry (ST.px 18)
-                , SA.fill <| ST.Paint antColors.bodyFill
-                , SA.stroke <| ST.Paint antColors.bodyStroke
-                ]
-                []
-            ]
+        antPosition : Position
+        antPosition =
+            { x = 65, y = layoutInfo.canvasHeight - 45 }
     in
     el
         [ Border.width 1
@@ -331,7 +463,7 @@ viewSvgViewBox layoutInfo =
                 , SA.height (ST.px layoutInfo.canvasHeight)
                 , SA.viewBox 0 0 layoutInfo.canvasWidth layoutInfo.canvasHeight
                 ]
-                (svgFloor ++ svgNodes)
+                (svgFloor ++ svgAnt antPosition)
 
 
 antImageUrl =
