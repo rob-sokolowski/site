@@ -95,6 +95,13 @@ elements =
                 , label = text "Request Response Modes"
                 }
             ]
+        , row [ paddingXY 10 0 ]
+            [ text "Snippet 2: "
+            , link [ Font.color blue ]
+                { url = "/snippets/inaction-is-an-action"
+                , label = text "Inaction is an action"
+                }
+            ]
 
         --, row [ paddingXY 10 0 ]
         --    [ text "Snippet 2: "
