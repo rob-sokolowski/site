@@ -103,9 +103,8 @@ paragraphs1 =
     [ E.text """What do I wish I understood when I was younger?
 """
     , E.text """
-    Inaction is an action. When you don't act, others will. I am a thoughtful person, but it's not the thought that counts. Action matters.
+    Inaction is an action. When you don't act, others will. I am a thoughtful person, but it's not the thought that counts.
+    Furthermore, our actions are our choices. And since inaction is an action, we also choose to not act. That
+    dilemma is not our choice.
     """
-    , E.text """
-There's a part of me that wants to elaborate, but I think I've said everything I needed to say today.
-        """
     ]
