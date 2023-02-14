@@ -104,7 +104,7 @@ paragraphs1 =
 """
     , E.text """
     Inaction is an action. When you don't act, others will. I am a thoughtful person, but it's not the thought that counts.
-    Furthermore, our actions are our choices. And since inaction is an action, we also choose to not act. That
-    dilemma is not our choice.
+    Furthermore, our actions are our choices. And since inaction is an action, we also choose to not act. That..
+    is not our choice.
     """
     ]
