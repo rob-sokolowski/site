@@ -40,25 +40,12 @@ elements =
         [ el [ Font.size 20 ] <| text "Hello world, welcome to my website."
         , text " "
         , text <| "Below are various applets I've been working on"
-
-        --, link [ Font.color blue ]
-        --    { url = "/animation"
-        --    , label = text "Animation"
-        --    }
-        --, link [ Font.color blue ]
-        --    { url = "/game-dev"
-        --    , label = text "Game Sandbox"
-        --    }
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
-                { url = "https://fir-sandbox-2.lamdera.app/sheet"
-                , label = text "Sheet"
+                { url = "https://fir-sandbox-2.lamdera.app"
+                , label = text "Fir"
                 }
-            , text " (intended for large screens). And related page, "
-            , link [ Font.color blue ]
-                { url = "https://fir-sandbox-2.lamdera.app/vega-lite"
-                , label = text "Vega lite"
-                }
+            , text " <- my main side-project (intended for large-screen/keyboard-based devices)"
             ]
         , row [ paddingXY 10 0 ]
             [ link [ Font.color blue ]
