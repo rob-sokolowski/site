@@ -12,7 +12,6 @@ import Gen.Params.{{module}} exposing (Params)
 import Page
 import Request
 import Shared
-import Ui exposing (ColorTheme)
 import View exposing (View)
 import Page
 
@@ -33,15 +32,12 @@ page shared req =
 
 type alias Model =
     {
-        theme : ColorTheme
     }
 
 
 init : Shared.Model -> ( Model, Effect Msg )
 init shared =
-    ( {
-        theme = shared.selectedTheme
-    }, Effect.none )
+    ( {}, Effect.none )
 
 
 
@@ -75,12 +71,12 @@ view : Model -> View Msg
 view model =
     { title = "{{module}}"
     , body =
-        el
-            [ width fill
-            , height fill
-            , Background.color model.theme.deadspace
+        [ layout
+            [ E.width E.fill
+            , E.height E.fill
             ]
             (viewElements model)
+        ]
     }
 
 

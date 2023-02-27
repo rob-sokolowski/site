@@ -1,6 +1,5 @@
 module Pages.ParableOfPolygonsClone exposing (Model, Msg, page)
 
-
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -12,9 +11,7 @@ import Gen.Params.ParableOfPolygonsClone exposing (Params)
 import Page
 import Request
 import Shared
-import Ui exposing (ColorTheme)
 import View exposing (View)
-import Page
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -32,16 +29,12 @@ page shared req =
 
 
 type alias Model =
-    {
-        theme : ColorTheme
-    }
+    {}
 
 
 init : Shared.Model -> ( Model, Effect Msg )
 init shared =
-    ( {
-        theme = shared.selectedTheme
-    }, Effect.none )
+    ( {}, Effect.none )
 
 
 
@@ -71,16 +64,17 @@ subscriptions model =
 
 -- VIEW
 
+
 view : Model -> View Msg
 view model =
     { title = "ParableOfPolygonsClone"
     , body =
-        el
-            [ width fill
-            , height fill
-            , Background.color model.theme.deadspace
+        [ layout
+            [ E.width E.fill
+            , E.height E.fill
             ]
             (viewElements model)
+        ]
     }
 
 
