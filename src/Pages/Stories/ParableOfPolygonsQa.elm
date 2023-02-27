@@ -1,5 +1,6 @@
 module Pages.Stories.ParableOfPolygonsQa exposing (Model, Msg, page)
 
+import Browser.Dom
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -9,11 +10,17 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.Stories.ParableOfPolygonsQa exposing (Params)
 import Page
+import Palette exposing (toAvhColor)
 import Request
 import Shared
 import Simple.Animation as Animation exposing (Animation)
 import Simple.Animation.Animated as Animated
 import Simple.Animation.Property as P
+import Task
+import TypedSvg as S
+import TypedSvg.Attributes as SA
+import TypedSvg.Core as SC exposing (Svg)
+import TypedSvg.Types as ST
 import View exposing (View)
 
 
@@ -38,6 +45,10 @@ type alias ElementId =
 type alias Model =
     { numButtonClicks : Int
     , hoveredOnEl : Maybe ElementId
+    , viewport : Maybe Browser.Dom.Viewport
+    , pageRenderStatus : PageRenderStatus
+
+    --, layoutInfo : LayoutInfo
     }
 
 
@@ -45,8 +56,10 @@ init : Shared.Model -> ( Model, Effect Msg )
 init shared =
     ( { numButtonClicks = 0
       , hoveredOnEl = Nothing
+      , viewport = Nothing
+      , pageRenderStatus = AwaitingDomInfo
       }
-    , Effect.none
+    , Effect.fromCmd <| Task.perform GotViewport Browser.Dom.getViewport
     )
 
 
@@ -58,6 +71,7 @@ type Msg
     = ClickedButton
     | HoveredOnElement ElementId
     | CancelHovers
+    | GotViewport Browser.Dom.Viewport
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -71,6 +85,48 @@ update msg model =
 
         CancelHovers ->
             ( { model | hoveredOnEl = Nothing }, Effect.none )
+
+        GotViewport viewPort ->
+            let
+                mainPanelWidth : Int
+                mainPanelWidth =
+                    round <| (viewPort.viewport.width * 0.8)
+
+                mainPanelHeight : Int
+                mainPanelHeight =
+                    200
+
+                sidePanelWidth : Int
+                sidePanelWidth =
+                    min 300 (round viewPort.viewport.width - mainPanelWidth - 5)
+
+                canvasPanelWidth : Float
+                canvasPanelWidth =
+                    toFloat mainPanelWidth - 5
+
+                canvasPanelHeight : Float
+                canvasPanelHeight =
+                    viewPort.viewport.height - 75
+
+                layout : LayoutInfo
+                layout =
+                    { mainPanelWidth = mainPanelWidth
+                    , mainPanelHeight = mainPanelHeight
+                    , sidePanelWidth = sidePanelWidth
+                    , canvasElementWidth = canvasPanelWidth
+                    , canvasElementHeight = canvasPanelHeight
+                    , viewBoxXMin = 0
+                    , viewBoxYMin = 0
+                    , viewBoxWidth = canvasPanelWidth
+                    , viewBoxHeight = canvasPanelHeight
+                    }
+            in
+            ( { model
+                | viewport = Just viewPort
+                , pageRenderStatus = Ready layout
+              }
+            , Effect.none
+            )
 
 
 
@@ -152,6 +208,7 @@ viewElements model =
             ]
             [ viewBasicsPanel model
             , viewControlWidgetPanel model
+            , viewPolygons model
             ]
         , column []
             [ el [ Font.size 18, Font.bold ] (E.text "Debug Info:")
@@ -170,8 +227,10 @@ viewControlWidgetPanel model =
         [ el [ Font.bold ] <| E.text "Control widgets:"
         , button
             { onClick = Just ClickedButton
-            , displayText = "Yo"
+            , displayText = "reset"
             , id = "button-1"
+            , widthPx = 100
+            , heightPx = 40
             , isHoveredOn =
                 case model.hoveredOnEl of
                     Nothing ->
@@ -187,6 +246,24 @@ viewControlWidgetPanel model =
 -- begin region: UI components
 
 
+type PageRenderStatus
+    = AwaitingDomInfo
+    | Ready LayoutInfo
+
+
+type alias LayoutInfo =
+    { mainPanelWidth : Int
+    , mainPanelHeight : Int
+    , sidePanelWidth : Int
+    , canvasElementWidth : Float
+    , canvasElementHeight : Float
+    , viewBoxXMin : Float
+    , viewBoxYMin : Float
+    , viewBoxWidth : Float
+    , viewBoxHeight : Float
+    }
+
+
 pxMax =
     1200
 
@@ -196,12 +273,13 @@ pxMin =
 
 
 type alias Palette =
-    { blue : Color
-    , darkCharcoal : Color
-    , lightBlue : Color
-    , lightGrey : Color
-    , white : Color
+    { white : Color
     , black : Color
+    , surfaceBlue : Color
+    , strokeBlue : Color
+    , surfaceYellow : Color
+    , strokeYellow : Color
+    , lightGrey : Color
     , darkishGrey : Color
     , red : Color
     }
@@ -209,12 +287,13 @@ type alias Palette =
 
 palette : Palette
 palette =
-    { blue = rgb255 0x72 0x9F 0xCF
-    , darkCharcoal = rgb255 0x2E 0x34 0x36
-    , lightBlue = rgb255 0xC5 0xE8 0xF7
-    , lightGrey = rgb255 0xE3 0xE3 0xE6
-    , white = rgb255 0xFF 0xFF 0xFF
+    { white = rgb255 0xFF 0xFF 0xFF
     , black = rgb255 0x00 0x00 0x00
+    , surfaceBlue = rgb255 0x38 0x67 0xE8
+    , strokeBlue = rgb255 0x20 0x3B 0x85
+    , surfaceYellow = rgb255 0xFC 0xE4 0x77
+    , strokeYellow = rgb255 0xE3 0xDD 0x74
+    , lightGrey = rgb255 0xE3 0xE3 0xE6
     , darkishGrey = rgb255 0xAB 0xAA 0xB2
     , red = rgb255 0xFF 0x12 0x10
     }
@@ -222,6 +301,8 @@ palette =
 
 type alias ButtonProps msg =
     { id : ElementId
+    , widthPx : Int
+    , heightPx : Int
     , isHoveredOn : Bool
     , onClick : Maybe msg
     , displayText : String
@@ -241,6 +322,113 @@ animatedEl =
     animatedUi el
 
 
+type Shape
+    = Triangle
+    | Square
+
+
+type Mood
+    = Happy
+    | Content
+    | Mad
+
+
+viewPolygon : Shape -> Mood -> Element Msg
+viewPolygon shape mood =
+    let
+        polygonPoints : List ( number, number )
+        polygonPoints =
+            case shape of
+                Triangle ->
+                    [ ( 0, 100 ), ( 50, 0 ), ( 100, 100 ), ( 0, 100 ) ]
+
+                Square ->
+                    [ ( 0, 0 ), ( 100, 0 ), ( 100, 100 ), ( 0, 100 ), ( 0, 0 ) ]
+
+        ( fillColor, strokeColor ) =
+            case shape of
+                Triangle ->
+                    ( toAvhColor palette.surfaceYellow, toAvhColor palette.strokeYellow )
+
+                Square ->
+                    ( toAvhColor palette.surfaceBlue, toAvhColor palette.strokeBlue )
+
+        htmlElement : Element Msg
+        htmlElement =
+            E.html <|
+                S.svg
+                    [ SA.width (ST.px 150)
+                    , SA.height (ST.px 150)
+                    , SA.viewBox 0 0 150 150
+                    ]
+                    [ S.polygon
+                        [ --SA.x (ST.px pos.x)
+                          --, SA.y (ST.px pos.y)
+                          --, SA.width (ST.px w)
+                          --, SA.height (ST.px h)
+                          --, SA.rx (ST.px rad)
+                          SA.points polygonPoints
+                        , SA.stroke (ST.Paint strokeColor)
+                        , SA.fill (ST.Paint fillColor)
+                        , SA.strokeWidth (ST.px 3)
+                        ]
+                        []
+                    ]
+    in
+    case mood of
+        Happy ->
+            htmlElement
+
+        Content ->
+            htmlElement
+
+        Mad ->
+            animatedEl rotationOscillation [] htmlElement
+
+
+viewPolygons : Model -> Element Msg
+viewPolygons model =
+    column [ spacing 10, centerX ]
+        [ E.text "Happy polygons:   =)"
+        , row []
+            [ viewPolygon Square Happy
+            , viewPolygon Triangle Happy
+            ]
+        , E.text "Content polygons:   -_-"
+        , row []
+            [ viewPolygon Square Content
+            , viewPolygon Triangle Content
+            ]
+        , E.text "Mad polygons:    >:("
+        , row []
+            [ viewPolygon Square Mad
+            , viewPolygon Triangle Mad
+            ]
+        ]
+
+
+rotationOscillation : Animation
+rotationOscillation =
+    let
+        stepMs =
+            300
+    in
+    Animation.steps
+        { startAt = [ P.rotate -15 ]
+        , options = [ Animation.loop ]
+        }
+        [ Animation.wait stepMs
+        , Animation.step stepMs [ P.rotate 15 ]
+        , Animation.wait stepMs
+        , Animation.step stepMs [ P.rotate -15 ]
+
+        --, Animation.wait stepMs
+        --, Animation.step stepMs [ P.rotate 60 ]
+        --, Animation.wait stepMs
+        --, Animation.step stepMs [ P.rotate 0 ]
+        ]
+
+
 button : ButtonProps Msg -> Element Msg
 button props =
     let
@@ -250,29 +438,33 @@ button props =
         slideUp : Animation
         slideUp =
             Animation.steps
-                { startAt = [ P.y 0 ]
+                { startAt = [ P.y 0, P.x 0 ]
                 , options = []
                 }
-                [ Animation.step stepMs [ P.y -5 ]
+                [ Animation.step stepMs [ P.x 3, P.y -5 ]
                 ]
 
         innerEl : Element Msg
         innerEl =
-            el
-                [ width (px 80)
-                , height (px 80)
-                , Background.color palette.black
+            Input.button
+                [ width (px props.widthPx)
+                , height (px (props.heightPx - 5))
+                , Background.color palette.lightGrey
                 , centerX
                 , centerY
+                , Border.rounded 5
                 ]
-                E.none
+                { onPress = Just ClickedButton
+                , label = el [ centerX, Font.color palette.white, Font.bold ] (E.text props.displayText)
+                }
     in
     el
-        [ width (px 100)
-        , height (px 100)
+        [ width (px props.widthPx)
+        , height (px props.heightPx)
         , Background.color palette.darkishGrey
         , centerY
         , centerX
+        , Border.rounded 5
         , Events.onMouseEnter (HoveredOnElement props.id)
         , Events.onMouseLeave CancelHovers
         ]
