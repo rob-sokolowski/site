@@ -9,6 +9,7 @@ import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
 import Gen.Params.GameDev
 import Gen.Params.Home_
+import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
 import Gen.Params.Snippets
@@ -18,6 +19,7 @@ import Gen.Params.WordleClone
 import Gen.Params.Snippets.AntMarching
 import Gen.Params.Snippets.InactionIsAnAction
 import Gen.Params.Snippets.RequestResponseModes
+import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser)
@@ -29,6 +31,7 @@ type Route
     | ElmUiSvgIssue
     | GameDev
     | Home_
+    | ParableOfPolygonsClone
     | Pops
     | ScriptaDemo
     | Snippets
@@ -38,6 +41,7 @@ type Route
     | Snippets__AntMarching
     | Snippets__InactionIsAnAction
     | Snippets__RequestResponseModes
+    | Stories__ParableOfPolygonsQa
     | NotFound
 
 
@@ -53,6 +57,7 @@ routes =
     , Parser.map BouncingBall Gen.Params.BouncingBall.parser
     , Parser.map ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.parser
     , Parser.map GameDev Gen.Params.GameDev.parser
+    , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
     , Parser.map Snippets Gen.Params.Snippets.parser
@@ -63,6 +68,7 @@ routes =
     , Parser.map Snippets__AntMarching Gen.Params.Snippets.AntMarching.parser
     , Parser.map Snippets__InactionIsAnAction Gen.Params.Snippets.InactionIsAnAction.parser
     , Parser.map Snippets__RequestResponseModes Gen.Params.Snippets.RequestResponseModes.parser
+    , Parser.map Stories__ParableOfPolygonsQa Gen.Params.Stories.ParableOfPolygonsQa.parser
     ]
 
 
@@ -88,6 +94,9 @@ toHref route =
     
         Home_ ->
             joinAsHref []
+    
+        ParableOfPolygonsClone ->
+            joinAsHref [ "parable-of-polygons-clone" ]
     
         Pops ->
             joinAsHref [ "pops" ]
@@ -115,6 +124,9 @@ toHref route =
     
         Snippets__RequestResponseModes ->
             joinAsHref [ "snippets", "request-response-modes" ]
+    
+        Stories__ParableOfPolygonsQa ->
+            joinAsHref [ "stories", "parable-of-polygons-qa" ]
     
         NotFound ->
             joinAsHref [ "not-found" ]

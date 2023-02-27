@@ -1,5 +1,4 @@
-module Pages.{{module}} exposing (Model, Msg, page)
-
+module Pages.ParableOfPolygonsClone exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -8,12 +7,11 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Gen.Params.{{module}} exposing (Params)
+import Gen.Params.ParableOfPolygonsClone exposing (Params)
 import Page
 import Request
 import Shared
 import View exposing (View)
-import Page
 
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
@@ -31,8 +29,7 @@ page shared req =
 
 
 type alias Model =
-    {
-    }
+    {}
 
 
 init : Shared.Model -> ( Model, Effect Msg )
@@ -67,9 +64,10 @@ subscriptions model =
 
 -- VIEW
 
+
 view : Model -> View Msg
 view model =
-    { title = "{{module}}"
+    { title = "ParableOfPolygonsClone"
     , body =
         [ layout
             [ E.width E.fill
@@ -82,4 +80,4 @@ view model =
 
 viewElements : Model -> Element Msg
 viewElements model =
-    E.text "{{module}}"
+    E.text "ParableOfPolygonsClone"
