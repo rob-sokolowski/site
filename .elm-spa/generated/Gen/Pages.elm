@@ -8,6 +8,7 @@ import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
 import Gen.Params.GameDev
 import Gen.Params.Home_
+import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
 import Gen.Params.Snippets
@@ -17,6 +18,7 @@ import Gen.Params.WordleClone
 import Gen.Params.Snippets.AntMarching
 import Gen.Params.Snippets.InactionIsAnAction
 import Gen.Params.Snippets.RequestResponseModes
+import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Gen.Model as Model
 import Gen.Msg as Msg
@@ -27,6 +29,7 @@ import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
 import Pages.GameDev
 import Pages.Home_
+import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
 import Pages.Snippets
@@ -36,6 +39,7 @@ import Pages.WordleClone
 import Pages.Snippets.AntMarching
 import Pages.Snippets.InactionIsAnAction
 import Pages.Snippets.RequestResponseModes
+import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 import Request exposing (Request)
 import Shared
@@ -70,6 +74,9 @@ init route =
         Route.Home_ ->
             pages.home_.init ()
     
+        Route.ParableOfPolygonsClone ->
+            pages.parableOfPolygonsClone.init ()
+    
         Route.Pops ->
             pages.pops.init ()
     
@@ -97,6 +104,9 @@ init route =
         Route.Snippets__RequestResponseModes ->
             pages.snippets__requestResponseModes.init ()
     
+        Route.Stories__ParableOfPolygonsQa ->
+            pages.stories__parableOfPolygonsQa.init ()
+    
         Route.NotFound ->
             pages.notFound.init ()
 
@@ -115,6 +125,9 @@ update msg_ model_ =
     
         ( Msg.GameDev msg, Model.GameDev params model ) ->
             pages.gameDev.update params msg model
+    
+        ( Msg.ParableOfPolygonsClone msg, Model.ParableOfPolygonsClone params model ) ->
+            pages.parableOfPolygonsClone.update params msg model
     
         ( Msg.Pops msg, Model.Pops params model ) ->
             pages.pops.update params msg model
@@ -142,6 +155,9 @@ update msg_ model_ =
     
         ( Msg.Snippets__RequestResponseModes msg, Model.Snippets__RequestResponseModes params model ) ->
             pages.snippets__requestResponseModes.update params msg model
+    
+        ( Msg.Stories__ParableOfPolygonsQa msg, Model.Stories__ParableOfPolygonsQa params model ) ->
+            pages.stories__parableOfPolygonsQa.update params msg model
 
         _ ->
             \_ _ _ -> ( model_, Effect.none )
@@ -167,6 +183,9 @@ view model_ =
     
         Model.Home_ params ->
             pages.home_.view params ()
+    
+        Model.ParableOfPolygonsClone params model ->
+            pages.parableOfPolygonsClone.view params model
     
         Model.Pops params model ->
             pages.pops.view params model
@@ -195,6 +214,9 @@ view model_ =
         Model.Snippets__RequestResponseModes params model ->
             pages.snippets__requestResponseModes.view params model
     
+        Model.Stories__ParableOfPolygonsQa params model ->
+            pages.stories__parableOfPolygonsQa.view params model
+    
         Model.NotFound params ->
             pages.notFound.view params ()
 
@@ -219,6 +241,9 @@ subscriptions model_ =
     
         Model.Home_ params ->
             pages.home_.subscriptions params ()
+    
+        Model.ParableOfPolygonsClone params model ->
+            pages.parableOfPolygonsClone.subscriptions params model
     
         Model.Pops params model ->
             pages.pops.subscriptions params model
@@ -247,6 +272,9 @@ subscriptions model_ =
         Model.Snippets__RequestResponseModes params model ->
             pages.snippets__requestResponseModes.subscriptions params model
     
+        Model.Stories__ParableOfPolygonsQa params model ->
+            pages.stories__parableOfPolygonsQa.subscriptions params model
+    
         Model.NotFound params ->
             pages.notFound.subscriptions params ()
 
@@ -261,6 +289,7 @@ pages :
     , elmUiSvgIssue : Bundle Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model Pages.ElmUiSvgIssue.Msg
     , gameDev : Bundle Gen.Params.GameDev.Params Pages.GameDev.Model Pages.GameDev.Msg
     , home_ : Static Gen.Params.Home_.Params
+    , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
     , scriptaDemo : Bundle Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model Pages.ScriptaDemo.Msg
     , snippets : Bundle Gen.Params.Snippets.Params Pages.Snippets.Model Pages.Snippets.Msg
@@ -270,6 +299,7 @@ pages :
     , snippets__antMarching : Bundle Gen.Params.Snippets.AntMarching.Params Pages.Snippets.AntMarching.Model Pages.Snippets.AntMarching.Msg
     , snippets__inactionIsAnAction : Bundle Gen.Params.Snippets.InactionIsAnAction.Params Pages.Snippets.InactionIsAnAction.Model Pages.Snippets.InactionIsAnAction.Msg
     , snippets__requestResponseModes : Bundle Gen.Params.Snippets.RequestResponseModes.Params Pages.Snippets.RequestResponseModes.Model Pages.Snippets.RequestResponseModes.Msg
+    , stories__parableOfPolygonsQa : Bundle Gen.Params.Stories.ParableOfPolygonsQa.Params Pages.Stories.ParableOfPolygonsQa.Model Pages.Stories.ParableOfPolygonsQa.Msg
     , notFound : Static Gen.Params.NotFound.Params
     }
 pages =
@@ -278,6 +308,7 @@ pages =
     , elmUiSvgIssue = bundle Pages.ElmUiSvgIssue.page Model.ElmUiSvgIssue Msg.ElmUiSvgIssue
     , gameDev = bundle Pages.GameDev.page Model.GameDev Msg.GameDev
     , home_ = static Pages.Home_.view Model.Home_
+    , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops
     , scriptaDemo = bundle Pages.ScriptaDemo.page Model.ScriptaDemo Msg.ScriptaDemo
     , snippets = bundle Pages.Snippets.page Model.Snippets Msg.Snippets
@@ -287,6 +318,7 @@ pages =
     , snippets__antMarching = bundle Pages.Snippets.AntMarching.page Model.Snippets__AntMarching Msg.Snippets__AntMarching
     , snippets__inactionIsAnAction = bundle Pages.Snippets.InactionIsAnAction.page Model.Snippets__InactionIsAnAction Msg.Snippets__InactionIsAnAction
     , snippets__requestResponseModes = bundle Pages.Snippets.RequestResponseModes.page Model.Snippets__RequestResponseModes Msg.Snippets__RequestResponseModes
+    , stories__parableOfPolygonsQa = bundle Pages.Stories.ParableOfPolygonsQa.page Model.Stories__ParableOfPolygonsQa Msg.Stories__ParableOfPolygonsQa
     , notFound = static Pages.NotFound.view Model.NotFound
     }
 
