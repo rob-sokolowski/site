@@ -1,5 +1,7 @@
 module Pages.Stories.ParableOfPolygonsQa exposing (Model, Msg, page)
 
+import Array exposing (Array)
+import Array2D exposing (Array2D)
 import Browser.Dom
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -42,22 +44,58 @@ type alias ElementId =
     String
 
 
+type alias Polygon =
+    { shape : Shape
+    , mood : Mood
+    }
+
+
 type alias Model =
     { numButtonClicks : Int
     , hoveredOnEl : Maybe ElementId
     , viewport : Maybe Browser.Dom.Viewport
     , pageRenderStatus : PageRenderStatus
+    , grid : Array2D Polygon
 
     --, layoutInfo : LayoutInfo
     }
 
 
+grid3x4 : Array2D Polygon
+grid3x4 =
+    let
+        p1 : Polygon
+        p1 =
+            { shape = Triangle
+            , mood = Happy
+            }
+
+        p2 : Polygon
+        p2 =
+            { shape = Square
+            , mood = Mad
+            }
+
+        p3 : Polygon
+        p3 =
+            { shape = Square
+            , mood = Mad
+            }
+    in
+    Array2D.fromListOfLists
+        [ [ p1, p2, p3, p1 ]
+        , [ p3, p1, p2, p3 ]
+        , [ p3, p3, p2, p1 ]
+        ]
+
+
 init : Shared.Model -> ( Model, Effect Msg )
-init shared =
+init _ =
     ( { numButtonClicks = 0
       , hoveredOnEl = Nothing
       , viewport = Nothing
       , pageRenderStatus = AwaitingDomInfo
+      , grid = grid3x4
       }
     , Effect.fromCmd <| Task.perform GotViewport Browser.Dom.getViewport
     )
@@ -208,7 +246,8 @@ viewElements model =
             ]
             [ viewBasicsPanel model
             , viewControlWidgetPanel model
-            , viewPolygons model
+            , viewDemoPolygons model
+            , viewPolygonGrid model.grid
             ]
         , column []
             [ el [ Font.size 18, Font.bold ] (E.text "Debug Info:")
@@ -333,6 +372,33 @@ type Mood
     | Mad
 
 
+viewPolygonRow : Array Polygon -> Element Msg
+viewPolygonRow ps =
+    row [] <|
+        Array.toList <|
+            Array.map (\p -> viewPolygon p.shape p.mood) ps
+
+
+viewPolygonGrid : Array2D Polygon -> Element Msg
+viewPolygonGrid ps2 =
+    let
+        nRows : Int
+        nRows =
+            Array2D.rowCount ps2
+
+        range : Array Int
+        range =
+            Array.fromList (List.range 0 nRows)
+    in
+    column [] <|
+        Array.toList <|
+            Array.map (\ix -> viewPolygonRow (Array2D.getRow ix ps2)) range
+
+
+
+--Array.map (\row -> viewPolygonRow row) (Array2D.getRow 0 ps2)
+
+
 viewPolygon : Shape -> Mood -> Element Msg
 viewPolygon shape mood =
     let
@@ -386,8 +452,8 @@ viewPolygon shape mood =
             animatedEl rotationOscillation [] htmlElement
 
 
-viewPolygons : Model -> Element Msg
-viewPolygons model =
+viewDemoPolygons : Model -> Element Msg
+viewDemoPolygons model =
     column [ spacing 10, centerX ]
         [ E.text "Happy polygons:   =)"
         , row []
