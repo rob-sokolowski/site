@@ -392,6 +392,9 @@ viewRowOfCells cells =
                 , Border.color palette.darkishGrey
                 , Border.width 1
                 , centerX
+                , mouseOver
+                    [ Border.color palette.surfaceBlue
+                    ]
                 ]
     in
     row [ width fill, centerX ] <|
