@@ -397,8 +397,8 @@ viewRowOfCells cells =
                     ]
                 ]
     in
-    row [ width fill, centerX ] <|
-        Array.toList <|
+    row [ width fill, centerX ]
+        (Array.toList <|
             Array.map
                 (\cell ->
                     case cell of
@@ -409,6 +409,7 @@ viewRowOfCells cells =
                             el_ E.none
                 )
                 cells
+        )
 
 
 viewPolygonGrid : Array2D Cell -> Element Msg
@@ -421,9 +422,6 @@ viewPolygonGrid ps2 =
     column
         [ width fill
         , centerX
-
-        --, Border.width 1
-        --, Border.color palette.red
         ]
     <|
         Array.toList <|
@@ -451,10 +449,19 @@ viewPolygon shape mood =
         polygonPoints =
             case shape of
                 Triangle ->
-                    [ ( 0, polyPx ), ( polyPx / 2.0, 0 ), ( polyPx, polyPx ), ( 0, polyPx ) ]
+                    [ ( 0, polyPx )
+                    , ( polyPx / 2.0, 0 )
+                    , ( polyPx, polyPx )
+                    , ( 0, polyPx )
+                    ]
 
                 Square ->
-                    [ ( 0, 0 ), ( polyPx, 0 ), ( polyPx, polyPx ), ( 0, polyPx ), ( 0, 0 ) ]
+                    [ ( 0, 0 )
+                    , ( polyPx, 0 )
+                    , ( polyPx, polyPx )
+                    , ( 0, polyPx )
+                    , ( 0, 0 )
+                    ]
 
         ( fillColor, strokeColor ) =
             case shape of
