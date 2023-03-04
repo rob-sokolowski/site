@@ -1,4 +1,4 @@
-module Pages.Stories.ParableOfPolygonsQa exposing (Model, Msg, page)
+module Pages.Stories.ParableOfPolygonsQa exposing (Cell, Model, Mood, Msg, Polygon, Shape, page)
 
 import Array exposing (Array)
 import Array2D exposing (Array2D)
@@ -55,14 +55,14 @@ type alias Model =
     , hoveredOnEl : Maybe ElementId
     , viewport : Maybe Browser.Dom.Viewport
     , pageRenderStatus : PageRenderStatus
-    , grid : Array2D Polygon
+    , grid : Array2D Cell
 
     --, layoutInfo : LayoutInfo
     }
 
 
-grid3x4 : Array2D Polygon
-grid3x4 =
+grid5x4 : Array2D Cell
+grid5x4 =
     let
         p1 : Polygon
         p1 =
@@ -81,11 +81,19 @@ grid3x4 =
             { shape = Square
             , mood = Mad
             }
+
+        p4 : Polygon
+        p4 =
+            { shape = Triangle
+            , mood = Mad
+            }
     in
     Array2D.fromListOfLists
-        [ [ p1, p2, p3, p1 ]
-        , [ p3, p1, p2, p3 ]
-        , [ p3, p3, p2, p1 ]
+        [ [ Occupied p1, Occupied p2, Vacant, Vacant ]
+        , [ Vacant, Vacant, Occupied p2, Vacant ]
+        , [ Vacant, Occupied p4, Occupied p2, Occupied p3 ]
+        , [ Occupied p1, Occupied p2, Vacant, Vacant ]
+        , [ Vacant, Vacant, Occupied p2, Vacant ]
         ]
 
 
@@ -95,7 +103,7 @@ init _ =
       , hoveredOnEl = Nothing
       , viewport = Nothing
       , pageRenderStatus = AwaitingDomInfo
-      , grid = grid3x4
+      , grid = grid5x4
       }
     , Effect.fromCmd <| Task.perform GotViewport Browser.Dom.getViewport
     )
@@ -182,7 +190,7 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
-    { title = "Stories.ParableOfPolygonsQa"
+    { title = "Story | Parable of Polygons"
     , body =
         [ layout
             [ E.width E.fill
@@ -210,7 +218,7 @@ viewBasicsPanel model =
         , el [ Font.size 20, Font.bold, centerX ] (E.text "Paragraph header font")
         , el [ Font.size 20, centerX ] (E.text "Normal paragraph font")
         , paragraph []
-            [ E.text "TODO: Put long, wrapping text here, but also preserve responsiveness\n            "
+            [ E.text "TODO: Put long, wrapping text here, but also preserve responsiveness\n"
             ]
         ]
 
@@ -229,6 +237,7 @@ viewElements model =
         [ width fill
         , height fill
         , padding 10
+        , centerX
         ]
         [ E.column
             [ width
@@ -249,10 +258,11 @@ viewElements model =
             , viewDemoPolygons model
             , viewPolygonGrid model.grid
             ]
-        , column []
-            [ el [ Font.size 18, Font.bold ] (E.text "Debug Info:")
-            , viewDebugInfo model
-            ]
+
+        --, column [ centerX ]
+        --    [ el [ Font.size 18, Font.bold ] (E.text "Debug Info:")
+        --    , viewDebugInfo model
+        --    ]
         ]
 
 
@@ -372,44 +382,76 @@ type Mood
     | Mad
 
 
-viewPolygonRow : Array Polygon -> Element Msg
-viewPolygonRow ps =
-    row [] <|
+viewRowOfCells : Array Cell -> Element Msg
+viewRowOfCells cells =
+    let
+        el_ =
+            el
+                [ width (px <| round cellPx)
+                , height (px <| round cellPx)
+                , Border.color palette.darkishGrey
+                , Border.width 1
+                , centerX
+                ]
+    in
+    row [ width fill, centerX ] <|
         Array.toList <|
-            Array.map (\p -> viewPolygon p.shape p.mood) ps
+            Array.map
+                (\cell ->
+                    case cell of
+                        Occupied p ->
+                            el_ (viewPolygon p.shape p.mood)
+
+                        Vacant ->
+                            el_ E.none
+                )
+                cells
 
 
-viewPolygonGrid : Array2D Polygon -> Element Msg
+viewPolygonGrid : Array2D Cell -> Element Msg
 viewPolygonGrid ps2 =
     let
-        nRows : Int
-        nRows =
-            Array2D.rowCount ps2
-
         range : Array Int
         range =
-            Array.fromList (List.range 0 nRows)
+            Array.fromList (List.range 0 (Array2D.rowCount ps2))
     in
-    column [] <|
+    column
+        [ width fill
+        , centerX
+
+        --, Border.width 1
+        --, Border.color palette.red
+        ]
+    <|
         Array.toList <|
-            Array.map (\ix -> viewPolygonRow (Array2D.getRow ix ps2)) range
+            Array.map (\ix -> viewRowOfCells (Array2D.getRow ix ps2)) range
 
 
+type Cell
+    = Vacant
+    | Occupied Polygon
 
---Array.map (\row -> viewPolygonRow row) (Array2D.getRow 0 ps2)
+
+cellPx : Float
+cellPx =
+    100
 
 
 viewPolygon : Shape -> Mood -> Element Msg
 viewPolygon shape mood =
     let
-        polygonPoints : List ( number, number )
+        polyPx : Float
+        polyPx =
+            0.7 * cellPx
+
+        polygonPoints : List ( Float, Float )
         polygonPoints =
             case shape of
                 Triangle ->
-                    [ ( 0, 100 ), ( 50, 0 ), ( 100, 100 ), ( 0, 100 ) ]
+                    [ ( 0, polyPx ), ( polyPx / 2.0, 0 ), ( polyPx, polyPx ), ( 0, polyPx ) ]
 
                 Square ->
-                    [ ( 0, 0 ), ( 100, 0 ), ( 100, 100 ), ( 0, 100 ), ( 0, 0 ) ]
+                    [ ( 0, 0 ), ( polyPx, 0 ), ( polyPx, polyPx ), ( 0, polyPx ), ( 0, 0 ) ]
 
         ( fillColor, strokeColor ) =
             case shape of
@@ -423,17 +465,12 @@ viewPolygon shape mood =
         htmlElement =
             E.html <|
                 S.svg
-                    [ SA.width (ST.px 150)
-                    , SA.height (ST.px 150)
-                    , SA.viewBox 0 0 150 150
+                    [ SA.width (ST.px cellPx)
+                    , SA.height (ST.px cellPx)
+                    , SA.viewBox 0 0 cellPx cellPx
                     ]
                     [ S.polygon
-                        [ --SA.x (ST.px pos.x)
-                          --, SA.y (ST.px pos.y)
-                          --, SA.width (ST.px w)
-                          --, SA.height (ST.px h)
-                          --, SA.rx (ST.px rad)
-                          SA.points polygonPoints
+                        [ SA.points polygonPoints
                         , SA.stroke (ST.Paint strokeColor)
                         , SA.fill (ST.Paint fillColor)
                         , SA.strokeWidth (ST.px 3)
@@ -477,7 +514,7 @@ rotationOscillation : Animation
 rotationOscillation =
     let
         stepMs =
-            300
+            200
     in
     Animation.steps
         { startAt = [ P.rotate -15 ]
@@ -487,11 +524,6 @@ rotationOscillation =
         , Animation.step stepMs [ P.rotate 15 ]
         , Animation.wait stepMs
         , Animation.step stepMs [ P.rotate -15 ]
-
-        --, Animation.wait stepMs
-        --, Animation.step stepMs [ P.rotate 60 ]
-        --, Animation.wait stepMs
-        --, Animation.step stepMs [ P.rotate 0 ]
         ]
 
 
