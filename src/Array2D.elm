@@ -103,7 +103,7 @@ rowCount arr2d =
 
 colCount : Array2D e -> Int
 colCount arr2d =
-    -- Assumes square array2d!
+    -- Assumes rectangular array2d!
     A.length (getRow 0 arr2d)
 
 
