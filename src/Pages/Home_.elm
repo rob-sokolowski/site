@@ -44,11 +44,12 @@ elements =
         [ width (fill |> maximum 900 |> minimum 250)
         , height fill
         , padding 10
-        , spacing 10
+        , spacing 8
         , centerX
-        , Border.width 1
-        , Border.rounded 5
-        , Border.color Palette.darkishGrey
+
+        --, Border.width 1
+        --, Border.rounded 5
+        --, Border.color Palette.darkishGrey
         ]
         [ paragraph []
             [ text "Hello world, I'm" ]
@@ -57,6 +58,7 @@ elements =
             [ text """I enjoy writing code, and thinking about data tooling.
                 Below are some of my recreational programming projects. Enjoy!"""
             ]
+        , text " "
         , paragraph [] [ el h3Attrs (text "Fir") ]
         , paragraph []
             [ text """This project serves as a testing ground for prototyping my way towards a high performance tool
@@ -69,7 +71,7 @@ elements =
                 { url = "https://fir-sandbox-2.lamdera.app"
                 , label = text "Fir"
                 }
-            , text " (intended for large-screen keyboard/cursor devices only!)"
+            , text " (keyboard/cursor devices only!)"
             ]
         , paragraph []
             [ text "Source: two repos, "
@@ -90,11 +92,22 @@ elements =
                 , label = text "process dag, facts, graphs"
                 }
             ]
+        , text " "
         , paragraph [] [ el h3Attrs (text "Hippo") ]
         , paragraph []
-            [ text """A blazing fast, easy to use flashcard app. Generate flashcards with XMarkdown, which
-            supports both programming and mathematical notations. There is no configuration, no libraries to install, no compilation of
-            LaTex code! I use Hippo regularly for my studying.""" ]
+            [ text """A blazing fast, easy to use flashcard app. Generate flashcards with """
+            , link [ Font.color blue ]
+                { url = "https://github.com/jxxcarlson/scripta-compiler"
+                , label = text " jxxcarlson's Scripta compiler "
+                }
+            , text """ which supports both programming and mathematical notations. There is no configuration, no libraries to install, no compilation of
+            LaTeX code. I use Hippo regularly for my studying. If you have a sec, please go check out Professor Carlson's """
+            , link [ Font.color blue ]
+                { url = "https://jxxcarlson.io/"
+                , label = text " work"
+                }
+            , text ". You're in for a treat! There's still plenty of UI work to do for Hippo, and I'd like to make the UI responsive for study sessions on the go."
+            ]
         , paragraph []
             [ text "Live demo: "
             , link [ Font.color blue ]
@@ -109,7 +122,29 @@ elements =
                 , label = text "hippo-lamdera"
                 }
             ]
-        , paragraph [] [ text "There's still plenty of UI work to do, and I'd like to make a responsive version for mobile study sessions." ]
+        , text " "
+        , paragraph [] [ el h3Attrs (text "Wordle clone") ]
+        , paragraph []
+            [ text """This was a fun challenge I coded up during some downtime while on a road trip last summer.
+            The rule was I was not allowed to look up anything while coding this. The part that surprised me was having to implement a
+             custom keyboard layout. This was necessary to support both touch and keyboard inputs to match the experience
+             of the real app. The secret word is static and doesn't change daily, I'm calling that done enough for this demo =)"""
+            ]
+        , paragraph []
+            [ text "Live demo: "
+            , link [ Font.color blue ]
+                { url = "/wordle-clone"
+                , label = text "Wordle"
+                }
+            ]
+        , paragraph []
+            [ text "Source code: "
+            , link [ Font.color blue ]
+                { url = "https://github.com/rob-sokolowski/site/blob/main/src/Pages/WordleClone.elm"
+                , label = text "wordle-clone"
+                }
+            ]
+        , text " "
         , paragraph [] [ el h3Attrs (text "Bouncing ball") ]
         , paragraph []
             [ link [ Font.color blue ]
@@ -118,6 +153,7 @@ elements =
                 }
             , text " (intended for medium to large screens) learning to animate things"
             ]
+        , text " "
         , paragraph [] [ el h3Attrs (text "Speed read demo") ]
         , paragraph []
             [ link [ Font.color blue ]
@@ -126,14 +162,7 @@ elements =
                 }
             , text " (intended for small screens)"
             ]
-        , paragraph [] [ el h3Attrs (text "Wordle clone") ]
-        , paragraph []
-            [ link [ Font.color blue ]
-                { url = "/wordle-clone"
-                , label = text "Wordle"
-                }
-            , text " (clone)"
-            ]
+        , text " "
         , paragraph []
             [ text "Snippet 1: "
             , link [ Font.color blue ]
