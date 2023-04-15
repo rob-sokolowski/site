@@ -1,7 +1,25 @@
 module Palette exposing (..)
 
 import Color
-import Element exposing (rgb255)
+import Element as E exposing (..)
+import Element.Font as Font
+
+
+globalLayoutAttrs : List (Attribute msg)
+globalLayoutAttrs =
+    [ padding 2
+    , Font.family [ Font.typeface "Open Sans", Font.sansSerif ]
+    , Font.size 16
+    , width fill
+    ]
+
+
+topLevelBlogAttrs : List (Attribute msg)
+topLevelBlogAttrs =
+    [ width (fill |> maximum 900 |> minimum 250)
+    , height fill
+    , centerX
+    ]
 
 
 blue =
@@ -40,7 +58,7 @@ red =
 -- THEME - inspired by Elm logo
 
 
-blue_light : Element.Color
+blue_light : Color
 blue_light =
     rgb255 0x60 0xB5 0xCC
 
@@ -65,12 +83,12 @@ orange_error_alert =
     rgb255 0xFC 0x8F 0x32
 
 
-toAvhColor : Element.Color -> Color.Color
+toAvhColor : Color -> Color.Color
 toAvhColor color =
     -- I typically work with Element.Color in UIs, but Svg gets along better with Avh's Color,
     -- so to keep the palette defined in one place, transform between the two
     let
         rgba =
-            Element.toRgb color
+            toRgb color
     in
     Color.rgba rgba.red rgba.green rgba.blue rgba.alpha

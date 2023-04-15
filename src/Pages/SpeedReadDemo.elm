@@ -10,7 +10,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.SpeedReadDemo exposing (Params)
 import Page
-import Palette
+import Palette exposing (globalLayoutAttrs)
 import Request
 import Shared
 import Time
@@ -325,11 +325,7 @@ view model =
     { title = "Speed Read Demo"
     , body =
         [ layout
-            [ E.width E.fill
-            , E.height E.fill
-            , centerX
-            , padding 5
-            ]
+            globalLayoutAttrs
             (elements model)
         ]
     }

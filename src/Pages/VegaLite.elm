@@ -10,7 +10,7 @@ import Element.Input as Input
 import Gen.Params.VegaLite exposing (Params)
 import Html.Attributes as HA
 import Page
-import Palette
+import Palette exposing (globalLayoutAttrs)
 import PortDefs exposing (elmToJS)
 import Request
 import Shared
@@ -79,10 +79,7 @@ view model =
     { title = title
     , body =
         [ layout
-            [ E.width E.fill
-            , E.height E.fill
-            , padding 10
-            ]
+            globalLayoutAttrs
             (elements model)
         ]
     }

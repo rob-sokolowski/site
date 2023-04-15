@@ -9,7 +9,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.BouncingBall exposing (Params)
 import Page
-import Palette exposing (toAvhColor)
+import Palette exposing (globalLayoutAttrs, toAvhColor)
 import Request
 import Shared
 import Time
@@ -275,10 +275,7 @@ view model =
     { title = "Bouncing ball"
     , body =
         [ layout
-            [ padding 2
-            , Font.size 16
-            , Background.color Palette.darkishGrey
-            ]
+            globalLayoutAttrs
             (viewElements model)
         ]
     }
