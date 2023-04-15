@@ -97,7 +97,9 @@ elements =
                 { url = "https://jxxcarlson.io/"
                 , label = text " work"
                 }
-            , text ". You're in for a treat! There's still plenty of UI work to do for Hippo, and I'd like to make the UI responsive for study sessions on the go."
+            , text """. You're in for a treat! There's still plenty of UI work to do for Hippo. I find basic usage to be
+            confusing, there's no tutorial / how-to's, and I'd like to make it responsive for study sessions on the go.
+            """
             ]
         , paragraph []
             [ text "Live demo: "
@@ -139,7 +141,7 @@ elements =
         , paragraph [] [ el h3Attrs (text "Bouncing ball") ]
         , paragraph []
             [ text """
-            I was nerd-sniped by discussion in Recurse Center's internal chat one morning about animating a bouncing
+            I was nerd-sniped by discussion in Recurse Center's community chat one morning about animating a bouncing
             ball. This implementation is scrappy, using SVG shapes and Elm's built-in `Tick.Every` task to fake animation.
             There is no hardware acceleration / nor use of key-frames, so performance on small devices is poor. I still had
             fun hacking this one.
