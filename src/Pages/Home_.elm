@@ -86,7 +86,7 @@ elements =
         , text " "
         , paragraph [] [ el h3Attrs (text "Hippo") ]
         , paragraph []
-            [ text """A blazing fast, easy to use flashcard app. Generate flashcards with """
+            [ text """A fast, easy to use flashcard app. Generate flashcards with """
             , link [ Font.color blue ]
                 { url = "https://github.com/jxxcarlson/scripta-compiler"
                 , label = text " jxxcarlson's Scripta compiler "
