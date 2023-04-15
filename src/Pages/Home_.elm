@@ -30,9 +30,7 @@ view =
 h3Attrs : List (Attribute msg)
 h3Attrs =
     [ Font.bold
-    , Font.size 14
-
-    --, Font.color slcgColors.teal
+    , Font.size 16
     ]
 
 
@@ -43,9 +41,9 @@ h3Attrs =
 elements : Element msg
 elements =
     column
-        [ width (fill |> maximum 1000 |> minimum 400)
+        [ width (fill |> maximum 900 |> minimum 250)
         , height fill
-        , padding 25
+        , padding 10
         , spacing 10
         , centerX
         , Border.width 1
@@ -56,55 +54,94 @@ elements =
             [ text "Hello world, I'm" ]
         , paragraph [ Font.bold, Font.size 24, moveRight 5, moveUp 2 ] [ text "Rob Sokolowski" ]
         , paragraph []
-            [ text "I love writing code, and thinking about data tooling."
-            , text "Below are some example of my recreational programming. These are intended to be fun, so vary in their "
-            , text "completeness and roubustness. All recreational programming of mine is open source."
+            [ text """I enjoy writing code, and thinking about data tooling.
+                Below are some of my recreational programming projects. Enjoy!"""
             ]
-        , text " "
-        , text <| "Below are various applets I've been working on"
-        , row [ paddingXY 10 0 ]
-            [ link [ Font.color blue ]
+        , paragraph [] [ el h3Attrs (text "Fir") ]
+        , paragraph []
+            [ text """This project serves as a testing ground for prototyping my way towards a high performance tool
+             providing your data with a semantic layer, exploratory analytics tooling, business process modeling,
+             and counterfactual analyses.
+            """ ]
+        , paragraph []
+            [ text "Live demo: "
+            , link [ Font.color blue ]
                 { url = "https://fir-sandbox-2.lamdera.app"
                 , label = text "Fir"
                 }
-            , text " <- my main side-project (intended for large-screen/keyboard-based devices)"
+            , text " (intended for large-screen keyboard/cursor devices only!)"
             ]
-        , row [ paddingXY 10 0 ]
-            [ link [ Font.color blue ]
-                { url = "https://hippo.lamdera.app"
-                , label = text "Hippo flash cards"
+        , paragraph []
+            [ text "Source: two repos, "
+            , link [ Font.color blue ]
+                { url = "https://github.com/project-fir/fir-sandbox"
+                , label = text "frontend"
                 }
-            , text " (intended for medium to large screens)"
+            , text " and "
+            , link [ Font.color blue ]
+                { url = "https://github.com/project-fir/api"
+                , label = text "backend"
+                }
             ]
-        , row [ paddingXY 10 0 ]
+        , paragraph []
+            [ text "Here's a video I made awhile back exploring some ideas: "
+            , link [ Font.color blue ]
+                { url = "https://youtu.be/n9jGZY3aO6w"
+                , label = text "process dag, facts, graphs"
+                }
+            ]
+        , paragraph [] [ el h3Attrs (text "Hippo") ]
+        , paragraph []
+            [ text """A blazing fast, easy to use flashcard app. Generate flashcards with XMarkdown, which
+            supports both programming and mathematical notations. There is no configuration, no libraries to install, no compilation of
+            LaTex code! I use Hippo regularly for my studying.""" ]
+        , paragraph []
+            [ text "Live demo: "
+            , link [ Font.color blue ]
+                { url = "https://hippo.lamdera.app"
+                , label = text "Hippo"
+                }
+            ]
+        , paragraph []
+            [ text "Source code: "
+            , link [ Font.color blue ]
+                { url = "https://github.com/project-fir/hippo-lamdera"
+                , label = text "hippo-lamdera"
+                }
+            ]
+        , paragraph [] [ text "There's still plenty of UI work to do, and I'd like to make a responsive version for mobile study sessions." ]
+        , paragraph [] [ el h3Attrs (text "Bouncing ball") ]
+        , paragraph []
             [ link [ Font.color blue ]
                 { url = "/bouncing-ball"
                 , label = text "Bouncing ball"
                 }
             , text " (intended for medium to large screens) learning to animate things"
             ]
-        , row [ paddingXY 10 0 ]
+        , paragraph [] [ el h3Attrs (text "Speed read demo") ]
+        , paragraph []
             [ link [ Font.color blue ]
                 { url = "/speed-read-demo"
                 , label = text "Speed read demo"
                 }
             , text " (intended for small screens)"
             ]
-        , row [ paddingXY 10 0 ]
+        , paragraph [] [ el h3Attrs (text "Wordle clone") ]
+        , paragraph []
             [ link [ Font.color blue ]
                 { url = "/wordle-clone"
                 , label = text "Wordle"
                 }
             , text " (clone)"
             ]
-        , row [ paddingXY 10 0 ]
+        , paragraph []
             [ text "Snippet 1: "
             , link [ Font.color blue ]
                 { url = "/snippets/request-response-modes"
                 , label = text "Request Response Modes"
                 }
             ]
-        , row [ paddingXY 10 0 ]
+        , paragraph []
             [ text "Snippet 2: "
             , link [ Font.color blue ]
                 { url = "/snippets/inaction-is-an-action"
@@ -119,7 +156,8 @@ elements =
         --        , label = text "Ant Marching"
         --        }
         --    ]
-        , row [ paddingXY 10 0 ]
+        , paragraph [] [ el h3Attrs (text "(An oldie) - Pops") ]
+        , paragraph []
             [ link [ Font.color blue ]
                 { url = "/pops"
                 , label = text "Pops"
