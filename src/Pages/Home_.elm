@@ -8,7 +8,7 @@ import Element.Events exposing (..)
 import Element.Font as Font
 import Element.Input as Input
 import Html
-import Palette
+import Palette exposing (globalLayoutAttrs, topLevelBlogAttrs)
 import View exposing (View)
 
 
@@ -17,11 +17,7 @@ view =
     { title = "Homepage"
     , body =
         [ layout
-            [ padding 2
-            , Font.family [ Font.typeface "Open Sans", Font.sansSerif ]
-            , Font.size 16
-            , width fill
-            ]
+            globalLayoutAttrs
             elements
         ]
     }
@@ -41,16 +37,11 @@ h3Attrs =
 elements : Element msg
 elements =
     column
-        [ width (fill |> maximum 900 |> minimum 250)
-        , height fill
-        , padding 10
-        , spacing 8
-        , centerX
-
-        --, Border.width 1
-        --, Border.rounded 5
-        --, Border.color Palette.darkishGrey
-        ]
+        (topLevelBlogAttrs
+            ++ [ padding 10
+               , spacing 8
+               ]
+        )
         [ paragraph []
             [ text "Hello world, I'm" ]
         , paragraph [ Font.bold, Font.size 24, moveRight 5, moveUp 2 ] [ text "Rob Sokolowski" ]
@@ -74,7 +65,7 @@ elements =
             , text " (keyboard/cursor devices only!)"
             ]
         , paragraph []
-            [ text "Source: two repos, "
+            [ text "Source code: two repos, "
             , link [ Font.color blue ]
                 { url = "https://github.com/project-fir/fir-sandbox"
                 , label = text "frontend"
@@ -147,22 +138,43 @@ elements =
         , text " "
         , paragraph [] [ el h3Attrs (text "Bouncing ball") ]
         , paragraph []
-            [ link [ Font.color blue ]
+            [ text """
+            I was nerd-sniped by discussion in Recurse Center's internal chat one morning about animating a bouncing
+            ball. This implementation is scrappy, using SVG shapes and Elm's built-in `Tick.Every` task to fake animation.
+            There is no hardware acceleration / nor use of key-frames, so performance on small devices is poor. I still had
+            fun hacking this one.
+            """
+            ]
+        , paragraph []
+            [ text "Live demo: "
+            , link [ Font.color blue ]
                 { url = "/bouncing-ball"
                 , label = text "Bouncing ball"
                 }
-            , text " (intended for medium to large screens) learning to animate things"
             ]
-        , text " "
-        , paragraph [] [ el h3Attrs (text "Speed read demo") ]
         , paragraph []
-            [ link [ Font.color blue ]
-                { url = "/speed-read-demo"
-                , label = text "Speed read demo"
+            [ text "Source code: "
+            , link [ Font.color blue ]
+                { url = "https://github.com/rob-sokolowski/site/blob/main/src/Pages/BouncingBall.elm"
+                , label = text "bouncing-ball"
                 }
-            , text " (intended for small screens)"
             ]
+
+        -- TODO: I want to fix the slider ratios before posting this publicly
+        --, text " "
+        --, paragraph [] [ el h3Attrs (text "Speed read demo") ]
+        --, paragraph []
+        --    [ link [ Font.color blue ]
+        --        { url = "/speed-read-demo"
+        --        , label = text "Speed read demo"
+        --        }
+        --    , text " (intended for small screens)"
+        --    ]
         , text " "
+        , paragraph h3Attrs [ text "Snippets" ]
+        , paragraph [] [ text """
+        I've been writing a bit more this year, here are a few thoughts I'm willing to share publicly.
+        """ ]
         , paragraph []
             [ text "Snippet 1: "
             , link [ Font.color blue ]
@@ -177,22 +189,29 @@ elements =
                 , label = text "Inaction is an action"
                 }
             ]
-
-        --, row [ paddingXY 10 0 ]
-        --    [ text "Snippet 2: "
-        --    , link [ Font.color blue ]
-        --        { url = "/snippets/ant-marching"
-        --        , label = text "Ant Marching"
-        --        }
-        --    ]
-        , paragraph [] [ el h3Attrs (text "(An oldie) - Pops") ]
+        , text " "
+        , paragraph [] [ el h3Attrs (text "Pops (an oldie)") ]
+        , paragraph [] [ text """
+        This was the 2nd iteration on what eventually lead to Fir (linked above). I wrote the first iteration in Python in 2020, and
+        unfortunately it's difficult to use / introspect. The lack of accessibility inspired me to start learning front-end development.
+        """ ]
         , paragraph []
-            [ link [ Font.color blue ]
+            [ text "Live demo: "
+            , link [ Font.color blue ]
                 { url = "/pops"
                 , label = text "Pops"
                 }
-            , text " This one is ambitious. I have much to learn before I can proceed!"
             ]
+        , paragraph []
+            [ text "Source code: "
+            , link [ Font.color blue ]
+                { url = "https://github.com/rob-sokolowski/site/blob/main/src/Pages/Pops.elm"
+                , label = text "pops"
+                }
+            ]
+        , text " "
+        , text " "
+        , text " "
         ]
 
 

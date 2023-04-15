@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Gen.Params.Snippets exposing (Params)
 import Page
-import Palette
+import Palette exposing (globalLayoutAttrs)
 import Request
 import Shared
 import View exposing (View)
@@ -69,11 +69,7 @@ view model =
     { title = "Snippets"
     , body =
         [ layout
-            [ Font.family
-                [ Font.typeface "Source Sans Pro"
-                , Font.sansSerif
-                ]
-            ]
+            globalLayoutAttrs
             (viewElements model)
         ]
     }
@@ -94,8 +90,6 @@ viewElements model =
                 )
             , height fill
             , centerX
-            , Border.color Palette.black
-            , Border.width 1
             , spacing 15
             , padding 10
             ]

@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Gen.Params.Snippets.InactionIsAnAction exposing (Params)
 import Page
-import Palette
+import Palette exposing (globalLayoutAttrs, topLevelBlogAttrs)
 import Request
 import Shared
 import View exposing (View)
@@ -65,11 +65,7 @@ view model =
     { title = "Snippet - Inaction is an Action"
     , body =
         [ layout
-            [ Font.family
-                [ Font.typeface "Source Sans Pro"
-                , Font.sansSerif
-                ]
-            ]
+            globalLayoutAttrs
             (viewElements model)
         ]
     }
@@ -77,26 +73,13 @@ view model =
 
 viewElements : Model -> Element Msg
 viewElements model =
-    el
-        [ width fill
-        , height fill
-        , padding 10
-        ]
-        (textColumn
-            [ width
-                (fill
-                    |> maximum 800
-                    |> minimum 200
-                )
-            , height fill
-            , centerX
-            , Border.color Palette.black
-            , Border.width 1
-            , spacing 15
-            , padding 10
-            ]
-            (List.map (\p -> paragraph [] [ p ]) paragraphs1)
+    column
+        (topLevelBlogAttrs
+            ++ [ spacing 15
+               , padding 10
+               ]
         )
+        (List.map (\p -> paragraph [] [ p ]) paragraphs1)
 
 
 paragraphs1 =

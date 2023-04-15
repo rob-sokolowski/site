@@ -13,7 +13,7 @@ import Gen.Params.GameDev exposing (Params)
 import Html exposing (Html)
 import Json.Decode as Decode
 import Page
-import Palette
+import Palette exposing (globalLayoutAttrs)
 import Request
 import Set
 import Shared
@@ -193,9 +193,7 @@ view model =
     { title = "GameDev Fun"
     , body =
         [ layout
-            [ E.width E.fill
-            , E.height E.fill
-            ]
+            globalLayoutAttrs
             (elements model)
         ]
     }
