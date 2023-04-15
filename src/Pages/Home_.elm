@@ -97,8 +97,8 @@ elements =
                 { url = "https://jxxcarlson.io/"
                 , label = text " work"
                 }
-            , text """. You're in for a treat! There's still plenty of UI work to do for Hippo. I find basic usage to be
-            confusing, there's no tutorial / how-to's, and I'd like to make it responsive for study sessions on the go.
+            , text """. You're in for a treat! There's still plenty of UI work to do for Hippo. I find its basic usage
+            confusing, there's no tutorial / how-to, and I'd like to make it responsive for study sessions on the go.
             """
             ]
         , paragraph []
