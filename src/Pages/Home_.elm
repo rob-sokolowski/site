@@ -18,17 +18,32 @@ view =
     , body =
         [ layout
             [ padding 2
+            , Font.family [ Font.typeface "Open Sans", Font.sansSerif ]
             , Font.size 16
+            , width fill
             ]
             elements
         ]
     }
 
 
+h3Attrs : List (Attribute msg)
+h3Attrs =
+    [ Font.bold
+    , Font.size 14
+
+    --, Font.color slcgColors.teal
+    ]
+
+
+
+-- TODO: Brush up on elm-ui-with-context
+
+
 elements : Element msg
 elements =
     column
-        [ width (fill |> maximum 800)
+        [ width (fill |> maximum 1000 |> minimum 400)
         , height fill
         , padding 25
         , spacing 10
@@ -37,7 +52,14 @@ elements =
         , Border.rounded 5
         , Border.color Palette.darkishGrey
         ]
-        [ el [ Font.size 20 ] <| text "Hello world, welcome to my website."
+        [ paragraph []
+            [ text "Hello world, I'm" ]
+        , paragraph [ Font.bold, Font.size 24, moveRight 5, moveUp 2 ] [ text "Rob Sokolowski" ]
+        , paragraph []
+            [ text "I love writing code, and thinking about data tooling."
+            , text "Below are some example of my recreational programming. These are intended to be fun, so vary in their "
+            , text "completeness and roubustness. All recreational programming of mine is open source."
+            ]
         , text " "
         , text <| "Below are various applets I've been working on"
         , row [ paddingXY 10 0 ]
