@@ -65,18 +65,6 @@ elements =
             , text " (keyboard/cursor devices only!)"
             ]
         , paragraph []
-            [ text "Source code: two repos, "
-            , link [ Font.color blue ]
-                { url = "https://github.com/project-fir/fir-sandbox"
-                , label = text "frontend"
-                }
-            , text " and "
-            , link [ Font.color blue ]
-                { url = "https://github.com/project-fir/api"
-                , label = text "backend"
-                }
-            ]
-        , paragraph []
             [ text "Here's a video I made awhile back exploring some ideas: "
             , link [ Font.color blue ]
                 { url = "https://youtu.be/n9jGZY3aO6w"
