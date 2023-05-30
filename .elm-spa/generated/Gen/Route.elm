@@ -12,13 +12,9 @@ import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
-import Gen.Params.Snippets
 import Gen.Params.SpeedReadDemo
 import Gen.Params.VegaLite
 import Gen.Params.WordleClone
-import Gen.Params.Snippets.AntMarching
-import Gen.Params.Snippets.InactionIsAnAction
-import Gen.Params.Snippets.RequestResponseModes
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Url exposing (Url)
@@ -34,13 +30,9 @@ type Route
     | ParableOfPolygonsClone
     | Pops
     | ScriptaDemo
-    | Snippets
     | SpeedReadDemo
     | VegaLite
     | WordleClone
-    | Snippets__AntMarching
-    | Snippets__InactionIsAnAction
-    | Snippets__RequestResponseModes
     | Stories__ParableOfPolygonsQa
     | NotFound
 
@@ -60,14 +52,10 @@ routes =
     , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
-    , Parser.map Snippets Gen.Params.Snippets.parser
     , Parser.map SpeedReadDemo Gen.Params.SpeedReadDemo.parser
     , Parser.map VegaLite Gen.Params.VegaLite.parser
     , Parser.map WordleClone Gen.Params.WordleClone.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
-    , Parser.map Snippets__AntMarching Gen.Params.Snippets.AntMarching.parser
-    , Parser.map Snippets__InactionIsAnAction Gen.Params.Snippets.InactionIsAnAction.parser
-    , Parser.map Snippets__RequestResponseModes Gen.Params.Snippets.RequestResponseModes.parser
     , Parser.map Stories__ParableOfPolygonsQa Gen.Params.Stories.ParableOfPolygonsQa.parser
     ]
 
@@ -104,9 +92,6 @@ toHref route =
         ScriptaDemo ->
             joinAsHref [ "scripta-demo" ]
     
-        Snippets ->
-            joinAsHref [ "snippets" ]
-    
         SpeedReadDemo ->
             joinAsHref [ "speed-read-demo" ]
     
@@ -115,15 +100,6 @@ toHref route =
     
         WordleClone ->
             joinAsHref [ "wordle-clone" ]
-    
-        Snippets__AntMarching ->
-            joinAsHref [ "snippets", "ant-marching" ]
-    
-        Snippets__InactionIsAnAction ->
-            joinAsHref [ "snippets", "inaction-is-an-action" ]
-    
-        Snippets__RequestResponseModes ->
-            joinAsHref [ "snippets", "request-response-modes" ]
     
         Stories__ParableOfPolygonsQa ->
             joinAsHref [ "stories", "parable-of-polygons-qa" ]
