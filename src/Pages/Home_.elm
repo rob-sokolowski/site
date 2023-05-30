@@ -64,18 +64,6 @@ elements =
             , text " (keyboard/cursor devices only!)"
             ]
         , paragraph []
-            [ text "Source code: two repos, "
-            , link [ Font.color blue ]
-                { url = "https://github.com/project-fir/fir-sandbox"
-                , label = text "frontend"
-                }
-            , text " and "
-            , link [ Font.color blue ]
-                { url = "https://github.com/project-fir/api"
-                , label = text "backend"
-                }
-            ]
-        , paragraph []
             [ text "Here's a video I made awhile back exploring some ideas: "
             , link [ Font.color blue ]
                 { url = "https://youtu.be/n9jGZY3aO6w"
@@ -96,7 +84,9 @@ elements =
                 { url = "https://jxxcarlson.io/"
                 , label = text " work"
                 }
-            , text ". You're in for a treat! There's still plenty of UI work to do for Hippo, and I'd like to make the UI responsive for study sessions on the go."
+            , text """. You're in for a treat! There's still plenty of UI work to do for Hippo. I find its basic usage
+            confusing, there's no tutorial / how-to, and I'd like to make it responsive for study sessions on the go.
+            """
             ]
         , paragraph []
             [ text "Live demo: "
@@ -138,7 +128,7 @@ elements =
         , paragraph [] [ el h3Attrs (text "Bouncing ball") ]
         , paragraph []
             [ text """
-            I was nerd-sniped by discussion in Recurse Center's internal chat one morning about animating a bouncing
+            I was nerd-sniped by discussion in Recurse Center's community chat one morning about animating a bouncing
             ball. This implementation is scrappy, using SVG shapes and Elm's built-in `Tick.Every` task to fake animation.
             There is no hardware acceleration / nor use of key-frames, so performance on small devices is poor. I still had
             fun hacking this one.
