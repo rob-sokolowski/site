@@ -11,13 +11,9 @@ import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
-import Gen.Params.Snippets
 import Gen.Params.SpeedReadDemo
 import Gen.Params.VegaLite
 import Gen.Params.WordleClone
-import Gen.Params.Snippets.AntMarching
-import Gen.Params.Snippets.InactionIsAnAction
-import Gen.Params.Snippets.RequestResponseModes
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Gen.Model as Model
@@ -32,13 +28,9 @@ import Pages.Home_
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
-import Pages.Snippets
 import Pages.SpeedReadDemo
 import Pages.VegaLite
 import Pages.WordleClone
-import Pages.Snippets.AntMarching
-import Pages.Snippets.InactionIsAnAction
-import Pages.Snippets.RequestResponseModes
 import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 import Request exposing (Request)
@@ -83,9 +75,6 @@ init route =
         Route.ScriptaDemo ->
             pages.scriptaDemo.init ()
     
-        Route.Snippets ->
-            pages.snippets.init ()
-    
         Route.SpeedReadDemo ->
             pages.speedReadDemo.init ()
     
@@ -94,15 +83,6 @@ init route =
     
         Route.WordleClone ->
             pages.wordleClone.init ()
-    
-        Route.Snippets__AntMarching ->
-            pages.snippets__antMarching.init ()
-    
-        Route.Snippets__InactionIsAnAction ->
-            pages.snippets__inactionIsAnAction.init ()
-    
-        Route.Snippets__RequestResponseModes ->
-            pages.snippets__requestResponseModes.init ()
     
         Route.Stories__ParableOfPolygonsQa ->
             pages.stories__parableOfPolygonsQa.init ()
@@ -135,9 +115,6 @@ update msg_ model_ =
         ( Msg.ScriptaDemo msg, Model.ScriptaDemo params model ) ->
             pages.scriptaDemo.update params msg model
     
-        ( Msg.Snippets msg, Model.Snippets params model ) ->
-            pages.snippets.update params msg model
-    
         ( Msg.SpeedReadDemo msg, Model.SpeedReadDemo params model ) ->
             pages.speedReadDemo.update params msg model
     
@@ -146,15 +123,6 @@ update msg_ model_ =
     
         ( Msg.WordleClone msg, Model.WordleClone params model ) ->
             pages.wordleClone.update params msg model
-    
-        ( Msg.Snippets__AntMarching msg, Model.Snippets__AntMarching params model ) ->
-            pages.snippets__antMarching.update params msg model
-    
-        ( Msg.Snippets__InactionIsAnAction msg, Model.Snippets__InactionIsAnAction params model ) ->
-            pages.snippets__inactionIsAnAction.update params msg model
-    
-        ( Msg.Snippets__RequestResponseModes msg, Model.Snippets__RequestResponseModes params model ) ->
-            pages.snippets__requestResponseModes.update params msg model
     
         ( Msg.Stories__ParableOfPolygonsQa msg, Model.Stories__ParableOfPolygonsQa params model ) ->
             pages.stories__parableOfPolygonsQa.update params msg model
@@ -193,9 +161,6 @@ view model_ =
         Model.ScriptaDemo params model ->
             pages.scriptaDemo.view params model
     
-        Model.Snippets params model ->
-            pages.snippets.view params model
-    
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.view params model
     
@@ -204,15 +169,6 @@ view model_ =
     
         Model.WordleClone params model ->
             pages.wordleClone.view params model
-    
-        Model.Snippets__AntMarching params model ->
-            pages.snippets__antMarching.view params model
-    
-        Model.Snippets__InactionIsAnAction params model ->
-            pages.snippets__inactionIsAnAction.view params model
-    
-        Model.Snippets__RequestResponseModes params model ->
-            pages.snippets__requestResponseModes.view params model
     
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.view params model
@@ -251,9 +207,6 @@ subscriptions model_ =
         Model.ScriptaDemo params model ->
             pages.scriptaDemo.subscriptions params model
     
-        Model.Snippets params model ->
-            pages.snippets.subscriptions params model
-    
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.subscriptions params model
     
@@ -262,15 +215,6 @@ subscriptions model_ =
     
         Model.WordleClone params model ->
             pages.wordleClone.subscriptions params model
-    
-        Model.Snippets__AntMarching params model ->
-            pages.snippets__antMarching.subscriptions params model
-    
-        Model.Snippets__InactionIsAnAction params model ->
-            pages.snippets__inactionIsAnAction.subscriptions params model
-    
-        Model.Snippets__RequestResponseModes params model ->
-            pages.snippets__requestResponseModes.subscriptions params model
     
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.subscriptions params model
@@ -292,13 +236,9 @@ pages :
     , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
     , scriptaDemo : Bundle Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model Pages.ScriptaDemo.Msg
-    , snippets : Bundle Gen.Params.Snippets.Params Pages.Snippets.Model Pages.Snippets.Msg
     , speedReadDemo : Bundle Gen.Params.SpeedReadDemo.Params Pages.SpeedReadDemo.Model Pages.SpeedReadDemo.Msg
     , vegaLite : Bundle Gen.Params.VegaLite.Params Pages.VegaLite.Model Pages.VegaLite.Msg
     , wordleClone : Bundle Gen.Params.WordleClone.Params Pages.WordleClone.Model Pages.WordleClone.Msg
-    , snippets__antMarching : Bundle Gen.Params.Snippets.AntMarching.Params Pages.Snippets.AntMarching.Model Pages.Snippets.AntMarching.Msg
-    , snippets__inactionIsAnAction : Bundle Gen.Params.Snippets.InactionIsAnAction.Params Pages.Snippets.InactionIsAnAction.Model Pages.Snippets.InactionIsAnAction.Msg
-    , snippets__requestResponseModes : Bundle Gen.Params.Snippets.RequestResponseModes.Params Pages.Snippets.RequestResponseModes.Model Pages.Snippets.RequestResponseModes.Msg
     , stories__parableOfPolygonsQa : Bundle Gen.Params.Stories.ParableOfPolygonsQa.Params Pages.Stories.ParableOfPolygonsQa.Model Pages.Stories.ParableOfPolygonsQa.Msg
     , notFound : Static Gen.Params.NotFound.Params
     }
@@ -311,13 +251,9 @@ pages =
     , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops
     , scriptaDemo = bundle Pages.ScriptaDemo.page Model.ScriptaDemo Msg.ScriptaDemo
-    , snippets = bundle Pages.Snippets.page Model.Snippets Msg.Snippets
     , speedReadDemo = bundle Pages.SpeedReadDemo.page Model.SpeedReadDemo Msg.SpeedReadDemo
     , vegaLite = bundle Pages.VegaLite.page Model.VegaLite Msg.VegaLite
     , wordleClone = bundle Pages.WordleClone.page Model.WordleClone Msg.WordleClone
-    , snippets__antMarching = bundle Pages.Snippets.AntMarching.page Model.Snippets__AntMarching Msg.Snippets__AntMarching
-    , snippets__inactionIsAnAction = bundle Pages.Snippets.InactionIsAnAction.page Model.Snippets__InactionIsAnAction Msg.Snippets__InactionIsAnAction
-    , snippets__requestResponseModes = bundle Pages.Snippets.RequestResponseModes.page Model.Snippets__RequestResponseModes Msg.Snippets__RequestResponseModes
     , stories__parableOfPolygonsQa = bundle Pages.Stories.ParableOfPolygonsQa.page Model.Stories__ParableOfPolygonsQa Msg.Stories__ParableOfPolygonsQa
     , notFound = static Pages.NotFound.view Model.NotFound
     }

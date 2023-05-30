@@ -171,25 +171,6 @@ elements =
         --    , text " (intended for small screens)"
         --    ]
         , text " "
-        , paragraph h3Attrs [ text "Snippets" ]
-        , paragraph [] [ text """
-        I've been writing a bit more this year, here are a few thoughts I'm willing to share publicly.
-        """ ]
-        , paragraph []
-            [ text "Snippet 1: "
-            , link [ Font.color blue ]
-                { url = "/snippets/request-response-modes"
-                , label = text "Request Response Modes"
-                }
-            ]
-        , paragraph []
-            [ text "Snippet 2: "
-            , link [ Font.color blue ]
-                { url = "/snippets/inaction-is-an-action"
-                , label = text "Inaction is an action"
-                }
-            ]
-        , text " "
         , paragraph [] [ el h3Attrs (text "Pops (an oldie)") ]
         , paragraph [] [ text """
         This was the 2nd iteration on what eventually lead to Fir (linked above). I wrote the first iteration in Python in 2020, and
