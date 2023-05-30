@@ -52,8 +52,8 @@ elements =
         , text " "
         , paragraph [] [ el h3Attrs (text "Fir") ]
         , paragraph []
-            [ text """This project serves as a testing ground for prototyping my way towards a high performance tool
-             that provides your data with a semantic layer, exploratory tooling, business-process modeling,
+            [ text """This project serves as a testing ground for prototyping my way tool
+             that provides data with a semantic layer, exploratory tooling, business-process modeling,
              and counterfactual analyses.
             """ ]
         , paragraph []
