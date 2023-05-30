@@ -52,9 +52,8 @@ elements =
         , text " "
         , paragraph [] [ el h3Attrs (text "Fir") ]
         , paragraph []
-            [ text """This project serves as a testing ground for prototyping my way tool
-             that provides data with a semantic layer, exploratory tooling, business-process modeling,
-             and counterfactual analyses.
+            [ text """This is my primary side project. It currently consists of several prototypes exploring ideas for a
+             semantic layer, business-process modeling, and counterfactual analyses.
             """ ]
         , paragraph []
             [ text "Live demo: "
@@ -86,7 +85,7 @@ elements =
         , text " "
         , paragraph [] [ el h3Attrs (text "Hippo") ]
         , paragraph []
-            [ text """A blazing fast, easy to use flashcard app. Generate flashcards with """
+            [ text """Yet another flashcard app. Generate flashcards with """
             , link [ Font.color blue ]
                 { url = "https://github.com/jxxcarlson/scripta-compiler"
                 , label = text " jxxcarlson's Scripta compiler "
