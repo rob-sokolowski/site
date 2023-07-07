@@ -43,10 +43,8 @@ elements =
                ]
         )
         [ paragraph []
-            [ text "Hello world, I'm" ]
-        , paragraph [ Font.bold, Font.size 24, moveRight 5, moveUp 2 ] [ text "Rob Sokolowski" ]
-        , paragraph []
-            [ text """I enjoy writing code, and thinking about data tooling.
+            [ text "Hello world, welcome to my website."
+            , text """I enjoy writing code, and thinking about data tooling.
                 Below are some of my recreational programming projects. Enjoy!"""
             ]
         , text " "
