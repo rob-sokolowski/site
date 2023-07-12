@@ -1,9 +1,7 @@
 module Gen.Model exposing (Model(..))
 
-import Gen.Params.Animation
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
-import Gen.Params.GameDev
 import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
@@ -13,10 +11,8 @@ import Gen.Params.VegaLite
 import Gen.Params.WordleClone
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
-import Pages.Animation
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
-import Pages.GameDev
 import Pages.Home_
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
@@ -30,10 +26,8 @@ import Pages.NotFound
 
 type Model
     = Redirecting_
-    | Animation Gen.Params.Animation.Params Pages.Animation.Model
     | BouncingBall Gen.Params.BouncingBall.Params Pages.BouncingBall.Model
     | ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model
-    | GameDev Gen.Params.GameDev.Params Pages.GameDev.Model
     | Home_ Gen.Params.Home_.Params
     | ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model
     | Pops Gen.Params.Pops.Params Pages.Pops.Model

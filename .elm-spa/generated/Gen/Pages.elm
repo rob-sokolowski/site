@@ -3,10 +3,8 @@ module Gen.Pages exposing (Model, Msg, init, subscriptions, update, view)
 import Browser.Navigation exposing (Key)
 import Effect exposing (Effect)
 import ElmSpa.Page
-import Gen.Params.Animation
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
-import Gen.Params.GameDev
 import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
@@ -20,10 +18,8 @@ import Gen.Model as Model
 import Gen.Msg as Msg
 import Gen.Route as Route exposing (Route)
 import Page exposing (Page)
-import Pages.Animation
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
-import Pages.GameDev
 import Pages.Home_
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
@@ -51,17 +47,11 @@ type alias Msg =
 init : Route -> Shared.Model -> Url -> Key -> ( Model, Effect Msg )
 init route =
     case route of
-        Route.Animation ->
-            pages.animation.init ()
-    
         Route.BouncingBall ->
             pages.bouncingBall.init ()
     
         Route.ElmUiSvgIssue ->
             pages.elmUiSvgIssue.init ()
-    
-        Route.GameDev ->
-            pages.gameDev.init ()
     
         Route.Home_ ->
             pages.home_.init ()
@@ -94,17 +84,11 @@ init route =
 update : Msg -> Model -> Shared.Model -> Url -> Key -> ( Model, Effect Msg )
 update msg_ model_ =
     case ( msg_, model_ ) of
-        ( Msg.Animation msg, Model.Animation params model ) ->
-            pages.animation.update params msg model
-    
         ( Msg.BouncingBall msg, Model.BouncingBall params model ) ->
             pages.bouncingBall.update params msg model
     
         ( Msg.ElmUiSvgIssue msg, Model.ElmUiSvgIssue params model ) ->
             pages.elmUiSvgIssue.update params msg model
-    
-        ( Msg.GameDev msg, Model.GameDev params model ) ->
-            pages.gameDev.update params msg model
     
         ( Msg.ParableOfPolygonsClone msg, Model.ParableOfPolygonsClone params model ) ->
             pages.parableOfPolygonsClone.update params msg model
@@ -137,17 +121,11 @@ view model_ =
         Model.Redirecting_ ->
             \_ _ _ -> View.none
     
-        Model.Animation params model ->
-            pages.animation.view params model
-    
         Model.BouncingBall params model ->
             pages.bouncingBall.view params model
     
         Model.ElmUiSvgIssue params model ->
             pages.elmUiSvgIssue.view params model
-    
-        Model.GameDev params model ->
-            pages.gameDev.view params model
     
         Model.Home_ params ->
             pages.home_.view params ()
@@ -183,17 +161,11 @@ subscriptions model_ =
         Model.Redirecting_ ->
             \_ _ _ -> Sub.none
     
-        Model.Animation params model ->
-            pages.animation.subscriptions params model
-    
         Model.BouncingBall params model ->
             pages.bouncingBall.subscriptions params model
     
         Model.ElmUiSvgIssue params model ->
             pages.elmUiSvgIssue.subscriptions params model
-    
-        Model.GameDev params model ->
-            pages.gameDev.subscriptions params model
     
         Model.Home_ params ->
             pages.home_.subscriptions params ()
@@ -228,10 +200,8 @@ subscriptions model_ =
 
 
 pages :
-    { animation : Bundle Gen.Params.Animation.Params Pages.Animation.Model Pages.Animation.Msg
-    , bouncingBall : Bundle Gen.Params.BouncingBall.Params Pages.BouncingBall.Model Pages.BouncingBall.Msg
+    { bouncingBall : Bundle Gen.Params.BouncingBall.Params Pages.BouncingBall.Model Pages.BouncingBall.Msg
     , elmUiSvgIssue : Bundle Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model Pages.ElmUiSvgIssue.Msg
-    , gameDev : Bundle Gen.Params.GameDev.Params Pages.GameDev.Model Pages.GameDev.Msg
     , home_ : Static Gen.Params.Home_.Params
     , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
@@ -243,10 +213,8 @@ pages :
     , notFound : Static Gen.Params.NotFound.Params
     }
 pages =
-    { animation = bundle Pages.Animation.page Model.Animation Msg.Animation
-    , bouncingBall = bundle Pages.BouncingBall.page Model.BouncingBall Msg.BouncingBall
+    { bouncingBall = bundle Pages.BouncingBall.page Model.BouncingBall Msg.BouncingBall
     , elmUiSvgIssue = bundle Pages.ElmUiSvgIssue.page Model.ElmUiSvgIssue Msg.ElmUiSvgIssue
-    , gameDev = bundle Pages.GameDev.page Model.GameDev Msg.GameDev
     , home_ = static Pages.Home_.view Model.Home_
     , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops

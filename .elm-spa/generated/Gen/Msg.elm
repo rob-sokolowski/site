@@ -1,9 +1,7 @@
 module Gen.Msg exposing (Msg(..))
 
-import Gen.Params.Animation
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
-import Gen.Params.GameDev
 import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
@@ -13,10 +11,8 @@ import Gen.Params.VegaLite
 import Gen.Params.WordleClone
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
-import Pages.Animation
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
-import Pages.GameDev
 import Pages.Home_
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
@@ -29,10 +25,8 @@ import Pages.NotFound
 
 
 type Msg
-    = Animation Pages.Animation.Msg
-    | BouncingBall Pages.BouncingBall.Msg
+    = BouncingBall Pages.BouncingBall.Msg
     | ElmUiSvgIssue Pages.ElmUiSvgIssue.Msg
-    | GameDev Pages.GameDev.Msg
     | ParableOfPolygonsClone Pages.ParableOfPolygonsClone.Msg
     | Pops Pages.Pops.Msg
     | ScriptaDemo Pages.ScriptaDemo.Msg

@@ -4,10 +4,8 @@ module Gen.Route exposing
     , toHref
     )
 
-import Gen.Params.Animation
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
-import Gen.Params.GameDev
 import Gen.Params.Home_
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
@@ -22,10 +20,8 @@ import Url.Parser as Parser exposing ((</>), Parser)
 
 
 type Route
-    = Animation
-    | BouncingBall
+    = BouncingBall
     | ElmUiSvgIssue
-    | GameDev
     | Home_
     | ParableOfPolygonsClone
     | Pops
@@ -45,10 +41,8 @@ fromUrl =
 routes : List (Parser (Route -> a) a)
 routes =
     [ Parser.map Home_ Gen.Params.Home_.parser
-    , Parser.map Animation Gen.Params.Animation.parser
     , Parser.map BouncingBall Gen.Params.BouncingBall.parser
     , Parser.map ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.parser
-    , Parser.map GameDev Gen.Params.GameDev.parser
     , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
@@ -68,17 +62,11 @@ toHref route =
             "/" ++ String.join "/" segments
     in
     case route of
-        Animation ->
-            joinAsHref [ "animation" ]
-    
         BouncingBall ->
             joinAsHref [ "bouncing-ball" ]
     
         ElmUiSvgIssue ->
             joinAsHref [ "elm-ui-svg-issue" ]
-    
-        GameDev ->
-            joinAsHref [ "game-dev" ]
     
         Home_ ->
             joinAsHref []
