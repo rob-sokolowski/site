@@ -62,7 +62,14 @@ elements =
             , text " (keyboard/cursor devices only!)"
             ]
         , paragraph []
-            [ text "Here's a video I made awhile back exploring some ideas: "
+            [ text "90 second demo of chart-building feature: "
+            , link [ Font.color blue ]
+                { url = "https://youtu.be/Z2PwBVfGCjQ"
+                , label = text "Chart builder demo"
+                }
+            ]
+        , paragraph []
+            [ text "3 minute clip, describing my longer-term vision: "
             , link [ Font.color blue ]
                 { url = "https://youtu.be/n9jGZY3aO6w"
                 , label = text "process dag, facts, graphs"
