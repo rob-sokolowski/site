@@ -56,7 +56,7 @@ elements =
         , paragraph []
             [ text "Live demo: "
             , link [ Font.color blue ]
-                { url = "https://fir-sandbox-2.lamdera.app"
+                { url = "https://fir.dev"
                 , label = text "Fir"
                 }
             , text " (keyboard/cursor devices only!)"
