@@ -8,6 +8,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.BouncingBall exposing (Params)
+import List.Extra
 import Page
 import Palette exposing (globalLayoutAttrs, toAvhColor)
 import Request
@@ -48,6 +49,8 @@ type alias Model =
     { ballPos : Pos
     , g : Float
     , runningState : RunningState
+    , currentFrame : Int
+    , hist : List Pos
     }
 
 
@@ -143,6 +146,8 @@ refreshModel =
     { ballPos = defaultPos
     , g = g
     , runningState = Playing
+    , currentFrame = 0
+    , hist = []
     }
 
 
@@ -166,7 +171,7 @@ type Msg
     = Tick Time.Posix
     | UserClickedRefresh
     | UserToggledPause
-    | TimeTravelToFrame Int
+    | TimelineSliderSlidTo Float
 
 
 epsilon =
@@ -177,8 +182,17 @@ epsilon =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        TimelineSliderSlidTo val ->
+            ( { model
+                | currentFrame = round val
+                , runningState = Paused
+              }
+            , Effect.none
+            )
+
         Tick _ ->
             let
+                vy_ : Float
                 vy_ =
                     case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
                         True ->
@@ -189,6 +203,7 @@ update msg model =
                             -- we are not near boundary, gravity continues
                             model.ballPos.vy + (g * (dtMs / 1000.0))
 
+                ry_ : Float
                 ry_ =
                     case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
                         True ->
@@ -197,27 +212,37 @@ update msg model =
                         False ->
                             (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
 
+                vx_ : Float
                 vx_ =
                     model.ballPos.vx
 
                 y_ =
                     model.ballPos.y + (vy_ * (dtMs / 1000.0))
 
+                x_ : Float
                 x_ =
                     model.ballPos.x + (vx_ * (dtMs / 1000.0))
 
+                rx_ : Float
                 rx_ =
                     model.ballPos.rx
 
+                newPos : Pos
                 newPos =
-                    { x = x_
-                    , y = y_
-                    , rx = rx_
-                    , ry = ry_
-                    , vy = vy_
-                    , vx = vx_
-                    }
+                    case List.Extra.getAt model.currentFrame model.hist of
+                        Just pos_ ->
+                            pos_
 
+                        Nothing ->
+                            { x = x_
+                            , y = y_
+                            , rx = rx_
+                            , ry = ry_
+                            , vy = vy_
+                            , vx = vx_
+                            }
+
+                newRunningState : RunningState
                 newRunningState =
                     case newPos.x >= (1.15 * meterMaxWidth) || newPos.x < (-0.15 * meterMaxWidth) of
                         -- we've run out of bounds in the x direction
@@ -232,10 +257,29 @@ update msg model =
 
                                 False ->
                                     Playing
+
+                newHist : List Pos
+                newHist =
+                    case model.runningState of
+                        Playing ->
+                            newPos :: model.hist
+
+                        Paused ->
+                            model.hist
+
+                newFrame =
+                    case model.runningState of
+                        Playing ->
+                            model.currentFrame + 1
+
+                        Paused ->
+                            model.currentFrame
             in
             ( { model
                 | ballPos = newPos
                 , runningState = newRunningState
+                , hist = newHist
+                , currentFrame = newFrame
               }
             , Effect.none
             )
@@ -250,9 +294,6 @@ update msg model =
 
                 Playing ->
                     ( { model | runningState = Paused }, Effect.none )
-
-        TimeTravelToFrame int ->
-            ( model, Effect.none )
 
 
 
@@ -297,6 +338,16 @@ viewControlPanel model =
 
                 Paused ->
                     "||"
+
+        sliderProps : SliderProps Msg
+        sliderProps =
+            { onSlide = TimelineSliderSlidTo
+            , val = toFloat model.currentFrame
+            , min = 0.0
+            , max = toFloat <| List.length model.hist
+            , step = 1.0
+            , displayText = Nothing
+            }
     in
     row
         [ Border.width 1
@@ -307,7 +358,8 @@ viewControlPanel model =
         , height (px 40)
         , spacing 10
         ]
-        [ row
+        [ el [ width fill ] (comp_slider sliderProps)
+        , row
             [ width shrink
             , alignRight
             , spacing 5
@@ -323,7 +375,7 @@ viewControlPanel model =
                         , padding 2
                         , Font.size 14
                         ]
-                        (E.text " ↻ ")
+                        (el [ Font.bold ] <| E.text " ↻ ")
                 , onPress = Just UserClickedRefresh
                 }
             , Input.button [ alignLeft, centerX ]
@@ -337,7 +389,7 @@ viewControlPanel model =
                         , Font.size 14
                         , width (px 24)
                         ]
-                        (el [ centerX ] <| E.text playPauseText)
+                        (el [ centerX, Font.bold ] <| E.text playPauseText)
                 , onPress = Just UserToggledPause
                 }
             ]
@@ -434,6 +486,7 @@ viewDebugPanel model =
         , E.text <| "r (m): " ++ String.fromFloat r
         , E.text <| "r_x (m): " ++ String.fromFloat model.ballPos.rx
         , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
+        , E.text <| "current frame: " ++ String.fromInt model.currentFrame
         ]
 
 
