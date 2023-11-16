@@ -165,7 +165,7 @@ type RunningState
 type Msg
     = Tick Time.Posix
     | UserClickedRefresh
-    | UserClickedPause
+    | UserToggledPause
     | TimeTravelToFrame Int
 
 
@@ -243,8 +243,13 @@ update msg model =
         UserClickedRefresh ->
             ( refreshModel, Effect.none )
 
-        UserClickedPause ->
-            ( { model | runningState = Paused }, Effect.none )
+        UserToggledPause ->
+            case model.runningState of
+                Paused ->
+                    ( { model | runningState = Playing }, Effect.none )
+
+                Playing ->
+                    ( { model | runningState = Paused }, Effect.none )
 
         TimeTravelToFrame int ->
             ( model, Effect.none )
@@ -284,14 +289,14 @@ view model =
 viewControlPanel : Model -> Element Msg
 viewControlPanel model =
     let
-        displayMessage : String
-        displayMessage =
+        playPauseText : String
+        playPauseText =
             case model.runningState of
                 Playing ->
-                    "Playing.."
+                    "▶"
 
                 Paused ->
-                    "Paused"
+                    "||"
     in
     row
         [ Border.width 1
@@ -302,20 +307,40 @@ viewControlPanel model =
         , height (px 40)
         , spacing 10
         ]
-        [ el [ centerX ] <| E.text displayMessage
-        , Input.button [ alignLeft, centerX ]
-            { label =
-                el
-                    [ Border.width 1
-                    , Border.rounded 2
-                    , Background.color Palette.lightGrey
-                    , Border.color Palette.darkishGrey
-                    , padding 2
-                    , Font.size 14
-                    ]
-                    (E.text " ↻ ")
-            , onPress = Just UserClickedRefresh
-            }
+        [ row
+            [ width shrink
+            , alignRight
+            , spacing 5
+            , paddingXY 5 0
+            ]
+            [ Input.button [ alignLeft, centerX ]
+                { label =
+                    el
+                        [ Border.width 1
+                        , Border.rounded 2
+                        , Background.color Palette.lightGrey
+                        , Border.color Palette.darkishGrey
+                        , padding 2
+                        , Font.size 14
+                        ]
+                        (E.text " ↻ ")
+                , onPress = Just UserClickedRefresh
+                }
+            , Input.button [ alignLeft, centerX ]
+                { label =
+                    el
+                        [ Border.width 1
+                        , Border.rounded 2
+                        , Background.color Palette.lightGrey
+                        , Border.color Palette.darkishGrey
+                        , padding 2
+                        , Font.size 14
+                        , width (px 24)
+                        ]
+                        (el [ centerX ] <| E.text playPauseText)
+                , onPress = Just UserToggledPause
+                }
+            ]
         ]
 
 
@@ -410,3 +435,80 @@ viewDebugPanel model =
         , E.text <| "r_x (m): " ++ String.fromFloat model.ballPos.rx
         , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
         ]
+
+
+
+-- begin region: UI components (bouncing-ball specific, for now anyway)
+--
+
+
+type alias SliderProps msg =
+    { onSlide : Float -> msg
+    , val : Float
+    , min : Float
+    , max : Float
+    , step : Float
+    , displayText : Maybe String
+    }
+
+
+comp_slider : SliderProps msg -> Element msg
+comp_slider props =
+    let
+        lbl =
+            case props.displayText of
+                Nothing ->
+                    Input.labelHidden " "
+
+                Just txt ->
+                    Input.labelAbove [] (text (txt ++ ": " ++ String.fromFloat props.val))
+    in
+    Input.slider
+        [ height (px 30)
+        , width fill
+        , behindContent
+            (el
+                [ width fill
+                , height (px 5)
+                , centerY
+                , Background.color theme.shadowGray
+                , Border.rounded 2
+                ]
+                none
+            )
+        ]
+        { onChange = props.onSlide
+        , label = lbl
+        , min = props.min
+        , max = props.max
+        , step = Just props.step
+        , value = props.val
+        , thumb =
+            Input.thumb
+                [ width (px 24)
+                , height (px 24)
+                , Border.rounded 2
+                , Border.width 1
+                , Border.color theme.shadowGray
+                , Background.color theme.lightGray
+                ]
+        }
+
+
+theme : BouncingBallColorTheme
+theme =
+    { white = rgb255 0xFF 0xFF 0xFF
+    , lightGray = rgb255 0xC5 0xCD 0xD9
+    , shadowGray = rgb255 0x3C 0x3F 0x42
+    }
+
+
+type alias BouncingBallColorTheme =
+    { white : Color
+    , lightGray : Color
+    , shadowGray : Color
+    }
+
+
+
+-- end region: UI components
