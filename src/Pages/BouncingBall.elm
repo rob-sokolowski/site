@@ -75,7 +75,11 @@ r =
 
 dtMs : Float
 dtMs =
-    20.0
+    let
+        fps =
+            30
+    in
+    1000 / fps
 
 
 scaleXY : Float
@@ -179,12 +183,111 @@ epsilon =
     1.0e-4
 
 
+computeNextPos : Model -> ( Pos, List Pos, Int )
+computeNextPos model =
+    let
+        pos : Pos
+        pos =
+            model.ballPos
+
+        runState : RunningState
+        runState =
+            model.runningState
+
+        hist : List Pos
+        hist =
+            model.hist
+
+        frameNo : Int
+        frameNo =
+            model.currentFrame
+    in
+    case runState of
+        Paused ->
+            ( pos, hist, frameNo )
+
+        Playing ->
+            if List.length hist == frameNo then
+                let
+                    vy_ : Float
+                    vy_ =
+                        case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
+                            True ->
+                                -- we are at boundary, reverse, dampen a bit
+                                -1 * bounceDampen * (model.ballPos.vy + (g * (dtMs / 1000.0)))
+
+                            False ->
+                                -- we are not near boundary, gravity continues
+                                model.ballPos.vy + (g * (dtMs / 1000.0))
+
+                    ry_ : Float
+                    ry_ =
+                        case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
+                            True ->
+                                1.0 * r
+
+                            False ->
+                                (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
+
+                    vx_ : Float
+                    vx_ =
+                        model.ballPos.vx
+
+                    y_ : Float
+                    y_ =
+                        model.ballPos.y + (vy_ * (dtMs / 1000.0))
+
+                    x_ : Float
+                    x_ =
+                        model.ballPos.x + (vx_ * (dtMs / 1000.0))
+
+                    rx_ : Float
+                    rx_ =
+                        model.ballPos.rx
+
+                    nextPos =
+                        { x = x_
+                        , y = y_
+                        , rx = rx_
+                        , ry = ry_
+                        , vy = vy_
+                        , vx = vx_
+                        }
+                in
+                ( nextPos
+                , nextPos :: hist
+                , frameNo + 1
+                )
+
+            else
+                -- TODO: This List.getAt can return Nothing, use non-empty list? But also I don't think I like this
+                --       structure at all
+                case List.Extra.getAt frameNo hist of
+                    Just pos_ ->
+                        ( pos_
+                        , hist
+                        , frameNo
+                        )
+
+                    Nothing ->
+                        -- TODO: Degenerate case!
+                        ( pos, hist, frameNo )
+
+
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         TimelineSliderSlidTo val ->
             ( { model
                 | currentFrame = round val
+                , ballPos =
+                    case List.Extra.getAt (List.length model.hist - round val) model.hist of
+                        Just pos_ ->
+                            pos_
+
+                        Nothing ->
+                            -- TODO: Generate case! nonempty list??
+                            defaultPos
                 , runningState = Paused
               }
             , Effect.none
@@ -192,92 +295,11 @@ update msg model =
 
         Tick _ ->
             let
-                vy_ : Float
-                vy_ =
-                    case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
-                        True ->
-                            -- we are at boundary, reverse, dampen a bit
-                            -1 * bounceDampen * (model.ballPos.vy + (g * (dtMs / 1000.0)))
-
-                        False ->
-                            -- we are not near boundary, gravity continues
-                            model.ballPos.vy + (g * (dtMs / 1000.0))
-
-                ry_ : Float
-                ry_ =
-                    case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
-                        True ->
-                            1.0 * r
-
-                        False ->
-                            (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
-
-                vx_ : Float
-                vx_ =
-                    model.ballPos.vx
-
-                y_ =
-                    model.ballPos.y + (vy_ * (dtMs / 1000.0))
-
-                x_ : Float
-                x_ =
-                    model.ballPos.x + (vx_ * (dtMs / 1000.0))
-
-                rx_ : Float
-                rx_ =
-                    model.ballPos.rx
-
-                newPos : Pos
-                newPos =
-                    case List.Extra.getAt model.currentFrame model.hist of
-                        Just pos_ ->
-                            pos_
-
-                        Nothing ->
-                            { x = x_
-                            , y = y_
-                            , rx = rx_
-                            , ry = ry_
-                            , vy = vy_
-                            , vx = vx_
-                            }
-
-                newRunningState : RunningState
-                newRunningState =
-                    case newPos.x >= (1.15 * meterMaxWidth) || newPos.x < (-0.15 * meterMaxWidth) of
-                        -- we've run out of bounds in the x direction
-                        True ->
-                            Paused
-
-                        False ->
-                            case newPos.y >= (1.15 * meterMaxHeight) || newPos.y < (-0.15 * meterMaxHeight) of
-                                -- we've run out of bounds in the y direction
-                                True ->
-                                    Paused
-
-                                False ->
-                                    Playing
-
-                newHist : List Pos
-                newHist =
-                    case model.runningState of
-                        Playing ->
-                            newPos :: model.hist
-
-                        Paused ->
-                            model.hist
-
-                newFrame =
-                    case model.runningState of
-                        Playing ->
-                            model.currentFrame + 1
-
-                        Paused ->
-                            model.currentFrame
+                ( newPos, newHist, newFrame ) =
+                    computeNextPos model
             in
             ( { model
                 | ballPos = newPos
-                , runningState = newRunningState
                 , hist = newHist
                 , currentFrame = newFrame
               }
@@ -487,7 +509,18 @@ viewDebugPanel model =
         , E.text <| "r_x (m): " ++ String.fromFloat model.ballPos.rx
         , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
         , E.text <| "current frame: " ++ String.fromInt model.currentFrame
+        , E.text <| "running state: " ++ runState2Str model.runningState
         ]
+
+
+runState2Str : RunningState -> String
+runState2Str runState =
+    case runState of
+        Paused ->
+            "Paused"
+
+        Playing ->
+            "Playing"
 
 
 
