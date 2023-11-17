@@ -8,6 +8,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.BouncingBall exposing (Params)
+import List.Extra
 import Page
 import Palette exposing (globalLayoutAttrs, toAvhColor)
 import Request
@@ -48,6 +49,8 @@ type alias Model =
     { ballPos : Pos
     , g : Float
     , runningState : RunningState
+    , currentFrame : Int
+    , hist : List Pos
     }
 
 
@@ -72,7 +75,11 @@ r =
 
 dtMs : Float
 dtMs =
-    20.0
+    let
+        fps =
+            30
+    in
+    1000 / fps
 
 
 scaleXY : Float
@@ -143,6 +150,8 @@ refreshModel =
     { ballPos = defaultPos
     , g = g
     , runningState = Playing
+    , currentFrame = 0
+    , hist = []
     }
 
 
@@ -165,8 +174,8 @@ type RunningState
 type Msg
     = Tick Time.Posix
     | UserClickedRefresh
-    | UserClickedPause
-    | TimeTravelToFrame Int
+    | UserToggledPause
+    | TimelineSliderSlidTo Float
 
 
 epsilon =
@@ -174,68 +183,125 @@ epsilon =
     1.0e-4
 
 
+computeNextPos : Model -> ( Pos, List Pos, Int )
+computeNextPos model =
+    let
+        pos : Pos
+        pos =
+            model.ballPos
+
+        runState : RunningState
+        runState =
+            model.runningState
+
+        hist : List Pos
+        hist =
+            model.hist
+
+        frameNo : Int
+        frameNo =
+            model.currentFrame
+    in
+    case runState of
+        Paused ->
+            ( pos, hist, frameNo )
+
+        Playing ->
+            if List.length hist == frameNo then
+                let
+                    vy_ : Float
+                    vy_ =
+                        case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
+                            True ->
+                                -- we are at boundary, reverse, dampen a bit
+                                -1 * bounceDampen * (model.ballPos.vy + (g * (dtMs / 1000.0)))
+
+                            False ->
+                                -- we are not near boundary, gravity continues
+                                model.ballPos.vy + (g * (dtMs / 1000.0))
+
+                    ry_ : Float
+                    ry_ =
+                        case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
+                            True ->
+                                1.0 * r
+
+                            False ->
+                                (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
+
+                    vx_ : Float
+                    vx_ =
+                        model.ballPos.vx
+
+                    y_ : Float
+                    y_ =
+                        model.ballPos.y + (vy_ * (dtMs / 1000.0))
+
+                    x_ : Float
+                    x_ =
+                        model.ballPos.x + (vx_ * (dtMs / 1000.0))
+
+                    rx_ : Float
+                    rx_ =
+                        model.ballPos.rx
+
+                    nextPos =
+                        { x = x_
+                        , y = y_
+                        , rx = rx_
+                        , ry = ry_
+                        , vy = vy_
+                        , vx = vx_
+                        }
+                in
+                ( nextPos
+                , nextPos :: hist
+                , frameNo + 1
+                )
+
+            else
+                -- TODO: This List.getAt can return Nothing, use non-empty list? But also I don't think I like this
+                --       structure at all
+                case List.Extra.getAt frameNo hist of
+                    Just pos_ ->
+                        ( pos_
+                        , hist
+                        , frameNo
+                        )
+
+                    Nothing ->
+                        -- TODO: Degenerate case!
+                        ( pos, hist, frameNo )
+
+
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        TimelineSliderSlidTo val ->
+            ( { model
+                | currentFrame = round val
+                , ballPos =
+                    case List.Extra.getAt (List.length model.hist - round val) model.hist of
+                        Just pos_ ->
+                            pos_
+
+                        Nothing ->
+                            -- TODO: Generate case! nonempty list??
+                            defaultPos
+                , runningState = Paused
+              }
+            , Effect.none
+            )
+
         Tick _ ->
             let
-                vy_ =
-                    case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
-                        True ->
-                            -- we are at boundary, reverse, dampen a bit
-                            -1 * bounceDampen * (model.ballPos.vy + (g * (dtMs / 1000.0)))
-
-                        False ->
-                            -- we are not near boundary, gravity continues
-                            model.ballPos.vy + (g * (dtMs / 1000.0))
-
-                ry_ =
-                    case meterMaxHeight - model.ballPos.y > (2.0 * r) + epsilon of
-                        True ->
-                            1.0 * r
-
-                        False ->
-                            (r * 0.25) + (meterMaxHeight - model.ballPos.y) / ((meterMaxHeight - model.ballPos.y) + 1.5 * r) * model.ballPos.ry
-
-                vx_ =
-                    model.ballPos.vx
-
-                y_ =
-                    model.ballPos.y + (vy_ * (dtMs / 1000.0))
-
-                x_ =
-                    model.ballPos.x + (vx_ * (dtMs / 1000.0))
-
-                rx_ =
-                    model.ballPos.rx
-
-                newPos =
-                    { x = x_
-                    , y = y_
-                    , rx = rx_
-                    , ry = ry_
-                    , vy = vy_
-                    , vx = vx_
-                    }
-
-                newRunningState =
-                    case newPos.x >= (1.15 * meterMaxWidth) || newPos.x < (-0.15 * meterMaxWidth) of
-                        -- we've run out of bounds in the x direction
-                        True ->
-                            Paused
-
-                        False ->
-                            case newPos.y >= (1.15 * meterMaxHeight) || newPos.y < (-0.15 * meterMaxHeight) of
-                                -- we've run out of bounds in the y direction
-                                True ->
-                                    Paused
-
-                                False ->
-                                    Playing
+                ( newPos, newHist, newFrame ) =
+                    computeNextPos model
             in
             ( { model
                 | ballPos = newPos
-                , runningState = newRunningState
+                , hist = newHist
+                , currentFrame = newFrame
               }
             , Effect.none
             )
@@ -243,11 +309,13 @@ update msg model =
         UserClickedRefresh ->
             ( refreshModel, Effect.none )
 
-        UserClickedPause ->
-            ( { model | runningState = Paused }, Effect.none )
+        UserToggledPause ->
+            case model.runningState of
+                Paused ->
+                    ( { model | runningState = Playing }, Effect.none )
 
-        TimeTravelToFrame int ->
-            ( model, Effect.none )
+                Playing ->
+                    ( { model | runningState = Paused }, Effect.none )
 
 
 
@@ -284,14 +352,24 @@ view model =
 viewControlPanel : Model -> Element Msg
 viewControlPanel model =
     let
-        displayMessage : String
-        displayMessage =
+        playPauseText : String
+        playPauseText =
             case model.runningState of
                 Playing ->
-                    "Playing.."
+                    "▶"
 
                 Paused ->
-                    "Paused"
+                    "||"
+
+        sliderProps : SliderProps Msg
+        sliderProps =
+            { onSlide = TimelineSliderSlidTo
+            , val = toFloat model.currentFrame
+            , min = 0.0
+            , max = toFloat <| List.length model.hist
+            , step = 1.0
+            , displayText = Nothing
+            }
     in
     row
         [ Border.width 1
@@ -302,20 +380,41 @@ viewControlPanel model =
         , height (px 40)
         , spacing 10
         ]
-        [ el [ centerX ] <| E.text displayMessage
-        , Input.button [ alignLeft, centerX ]
-            { label =
-                el
-                    [ Border.width 1
-                    , Border.rounded 2
-                    , Background.color Palette.lightGrey
-                    , Border.color Palette.darkishGrey
-                    , padding 2
-                    , Font.size 14
-                    ]
-                    (E.text " ↻ ")
-            , onPress = Just UserClickedRefresh
-            }
+        [ el [ width fill ] (comp_slider sliderProps)
+        , row
+            [ width shrink
+            , alignRight
+            , spacing 5
+            , paddingXY 5 0
+            ]
+            [ Input.button [ alignLeft, centerX ]
+                { label =
+                    el
+                        [ Border.width 1
+                        , Border.rounded 2
+                        , Background.color Palette.lightGrey
+                        , Border.color Palette.darkishGrey
+                        , padding 2
+                        , Font.size 14
+                        ]
+                        (el [ Font.bold ] <| E.text " ↻ ")
+                , onPress = Just UserClickedRefresh
+                }
+            , Input.button [ alignLeft, centerX ]
+                { label =
+                    el
+                        [ Border.width 1
+                        , Border.rounded 2
+                        , Background.color Palette.lightGrey
+                        , Border.color Palette.darkishGrey
+                        , padding 2
+                        , Font.size 14
+                        , width (px 24)
+                        ]
+                        (el [ centerX, Font.bold ] <| E.text playPauseText)
+                , onPress = Just UserToggledPause
+                }
+            ]
         ]
 
 
@@ -409,4 +508,93 @@ viewDebugPanel model =
         , E.text <| "r (m): " ++ String.fromFloat r
         , E.text <| "r_x (m): " ++ String.fromFloat model.ballPos.rx
         , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
+        , E.text <| "current frame: " ++ String.fromInt model.currentFrame
+        , E.text <| "running state: " ++ runState2Str model.runningState
         ]
+
+
+runState2Str : RunningState -> String
+runState2Str runState =
+    case runState of
+        Paused ->
+            "Paused"
+
+        Playing ->
+            "Playing"
+
+
+
+-- begin region: UI components (bouncing-ball specific, for now anyway)
+--
+
+
+type alias SliderProps msg =
+    { onSlide : Float -> msg
+    , val : Float
+    , min : Float
+    , max : Float
+    , step : Float
+    , displayText : Maybe String
+    }
+
+
+comp_slider : SliderProps msg -> Element msg
+comp_slider props =
+    let
+        lbl =
+            case props.displayText of
+                Nothing ->
+                    Input.labelHidden " "
+
+                Just txt ->
+                    Input.labelAbove [] (text (txt ++ ": " ++ String.fromFloat props.val))
+    in
+    Input.slider
+        [ height (px 30)
+        , width fill
+        , behindContent
+            (el
+                [ width fill
+                , height (px 5)
+                , centerY
+                , Background.color theme.shadowGray
+                , Border.rounded 2
+                ]
+                none
+            )
+        ]
+        { onChange = props.onSlide
+        , label = lbl
+        , min = props.min
+        , max = props.max
+        , step = Just props.step
+        , value = props.val
+        , thumb =
+            Input.thumb
+                [ width (px 24)
+                , height (px 24)
+                , Border.rounded 2
+                , Border.width 1
+                , Border.color theme.shadowGray
+                , Background.color theme.lightGray
+                ]
+        }
+
+
+theme : BouncingBallColorTheme
+theme =
+    { white = rgb255 0xFF 0xFF 0xFF
+    , lightGray = rgb255 0xC5 0xCD 0xD9
+    , shadowGray = rgb255 0x3C 0x3F 0x42
+    }
+
+
+type alias BouncingBallColorTheme =
+    { white : Color
+    , lightGray : Color
+    , shadowGray : Color
+    }
+
+
+
+-- end region: UI components
