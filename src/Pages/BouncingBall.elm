@@ -176,8 +176,10 @@ type Msg
     | UserClickedRefresh
     | UserToggledPause
     | TimelineSliderSlidTo Float
+    | ProposeIntervention
 
 
+epsilon : Float
 epsilon =
     -- '-3' is  'mm'
     1.0e-4
@@ -277,6 +279,28 @@ computeNextPos model =
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
+        ProposeIntervention ->
+            let
+                pos : Pos
+                pos =
+                    model.ballPos
+
+                newPos : Pos
+                newPos =
+                    { pos | vx = -1 * model.ballPos.vx }
+
+                newHist : List Pos
+                newHist =
+                    List.take model.currentFrame model.hist
+            in
+            ( { model
+                | ballPos = newPos
+                , runningState = Playing
+                , hist = newHist
+              }
+            , Effect.none
+            )
+
         TimelineSliderSlidTo val ->
             ( { model
                 | currentFrame = round val
@@ -510,6 +534,12 @@ viewDebugPanel model =
         , E.text <| "r_y (m): " ++ String.fromFloat model.ballPos.ry
         , E.text <| "current frame: " ++ String.fromInt model.currentFrame
         , E.text <| "running state: " ++ runState2Str model.runningState
+        , el
+            [ alignBottom
+            , centerX
+            , Events.onClick ProposeIntervention
+            ]
+            (text "Intervene!")
         ]
 
 
