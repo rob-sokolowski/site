@@ -312,22 +312,7 @@ update msg model =
         UserToggledPause ->
             case model.runningState of
                 Paused ->
-                    let
-                        nextPos : Pos
-                        nextPos =
-                            case List.Extra.getAt model.currentFrame model.hist of
-                                Just pos_ ->
-                                    pos_
-
-                                Nothing ->
-                                    defaultPos
-                    in
-                    ( { model
-                        | runningState = Playing
-                        , ballPos = nextPos
-                      }
-                    , Effect.none
-                    )
+                    ( { model | runningState = Playing }, Effect.none )
 
                 Playing ->
                     ( { model | runningState = Paused }, Effect.none )
