@@ -1,4 +1,4 @@
-module Pages.BouncingBall exposing (Model, Msg, page)
+module Pages.BouncingBall exposing (Model, Msg, RunningState(..), computeNextPos, page)
 
 import Effect exposing (Effect)
 import Element as E exposing (..)
