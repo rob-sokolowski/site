@@ -255,7 +255,7 @@ computeNextPos model =
                         }
                 in
                 ( nextPos
-                , nextPos :: hist
+                , List.append model.hist [ nextPos ]
                 , frameNo + 1
                 )
 
@@ -266,7 +266,7 @@ computeNextPos model =
                     Just pos_ ->
                         ( pos_
                         , hist
-                        , frameNo
+                        , frameNo + 1
                         )
 
                     Nothing ->
@@ -281,7 +281,7 @@ update msg model =
             ( { model
                 | currentFrame = round val
                 , ballPos =
-                    case List.Extra.getAt (List.length model.hist - round val) model.hist of
+                    case List.Extra.getAt (round val) model.hist of
                         Just pos_ ->
                             pos_
 
