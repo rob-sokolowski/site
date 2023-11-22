@@ -1,4 +1,4 @@
-Code that powers my website, [robsoko.tech](http://robsoko.tech)
+Code that powers my website, [robsoko.com](http://robsoko.com)
 
 
 ## Local dev
