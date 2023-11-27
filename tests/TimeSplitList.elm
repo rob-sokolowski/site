@@ -1,8 +1,8 @@
-module TreeListTest exposing (..)
+module TimeSplitList exposing (..)
 
 import Expect
 import Test exposing (..)
-import TreeList exposing (Node(..), newTreeList)
+import TimeSplitList exposing (Node(..), newTreeList)
 
 
 suite : Test

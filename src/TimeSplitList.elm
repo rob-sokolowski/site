@@ -1,7 +1,7 @@
-module TreeList exposing (Next, Node(..), newTreeList)
+module TimeSplitList exposing (Next, Node(..), newTreeList)
 
--- This TreeList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
--- I'm not entirely sure to name it, the working title is "IndexedDoublyLinkedTreeList"
+-- This TimeSplitList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
+-- I'm not entirely sure to name it, the working title is "TimeSplitList"
 --
 -- Features this needs to support:
 -- 1) Clock runs without any disruption
@@ -72,7 +72,7 @@ newTreeList val =
     }
 
 
-{-| Starting at some node of the TreeList, transverse along prev until we reach the head of the list, i.e., the node
+{-| Starting at some node of the TimeSplitList, transverse along prev until we reach the head of the list, i.e., the node
 that does not have a previous node. There should be exactly one such node per list.
 -}
 head : Node a -> Node a
@@ -86,8 +86,12 @@ head (Node_ node) =
             Node_ node
 
 
-{-| Starting at some node of the TreeList, transverse along next until we reach _a_ head of the list, i.e., a node
-that does not have a next node. Note: due to the splitting nature of the TreeList, many such heads may exist.
+{-| Starting at some node of the TimeSplitList, transverse along next until we reach _a_ head of the list, i.e., a node
+that does not have a next node. Note: due to the splitting nature of the TimeSplitList, many such heads may exist.
+
+TODO: tail along a given TimelineIx?
+TODO: tail along Set TimelineIx?
+
 -}
 tail : Node a -> Node a
 tail (Node_ node) =
