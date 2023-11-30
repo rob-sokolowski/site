@@ -1,4 +1,4 @@
-module TimeSplitList exposing (Next, Node(..), newTreeList)
+module TimeSplitList exposing (Next(..), Node(..), TimeSplitList, newTreeList)
 
 -- This TimeSplitList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
 -- I'm not entirely sure to name it, the working title is "TimeSplitList"
@@ -46,9 +46,11 @@ type alias TimeSplitList a =
 type Node a
     = Node_
         { ix : FrameIx
+        , timelineIx : TimelineIx
         , val : a
         , next : Maybe (Next a)
-        , prev : Maybe (Node a)
+
+        --, prev : Maybe (Node a)
         }
 
 
@@ -64,26 +66,41 @@ newTreeList val =
     { head =
         Node_
             { ix = 0
+            , timelineIx = 0
             , val = val
             , next = Nothing
-            , prev = Nothing
+
+            --, prev = Nothing
             }
     , timelineCount = 1
     }
 
 
-{-| Starting at some node of the TimeSplitList, transverse along prev until we reach the head of the list, i.e., the node
-that does not have a previous node. There should be exactly one such node per list.
--}
-head : Node a -> Node a
-head (Node_ node) =
-    case node.prev of
-        -- TODO: elm-review rule for stack safety
-        Just node_ ->
-            head node_
 
-        Nothing ->
-            Node_ node
+--{-| Starting at some node of the TimeSplitList, transverse along prev until we reach the head of the list, i.e., the node
+--that does not have a previous node. There should be exactly one such node per list.
+---}
+--head : Node a -> Node a
+--head (Node_ node) =
+--    case node.prev of
+--        -- TODO: elm-review rule for stack safety
+--        Just node_ ->
+--            head node_
+--
+--        Nothing ->
+--            Node_ node
+-- TODO: placeholder until I solve degenerate cases, and wrap things in a Result
+
+
+defaultNode =
+    Node_
+        { ix = 0
+        , timelineIx = 0
+        , val = "One"
+        , next = Nothing
+
+        --, prev = Nothing
+        }
 
 
 {-| Starting at some node of the TimeSplitList, transverse along next until we reach _a_ head of the list, i.e., a node
@@ -91,22 +108,43 @@ that does not have a next node. Note: due to the splitting nature of the TimeSpl
 
 TODO: tail along a given TimelineIx?
 TODO: tail along Set TimelineIx?
+TODO: Result and Err instead of Maybe for return type
 
 -}
-tail : Node a -> Node a
-tail (Node_ node) =
+tail : Node a -> TimelineIx -> Maybe (Node a)
+tail (Node_ node) tlix =
     -- TODO: elm-review rule for stack safety
     case node.next of
         Just next ->
             case next of
                 Seq next_ ->
-                    tail next_
+                    tail next_ tlix
 
-                Split ( lhs, rhs ) ->
-                    tail lhs
+                Split ( Node_ lhs, Node_ rhs ) ->
+                    if lhs.timelineIx == tlix then
+                        tail (unwrap_ lhs) tlix
+
+                    else if rhs.timelineIx == tlix then
+                        tail (unwrap_ rhs) tlix
+
+                    else
+                        Nothing
 
         Nothing ->
-            Node_ node
+            Nothing
+
+
+unwrap_ :
+    { ix : FrameIx
+    , timelineIx : TimelineIx
+    , val : a
+    , next : Maybe (Next a)
+
+    --, prev : Maybe (Node a)
+    }
+    -> Node a
+unwrap_ n =
+    Node_ n
 
 
 append : TimeSplitList a -> List (Node a) -> Result TreeListErr (Node a)
