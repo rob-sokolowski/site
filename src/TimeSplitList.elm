@@ -3,6 +3,7 @@ module TimeSplitList exposing
     , Node(..)
     , TimeSplitList
     , newTimeSplitList
+    , tailOf
     )
 
 -- This TimeSplitList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
@@ -87,36 +88,35 @@ newTimeSplitList val =
     }
 
 
-{-| Starting at some node of the TimeSplitList, transverse along next until we reach _a_ head of the list, i.e., a node
-that does not have a next node. Note: due to the splitting nature of the TimeSplitList, many such heads may exist.
+{-| tailOf a timelineIx, given some node
 
 TODO: tail along a given TimelineIx?
 TODO: tail along Set TimelineIx?
 TODO: Result and Err instead of Maybe for return type
 TODO: Maybe I should have tailOf vs tails???
+TODO: elm-review rule for stack safety
 
 -}
-tail : Node a -> TimelineIx -> Maybe (Node a)
-tail (Node_ node) tlix =
-    -- TODO: elm-review rule for stack safety
+tailOf : Node a -> TimelineIx -> Maybe (Node a)
+tailOf (Node_ node) tlix =
     case node.next of
         Just next ->
             case next of
                 Seq next_ ->
-                    tail next_ tlix
+                    tailOf next_ tlix
 
                 Split ( Node_ lhs, Node_ rhs ) ->
                     if lhs.timelineIx == tlix then
-                        tail (Node_ lhs) tlix
+                        tailOf (Node_ lhs) tlix
 
                     else if rhs.timelineIx == tlix then
-                        tail (Node_ rhs) tlix
+                        tailOf (Node_ rhs) tlix
 
                     else
                         Nothing
 
         Nothing ->
-            Nothing
+            Just (Node_ node)
 
 
 append : TimeSplitList a -> List (Node a) -> Result TreeListErr (Node a)
