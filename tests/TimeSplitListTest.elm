@@ -2,7 +2,7 @@ module TimeSplitListTest exposing (..)
 
 import Expect
 import Test exposing (..)
-import TimeSplitList exposing (Next(..), Node(..), TimeSplitList, newTreeList)
+import TimeSplitList exposing (Next(..), Node(..), TimeSplitList, newTimeSplitList)
 
 
 suite : Test
@@ -11,7 +11,7 @@ suite =
         [ describe "Creating, appending, splitting, etc."
             [ test "Initialize new TimeSplitList"
                 (\_ ->
-                    newTreeList "One"
+                    newTimeSplitList "One"
                         |> Expect.equal
                             initTimeSplitListOfString
                 )
