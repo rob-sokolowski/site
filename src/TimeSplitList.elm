@@ -1,7 +1,9 @@
 module TimeSplitList exposing
-    ( Next(..)
+    ( LLNode(..)
+    , Next(..)
     , Node(..)
     , TimeSplitList
+    , appendll
     , newTimeSplitList
     , tailOf
     )
@@ -119,15 +121,41 @@ tailOf (Node_ node) tlix =
             Just (Node_ node)
 
 
-append : TimeSplitList a -> List (Node a) -> Result TreeListErr (Node a)
-append tree nodes =
-    if tree.timelineCount == List.length nodes then
-        Result.Err "How do I do this?!?!?"
+append : TimeSplitList a -> ( List (Node a), TimelineIx ) -> TimeSplitList a
+append tree ( nodes, tix ) =
+    case nodes of
+        [] ->
+            tree
 
-    else
-        Result.Err "When appending to a TimeSplitList, the number of nodes to be append must equal the number of timelines"
+        n :: ns ->
+            append tree ( ns, tix + 1 )
 
 
-appendSub : TimeSplitList a -> TimelineIx -> Node a -> Result TreeListErr (Node a)
-appendSub tree tx node =
-    Result.Err "TODO!"
+
+--appendAlongTimeline : Node a -> ( Node a, TimelineIx ) -> TimeSplitList a
+--appendAlongTimeline (Node_ node) ( nodeToAppend, tix ) =
+--    case node.next of
+--        Just next ->
+--            case next of
+--                Seq node_ ->
+--                    appendAlongTimeline node_ ( nodeToAppend, tix )
+--
+--                Split ( lhs, rhs ) ->
+--                    appendAlongTimeline lhs ( nodeToAppend, tix )
+-- begin region: simpler case
+
+
+type LLNode a
+    = LLNode_
+        { val : a
+        , next : Maybe (LLNode a)
+        }
+
+
+appendll : LLNode a -> LLNode a -> LLNode a
+appendll list node =
+    node
+
+
+
+-- end region: simpler case
