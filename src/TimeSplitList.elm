@@ -27,10 +27,10 @@ module TimeSplitList exposing
 --    proposed at this instant, on the control timeline. The result is, note how there is still exactly 1 undisturbed
 --    timeline, 0, and a new timeline, labeled 3:
 --
---                           /-----|| 2
---                  /-------x------|| 1
---                 |   /-----------|| 3
---       |---------x---x-----------|| 0
+--                           /-----|| split split
+--                  /-------x------|| split seq
+--                 |   /-----------|| seq split
+--       |---------x---x-----------|| seq seq
 --
 
 
@@ -132,17 +132,40 @@ append tree ( nodes, tix ) =
             append tree ( ns, tix + 1 )
 
 
+appendAlongTimeline : Node a -> ( Node a, TimelineIx ) -> Node a
+appendAlongTimeline list ( nodeToAppend, tix ) =
+    case list of
+        Node_ node_ ->
+            case node_.next of
+                Just nextNode ->
+                    case nextNode of
+                        Seq node__ ->
+                            let
+                                n =
+                                    case node__ of
+                                        Node_ n_ ->
+                                            { n_ | next = Just (appendAlongTimeline node__ ( nodeToAppend, tix )) }
+                            in
+                            Node_ n
 
---appendAlongTimeline : Node a -> ( Node a, TimelineIx ) -> TimeSplitList a
---appendAlongTimeline (Node_ node) ( nodeToAppend, tix ) =
---    case node.next of
---        Just next ->
---            case next of
---                Seq node_ ->
---                    appendAlongTimeline node_ ( nodeToAppend, tix )
+                        Split ( seq, split ) ->
+                            { seq | next = Just (appendAlongTimeline split ( nodeToAppend, tix ) nodeToAppend) }
+
+                -- Recursively call append on the next node
+                Nothing ->
+                    -- Found the end of the list, append new value here
+                    Node_ { node_ | next = Just nodeToAppend }
+
+
+
+--case node.next of
+--    Just next ->
+--        case next of
+--            Seq node_ ->
+--                appendAlongTimeline node_ ( nodeToAppend, tix )
 --
---                Split ( lhs, rhs ) ->
---                    appendAlongTimeline lhs ( nodeToAppend, tix )
+--            Split ( lhs, rhs ) ->
+--                appendAlongTimeline lhs ( nodeToAppend, tix )
 -- begin region: simpler case
 
 
