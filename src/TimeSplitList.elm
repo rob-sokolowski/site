@@ -6,6 +6,7 @@ module TimeSplitList exposing
     , appendll
     , newTimeSplitList
     , tailOf
+    , tailll
     )
 
 -- This TimeSplitList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
@@ -152,9 +153,28 @@ type LLNode a
         }
 
 
-appendll : LLNode a -> LLNode a -> LLNode a
-appendll list node =
-    node
+appendll : LLNode b -> LLNode b -> LLNode b
+appendll list newVal =
+    case list of
+        LLNode_ node_ ->
+            case node_.next of
+                Just nextNode ->
+                    -- Recursively call append on the next node
+                    LLNode_ { node_ | next = Just (appendll nextNode newVal) }
+
+                Nothing ->
+                    -- Found the end of the list, append new value here
+                    LLNode_ { node_ | next = Just newVal }
+
+
+tailll : LLNode a -> LLNode a
+tailll (LLNode_ head) =
+    case head.next of
+        Nothing ->
+            LLNode_ head
+
+        Just next_ ->
+            tailll next_
 
 
 

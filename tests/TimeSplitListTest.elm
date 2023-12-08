@@ -2,7 +2,7 @@ module TimeSplitListTest exposing (..)
 
 import Expect
 import Test exposing (..)
-import TimeSplitList exposing (LLNode(..), Next(..), Node(..), TimeSplitList, newTimeSplitList, tailOf)
+import TimeSplitList exposing (LLNode(..), Next(..), Node(..), TimeSplitList, appendll, newTimeSplitList, tailOf, tailll)
 
 
 suite : Test
@@ -49,11 +49,21 @@ suite =
                 )
             ]
         , describe "Simpler Linked List"
-            [ test ""
+            [ test "Seek tail of a linked list"
                 (\_ ->
-                    newTimeSplitList "One"
+                    tailll simpleLinkedList
                         |> Expect.equal
-                            initTimeSplitListOfString
+                            (LLNode_
+                                { val = "Jing", next = Nothing }
+                            )
+                )
+            , test "Append tail of a linked list"
+                (\_ ->
+                    tailll (appendll simpleLinkedList russNode)
+                        |> Expect.equal
+                            (LLNode_
+                                { val = "Russ", next = Nothing }
+                            )
                 )
             ]
         ]
@@ -146,9 +156,20 @@ simpleTwoTimelineTreeList =
     }
 
 
+russNode : LLNode String
+russNode =
+    LLNode_ { val = "Russ", next = Nothing }
+
+
 simpleLinkedList : LLNode String
 simpleLinkedList =
     LLNode_
         { val = "Rob"
-        , next = Just (LLNode_ { val = "Jing", next = Nothing })
+        , next =
+            Just
+                (LLNode_
+                    { val = "Jing"
+                    , next = Nothing
+                    }
+                )
         }
