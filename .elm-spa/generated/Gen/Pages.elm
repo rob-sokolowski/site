@@ -6,6 +6,7 @@ import ElmSpa.Page
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
 import Gen.Params.Home_
+import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
@@ -21,6 +22,7 @@ import Page exposing (Page)
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
 import Pages.Home_
+import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
@@ -56,6 +58,9 @@ init route =
         Route.Home_ ->
             pages.home_.init ()
     
+        Route.IkedaPattern ->
+            pages.ikedaPattern.init ()
+    
         Route.ParableOfPolygonsClone ->
             pages.parableOfPolygonsClone.init ()
     
@@ -89,6 +94,9 @@ update msg_ model_ =
     
         ( Msg.ElmUiSvgIssue msg, Model.ElmUiSvgIssue params model ) ->
             pages.elmUiSvgIssue.update params msg model
+    
+        ( Msg.IkedaPattern msg, Model.IkedaPattern params model ) ->
+            pages.ikedaPattern.update params msg model
     
         ( Msg.ParableOfPolygonsClone msg, Model.ParableOfPolygonsClone params model ) ->
             pages.parableOfPolygonsClone.update params msg model
@@ -130,6 +138,9 @@ view model_ =
         Model.Home_ params ->
             pages.home_.view params ()
     
+        Model.IkedaPattern params model ->
+            pages.ikedaPattern.view params model
+    
         Model.ParableOfPolygonsClone params model ->
             pages.parableOfPolygonsClone.view params model
     
@@ -170,6 +181,9 @@ subscriptions model_ =
         Model.Home_ params ->
             pages.home_.subscriptions params ()
     
+        Model.IkedaPattern params model ->
+            pages.ikedaPattern.subscriptions params model
+    
         Model.ParableOfPolygonsClone params model ->
             pages.parableOfPolygonsClone.subscriptions params model
     
@@ -203,6 +217,7 @@ pages :
     { bouncingBall : Bundle Gen.Params.BouncingBall.Params Pages.BouncingBall.Model Pages.BouncingBall.Msg
     , elmUiSvgIssue : Bundle Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model Pages.ElmUiSvgIssue.Msg
     , home_ : Static Gen.Params.Home_.Params
+    , ikedaPattern : Bundle Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model Pages.IkedaPattern.Msg
     , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
     , scriptaDemo : Bundle Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model Pages.ScriptaDemo.Msg
@@ -216,6 +231,7 @@ pages =
     { bouncingBall = bundle Pages.BouncingBall.page Model.BouncingBall Msg.BouncingBall
     , elmUiSvgIssue = bundle Pages.ElmUiSvgIssue.page Model.ElmUiSvgIssue Msg.ElmUiSvgIssue
     , home_ = static Pages.Home_.view Model.Home_
+    , ikedaPattern = bundle Pages.IkedaPattern.page Model.IkedaPattern Msg.IkedaPattern
     , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops
     , scriptaDemo = bundle Pages.ScriptaDemo.page Model.ScriptaDemo Msg.ScriptaDemo
