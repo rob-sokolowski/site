@@ -1,6 +1,7 @@
 module Pages.IkedaPattern exposing (Model, Msg, page)
 
 import Browser.Dom
+import Browser.Events as Events
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -59,6 +60,7 @@ type ViewportStatus
 
 type Msg
     = Got_Viewport Browser.Dom.Viewport
+    | Got_ResizeEvent Int Int
 
 
 update_ : Msg -> Model -> ( Model, Effect Msg )
@@ -68,6 +70,9 @@ update_ msg model =
             case msg of
                 Got_Viewport viewport ->
                     ( { model | viewportStatus = ViewportKnown viewport }, Effect.none )
+
+                _ ->
+                    ( model, Effect.none )
 
         --_ ->
         --    ( model, Effect.none )
@@ -81,6 +86,11 @@ update msg ( model, viewport ) =
         Got_Viewport viewport_ ->
             ( { model | viewportStatus = ViewportKnown viewport_ }, Effect.none )
 
+        Got_ResizeEvent _ _ ->
+            ( model
+            , Effect.fromCmd <| Task.perform Got_Viewport Browser.Dom.getViewport
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -88,7 +98,9 @@ update msg ( model, viewport ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ Events.onResize Got_ResizeEvent
+        ]
 
 
 
@@ -117,28 +129,62 @@ view model =
 viewElements : ( Model, Browser.Dom.Viewport ) -> Element Msg
 viewElements ( model, viewport ) =
     let
+        n =
+            50
+
+        dx =
+            10
+
         ( w, h ) =
             ( viewport.viewport.width - 10, viewport.viewport.height - 10 )
+
+        ( vb_w, vb_h ) =
+            ( n * dx, n * dx )
     in
     el
         [ width (px <| round w)
         , height (px <| round h)
+        , centerX
+        , centerY
+        , Border.width 1
+        , Border.color Palette.black
         ]
-        (E.html <|
-            S.svg
-                [ SA.width (ST.px w)
-                , SA.height (ST.px h)
-                , SA.viewBox 0 0 w h
-                ]
-                [ S.rect
-                    [ SA.x (ST.px 10)
-                    , SA.y (ST.px 10)
-                    , SA.width (ST.px 20)
-                    , SA.height (ST.px 20)
-                    , SA.stroke (ST.Paint <| toAvhColor Palette.black)
-                    , SA.fill (ST.Paint <| toAvhColor Palette.black)
-                    , SA.strokeWidth (ST.px 3)
+        (el [ width shrink, height shrink, Border.color Palette.black, Border.width 1 ] <|
+            E.html <|
+                S.svg
+                    [ SA.width (ST.px w)
+                    , SA.height (ST.px h)
+                    , SA.viewBox 0 0 vb_w vb_h
+                    , SA.color (toAvhColor Palette.white)
                     ]
-                    []
-                ]
+                    (List.map
+                        (\i ->
+                            let
+                                color =
+                                    if modBy 2 i == 0 then
+                                        Palette.black
+
+                                    else
+                                        Palette.white
+
+                                x =
+                                    toFloat i * dx
+
+                                y =
+                                    toFloat i * dx
+                            in
+                            S.rect
+                                [ SA.x (ST.px x)
+                                , SA.y (ST.px y)
+                                , SA.width (ST.px dx)
+                                , SA.height (ST.px dx)
+
+                                --, SA.stroke (ST.Paint <| toAvhColor Palette.white)
+                                , SA.fill (ST.Paint <| toAvhColor color)
+                                , SA.strokeWidth (ST.px 1)
+                                ]
+                                []
+                        )
+                        (List.range 0 (n - 1))
+                    )
         )
