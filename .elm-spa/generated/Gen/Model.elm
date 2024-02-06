@@ -3,6 +3,7 @@ module Gen.Model exposing (Model(..))
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
 import Gen.Params.Home_
+import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
@@ -14,6 +15,7 @@ import Gen.Params.NotFound
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
 import Pages.Home_
+import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
@@ -29,6 +31,7 @@ type Model
     | BouncingBall Gen.Params.BouncingBall.Params Pages.BouncingBall.Model
     | ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model
     | Home_ Gen.Params.Home_.Params
+    | IkedaPattern Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model
     | ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model
     | Pops Gen.Params.Pops.Params Pages.Pops.Model
     | ScriptaDemo Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model

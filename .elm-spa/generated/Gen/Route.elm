@@ -7,6 +7,7 @@ module Gen.Route exposing
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
 import Gen.Params.Home_
+import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
@@ -23,6 +24,7 @@ type Route
     = BouncingBall
     | ElmUiSvgIssue
     | Home_
+    | IkedaPattern
     | ParableOfPolygonsClone
     | Pops
     | ScriptaDemo
@@ -43,6 +45,7 @@ routes =
     [ Parser.map Home_ Gen.Params.Home_.parser
     , Parser.map BouncingBall Gen.Params.BouncingBall.parser
     , Parser.map ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.parser
+    , Parser.map IkedaPattern Gen.Params.IkedaPattern.parser
     , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
@@ -70,6 +73,9 @@ toHref route =
     
         Home_ ->
             joinAsHref []
+    
+        IkedaPattern ->
+            joinAsHref [ "ikeda-pattern" ]
     
         ParableOfPolygonsClone ->
             joinAsHref [ "parable-of-polygons-clone" ]
