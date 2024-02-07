@@ -1,5 +1,6 @@
 module Pages.IkedaPattern exposing (Model, Msg, page)
 
+import Array2D exposing (Array2D)
 import Browser.Dom
 import Browser.Events as Events
 import Effect exposing (Effect)
@@ -38,12 +39,14 @@ page shared req =
 
 type alias Model =
     { viewportStatus : ViewportStatus
+    , pattern : Array2D ( Float, Float, Color )
     }
 
 
 init : Shared.Model -> ( Model, Effect Msg )
 init shared =
     ( { viewportStatus = ViewportUnknown
+      , pattern = checkeredPattern n
       }
     , Effect.fromCmd (Task.perform Got_Viewport Browser.Dom.getViewport)
     )
@@ -126,20 +129,51 @@ view model =
     }
 
 
+checkeredPattern : Int -> Array2D ( Float, Float, Color )
+checkeredPattern n_ =
+    Array2D.fromListOfLists <|
+        List.map
+            (\i ->
+                List.map
+                    (\j ->
+                        if modBy 2 (i + j) == 0 then
+                            ( dx * toFloat i, dx * toFloat j, Palette.white )
+
+                        else
+                            ( dx * toFloat i, dx * toFloat j, Palette.black )
+                    )
+                    (List.range 0 (n_ - 1))
+            )
+            (List.range 0 (n_ - 1))
+
+
+n =
+    50
+
+
+dx =
+    10
+
+
 viewElements : ( Model, Browser.Dom.Viewport ) -> Element Msg
 viewElements ( model, viewport ) =
     let
-        n =
-            50
-
-        dx =
-            10
-
         ( w, h ) =
             ( viewport.viewport.width - 10, viewport.viewport.height - 10 )
 
         ( vb_w, vb_h ) =
             ( n * dx, n * dx )
+
+        square : ( Float, Float, Color ) -> Svg Msg
+        square ( x, y, color ) =
+            S.rect
+                [ SA.x (ST.px x)
+                , SA.y (ST.px y)
+                , SA.width (ST.px dx)
+                , SA.height (ST.px dx)
+                , SA.fill (ST.Paint <| toAvhColor color)
+                ]
+                []
     in
     el
         [ width (px <| round w)
@@ -149,42 +183,12 @@ viewElements ( model, viewport ) =
         , Border.width 1
         , Border.color Palette.black
         ]
-        (el [ width shrink, height shrink, Border.color Palette.black, Border.width 1 ] <|
-            E.html <|
-                S.svg
-                    [ SA.width (ST.px w)
-                    , SA.height (ST.px h)
-                    , SA.viewBox 0 0 vb_w vb_h
-                    , SA.color (toAvhColor Palette.white)
-                    ]
-                    (List.map
-                        (\i ->
-                            let
-                                color =
-                                    if modBy 2 i == 0 then
-                                        Palette.black
-
-                                    else
-                                        Palette.white
-
-                                x =
-                                    toFloat i * dx
-
-                                y =
-                                    toFloat i * dx
-                            in
-                            S.rect
-                                [ SA.x (ST.px x)
-                                , SA.y (ST.px y)
-                                , SA.width (ST.px dx)
-                                , SA.height (ST.px dx)
-
-                                --, SA.stroke (ST.Paint <| toAvhColor Palette.white)
-                                , SA.fill (ST.Paint <| toAvhColor color)
-                                , SA.strokeWidth (ST.px 1)
-                                ]
-                                []
-                        )
-                        (List.range 0 (n - 1))
-                    )
+        (E.html <|
+            S.svg
+                [ SA.width (ST.px w)
+                , SA.height (ST.px h)
+                , SA.viewBox 0 0 vb_w vb_h
+                , SA.color (toAvhColor Palette.white)
+                ]
+                (List.map (\p -> square p) (Array2D.flattenAsList model.pattern))
         )
