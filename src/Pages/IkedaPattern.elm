@@ -158,9 +158,6 @@ dx =
 viewElements : ( Model, Browser.Dom.Viewport ) -> Element Msg
 viewElements ( model, viewport ) =
     let
-        _ =
-            Debug.log "pattern" model.pattern
-
         ( w, h ) =
             ( viewport.viewport.width - 10, viewport.viewport.height - 10 )
 
