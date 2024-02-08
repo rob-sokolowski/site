@@ -1,6 +1,7 @@
 module Pages.IkedaPattern exposing (Model, Msg, page)
 
 import Array2D exposing (Array2D)
+import Basics
 import Browser.Dom
 import Browser.Events as Events
 import Effect exposing (Effect)
@@ -16,10 +17,11 @@ import Palette exposing (toAvhColor)
 import Request
 import Shared
 import Task
+import Time
 import TypedSvg as S
 import TypedSvg.Attributes as SA
 import TypedSvg.Core as SC exposing (Svg)
-import TypedSvg.Types as ST
+import TypedSvg.Types as ST exposing (Transform(..))
 import View exposing (View)
 
 
@@ -40,13 +42,21 @@ page shared req =
 type alias Model =
     { viewportStatus : ViewportStatus
     , pattern : Array2D ( Float, Float, Color )
+    , rotDeg : Float -- rotation to apply, in radians
+    , n : Int
     }
+
+
+rotDeg0 =
+    0.0
 
 
 init : Shared.Model -> ( Model, Effect Msg )
 init shared =
     ( { viewportStatus = ViewportUnknown
-      , pattern = checkeredPattern n
+      , pattern = checkeredPattern n0
+      , rotDeg = rotDeg0
+      , n = n0
       }
     , Effect.fromCmd (Task.perform Got_Viewport Browser.Dom.getViewport)
     )
@@ -64,6 +74,7 @@ type ViewportStatus
 type Msg
     = Got_Viewport Browser.Dom.Viewport
     | Got_ResizeEvent Int Int
+    | Tick Time.Posix
 
 
 update_ : Msg -> Model -> ( Model, Effect Msg )
@@ -94,15 +105,46 @@ update msg ( model, viewport ) =
             , Effect.fromCmd <| Task.perform Got_Viewport Browser.Dom.getViewport
             )
 
+        Tick _ ->
+            let
+                rotDeg_ =
+                    model.rotDeg + dTheta
+
+                rotDeg__ =
+                    if rotDeg_ > 360 then
+                        rotDeg_ - 360
+
+                    else
+                        rotDeg_
+
+                a =
+                    20
+
+                n_ =
+                    round <| n0 + (a * Basics.sin (degrees rotDeg__))
+            in
+            ( { model
+                | rotDeg = rotDeg__
+                , n = n_
+                , pattern = checkeredPattern n_
+              }
+            , Effect.none
+            )
+
 
 
 -- SUBSCRIPTIONS
+
+
+dtMs =
+    60
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Events.onResize Got_ResizeEvent
+        , Time.every dtMs Tick
         ]
 
 
@@ -147,12 +189,16 @@ checkeredPattern n_ =
             (List.range 0 (n_ - 1))
 
 
-n =
-    50
+n0 =
+    30
 
 
 dx =
     10
+
+
+dTheta =
+    1.0
 
 
 viewElements : ( Model, Browser.Dom.Viewport ) -> Element Msg
@@ -162,16 +208,22 @@ viewElements ( model, viewport ) =
             ( viewport.viewport.width - 10, viewport.viewport.height - 10 )
 
         ( vb_w, vb_h ) =
-            ( n * dx, n * dx )
+            ( toFloat model.n * dx, toFloat model.n * dx )
 
         square : ( Float, Float, Color ) -> Svg Msg
         square ( x, y, color ) =
             S.rect
-                [ SA.x (ST.px x)
-                , SA.y (ST.px y)
+                [ SA.x (ST.px <| x)
+                , SA.y (ST.px <| y)
                 , SA.width (ST.px dx)
                 , SA.height (ST.px dx)
                 , SA.fill (ST.Paint <| toAvhColor color)
+                , SA.stroke (ST.Paint <| toAvhColor color)
+                , SA.transform
+                    [ Rotate model.rotDeg (vb_w / 2 + dx / 2 + 0.1 * y) (vb_h / 2 + dx / 2 + 0.1 * x)
+
+                    --, Translate 10 11
+                    ]
                 ]
                 []
     in
