@@ -58,10 +58,6 @@ type alias Model =
     }
 
 
-rotDeg0 =
-    0.0
-
-
 init : Shared.Model -> Int -> ( Model, Effect Msg )
 init shared pageNo =
     ( { viewportStatus = ViewportUnknown
@@ -168,6 +164,12 @@ n0 : number
 n0 =
     -- The initial number of squares on one side of the checkered pattern
     30
+
+
+rotDeg0 : Float
+rotDeg0 =
+    -- initial rotation of the pattern
+    0.0
 
 
 dx : number
