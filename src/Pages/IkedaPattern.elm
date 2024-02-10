@@ -1,4 +1,4 @@
-module Pages.IkedaPattern exposing (Model, Msg, page)
+module Pages.IkedaPattern exposing (Model, Msg, page, primes, quadraticResidueSet)
 
 import Array2D exposing (Array2D)
 import Basics
@@ -16,6 +16,7 @@ import Gen.Params.IkedaPattern exposing (Params)
 import Page
 import Palette exposing (toAvhColor)
 import Request
+import Set exposing (Set)
 import Shared
 import Task
 import Time
@@ -58,10 +59,27 @@ type alias Model =
     }
 
 
+page1N0 =
+    30
+
+
+page2N0 =
+    53
+
+
 init : Shared.Model -> Int -> ( Model, Effect Msg )
 init shared pageNo =
+    let
+        ( n0, pattern ) =
+            case pageNo of
+                2 ->
+                    ( page2N0, muraPattern page2N0 )
+
+                _ ->
+                    ( page1N0, checkeredPattern page1N0 )
+    in
     ( { viewportStatus = ViewportUnknown
-      , pattern = checkeredPattern n0
+      , pattern = pattern
       , rotDeg = rotDeg0
       , n = n0
       , pageNo = pageNo
@@ -118,7 +136,7 @@ tickPage1 model =
         n_ : Int
         n_ =
             -- the dimension of the checkered pattern varies sinusoidally, with an amplitude of a, centered at n0
-            round <| n0 + (a * Basics.sin (degrees rotDeg))
+            round <| page1N0 + (a * Basics.sin (degrees rotDeg))
 
         -- recompute pattern if n has changed, otherwise don't bother since it'll be the same
         pattern : Array2D ( Basics.Float, Basics.Float, Color )
@@ -133,6 +151,21 @@ tickPage1 model =
         | rotDeg = rotDeg
         , n = n_
         , pattern = pattern
+      }
+    , Effect.none
+    )
+
+
+tickPage2 : Model -> ( Model, Effect Msg )
+tickPage2 model =
+    let
+        rotDeg : Float
+        rotDeg =
+            -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+    in
+    ( { model
+        | rotDeg = rotDeg
       }
     , Effect.none
     )
@@ -154,6 +187,9 @@ update msg ( model, viewport ) =
                 1 ->
                     tickPage1 model
 
+                2 ->
+                    tickPage2 model
+
                 _ ->
                     ( model, Effect.none )
 
@@ -161,12 +197,6 @@ update msg ( model, viewport ) =
 
 -- SUBSCRIPTIONS
 -- begin region: constants
-
-
-n0 : number
-n0 =
-    -- The initial number of squares on one side of the checkered pattern
-    30
 
 
 rotDeg0 : Float
@@ -228,6 +258,51 @@ view model =
     }
 
 
+muraPattern : Int -> Array2D ( Float, Float, Color )
+muraPattern d =
+    let
+        quadraticResidues : Set Int
+        quadraticResidues =
+            quadraticResidueSet d
+
+        c : Int -> Int
+        c k =
+            if Set.member k quadraticResidues then
+                1
+
+            else
+                -1
+
+        a : ( Int, Int ) -> Int
+        a ( i, j ) =
+            if i == 0 then
+                0
+
+            else if j == 0 && i /= 0 then
+                1
+
+            else if c i * c j == 1 then
+                1
+
+            else
+                0
+    in
+    Array2D.fromListOfLists <|
+        List.map
+            (\i ->
+                List.map
+                    (\j ->
+                        if a ( i, j ) == 0 then
+                            ( dx * toFloat i, dx * toFloat j, Palette.white )
+
+                        else
+                            ( dx * toFloat i, dx * toFloat j, Palette.black )
+                    )
+                    (List.range 1 d)
+            )
+            (List.range 1 d)
+
+
 checkeredPattern : Int -> Array2D ( Float, Float, Color )
 checkeredPattern n_ =
     Array2D.fromListOfLists <|
@@ -257,6 +332,8 @@ viewElements ( model, viewport ) =
 
         square : ( Float, Float, Color ) -> Svg Msg
         square ( x, y, color ) =
+            -- TODO: Need to think about how to paginate the transform operations in a nicer way
+            -- For now this case statement will do
             S.rect
                 [ SA.x (ST.px <| x)
                 , SA.y (ST.px <| y)
@@ -264,11 +341,19 @@ viewElements ( model, viewport ) =
                 , SA.height (ST.px dx)
                 , SA.fill (ST.Paint <| toAvhColor color)
                 , SA.stroke (ST.Paint <| toAvhColor color)
-                , SA.transform
-                    [ Rotate model.rotDeg (vb_w / 2 + dx / 2 + 0.1 * y) (vb_h / 2 + dx / 2 + 0.1 * x)
+                , case model.pageNo of
+                    1 ->
+                        SA.transform
+                            [ Rotate model.rotDeg (vb_w / 2 + dx / 2 + 0.1 * y) (vb_h / 2 + dx / 2 + 0.1 * x)
+                            ]
 
-                    --, Translate 10 11
-                    ]
+                    2 ->
+                        SA.transform
+                            [ Rotate model.rotDeg (vb_w / 2 + dx) (vb_h / 2 + dx / 2)
+                            ]
+
+                    _ ->
+                        SA.noFill
                 ]
                 []
     in
@@ -289,3 +374,50 @@ viewElements ( model, viewport ) =
                 ]
                 (List.map (\p -> square p) (Array2D.flattenAsList model.pattern))
         )
+
+
+
+-- begin region: prime number stuff
+
+
+primes : List Int
+primes =
+    -- source: https://en.wikipedia.org/wiki/List_of_prime_numbers
+    [ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101 ]
+
+
+primeSet : Set Int
+primeSet =
+    Set.fromList primes
+
+
+quadraticResidueSet : Int -> Set Int
+quadraticResidueSet p =
+    let
+        intsLessThanP : List Int
+        intsLessThanP =
+            List.range 1 (p - 1)
+
+        res : Int -> Int
+        res x =
+            -- source: https://en.wikipedia.org/wiki/Quadratic_residue
+            modBy p (x * x)
+
+        quadraticResidue_ : List Int -> Set Int -> Set Int
+        quadraticResidue_ intsRemaining accum =
+            case intsRemaining of
+                x :: xs ->
+                    Set.insert (res x) (quadraticResidue_ xs accum)
+
+                [] ->
+                    accum
+    in
+    if Set.member p primeSet then
+        quadraticResidue_ intsLessThanP Set.empty
+
+    else
+        Set.empty
+
+
+
+-- end region: prime number stuff
