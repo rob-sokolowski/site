@@ -59,19 +59,27 @@ type alias Model =
     }
 
 
+page1N0 =
+    30
+
+
+page2N0 =
+    53
+
+
 init : Shared.Model -> Int -> ( Model, Effect Msg )
 init shared pageNo =
-    ( { viewportStatus = ViewportUnknown
-      , pattern =
+    let
+        ( n0, pattern ) =
             case pageNo of
-                1 ->
-                    checkeredPattern n0
-
                 2 ->
-                    muraPattern 101
+                    ( page2N0, muraPattern page2N0 )
 
                 _ ->
-                    checkeredPattern n0
+                    ( page1N0, checkeredPattern page1N0 )
+    in
+    ( { viewportStatus = ViewportUnknown
+      , pattern = pattern
       , rotDeg = rotDeg0
       , n = n0
       , pageNo = pageNo
@@ -128,7 +136,7 @@ tickPage1 model =
         n_ : Int
         n_ =
             -- the dimension of the checkered pattern varies sinusoidally, with an amplitude of a, centered at n0
-            round <| n0 + (a * Basics.sin (degrees rotDeg))
+            round <| page1N0 + (a * Basics.sin (degrees rotDeg))
 
         -- recompute pattern if n has changed, otherwise don't bother since it'll be the same
         pattern : Array2D ( Basics.Float, Basics.Float, Color )
@@ -155,29 +163,9 @@ tickPage2 model =
         rotDeg =
             -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
             toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
-
-        a : Float
-        a =
-            -- defines the "amplitude" of the sinusoidal function that determines n
-            20
-
-        n_ : Int
-        n_ =
-            101
-
-        -- recompute pattern if n has changed, otherwise don't bother since it'll be the same
-        pattern : Array2D ( Basics.Float, Basics.Float, Color )
-        pattern =
-            if model.n /= n_ then
-                muraPattern n_
-
-            else
-                model.pattern
     in
     ( { model
         | rotDeg = rotDeg
-        , n = n_
-        , pattern = pattern
       }
     , Effect.none
     )
@@ -209,12 +197,6 @@ update msg ( model, viewport ) =
 
 -- SUBSCRIPTIONS
 -- begin region: constants
-
-
-n0 : number
-n0 =
-    -- The initial number of squares on one side of the checkered pattern
-    30
 
 
 rotDeg0 : Float
