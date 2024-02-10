@@ -4,6 +4,7 @@ import Array2D exposing (Array2D)
 import Basics
 import Browser.Dom
 import Browser.Events as Events
+import Dict
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -27,8 +28,17 @@ import View exposing (View)
 
 page : Shared.Model -> Request.With Params -> Page.With Model Msg
 page shared req =
+    let
+        -- parse query param ?page=
+        pageNo : Int
+        pageNo =
+            Dict.get "page" req.query
+                |> Maybe.withDefault ""
+                |> String.toInt
+                |> Maybe.withDefault 1
+    in
     Page.advanced
-        { init = init shared
+        { init = init shared pageNo
         , update = update_
         , view = view
         , subscriptions = subscriptions
@@ -42,21 +52,19 @@ page shared req =
 type alias Model =
     { viewportStatus : ViewportStatus
     , pattern : Array2D ( Float, Float, Color )
-    , rotDeg : Float -- rotation to apply, in radians
+    , rotDeg : Float -- rotation to apply, in degrees
     , n : Int
+    , pageNo : Int
     }
 
 
-rotDeg0 =
-    0.0
-
-
-init : Shared.Model -> ( Model, Effect Msg )
-init shared =
+init : Shared.Model -> Int -> ( Model, Effect Msg )
+init shared pageNo =
     ( { viewportStatus = ViewportUnknown
       , pattern = checkeredPattern n0
       , rotDeg = rotDeg0
       , n = n0
+      , pageNo = pageNo
       }
     , Effect.fromCmd (Task.perform Got_Viewport Browser.Dom.getViewport)
     )
@@ -94,6 +102,42 @@ update_ msg model =
             update msg ( model, viewport )
 
 
+tickPage1 : Model -> ( Model, Effect Msg )
+tickPage1 model =
+    let
+        rotDeg : Float
+        rotDeg =
+            -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+
+        a : Float
+        a =
+            -- defines the "amplitude" of the sinusoidal function that determines n
+            20
+
+        n_ : Int
+        n_ =
+            -- the dimension of the checkered pattern varies sinusoidally, with an amplitude of a, centered at n0
+            round <| n0 + (a * Basics.sin (degrees rotDeg))
+
+        -- recompute pattern if n has changed, otherwise don't bother since it'll be the same
+        pattern : Array2D ( Basics.Float, Basics.Float, Color )
+        pattern =
+            if model.n /= n_ then
+                checkeredPattern n_
+
+            else
+                model.pattern
+    in
+    ( { model
+        | rotDeg = rotDeg
+        , n = n_
+        , pattern = pattern
+      }
+    , Effect.none
+    )
+
+
 update : Msg -> ( Model, Browser.Dom.Viewport ) -> ( Model, Effect Msg )
 update msg ( model, viewport ) =
     case msg of
@@ -106,38 +150,51 @@ update msg ( model, viewport ) =
             )
 
         Tick _ ->
-            let
-                rotDeg_ =
-                    model.rotDeg + dTheta
+            case model.pageNo of
+                1 ->
+                    tickPage1 model
 
-                rotDeg__ =
-                    if rotDeg_ > 360 then
-                        rotDeg_ - 360
-
-                    else
-                        rotDeg_
-
-                a =
-                    20
-
-                n_ =
-                    round <| n0 + (a * Basics.sin (degrees rotDeg__))
-            in
-            ( { model
-                | rotDeg = rotDeg__
-                , n = n_
-                , pattern = checkeredPattern n_
-              }
-            , Effect.none
-            )
+                _ ->
+                    ( model, Effect.none )
 
 
 
 -- SUBSCRIPTIONS
+-- begin region: constants
 
 
+n0 : number
+n0 =
+    -- The initial number of squares on one side of the checkered pattern
+    30
+
+
+rotDeg0 : Float
+rotDeg0 =
+    -- initial rotation of the pattern
+    0.0
+
+
+dx : number
+dx =
+    -- The number of pixels, in viewbox coordinates of a square (smaller square components of the checkered pattern)
+    10
+
+
+dTheta : Float
+dTheta =
+    -- The rotation, in degrees, to apply each frame
+    1.0
+
+
+dtMs : number
 dtMs =
+    -- The target number of milliseconds between frames
     60
+
+
+
+-- end region: constants
 
 
 subscriptions : Model -> Sub Msg
@@ -187,18 +244,6 @@ checkeredPattern n_ =
                     (List.range 0 (n_ - 1))
             )
             (List.range 0 (n_ - 1))
-
-
-n0 =
-    30
-
-
-dx =
-    10
-
-
-dTheta =
-    1.0
 
 
 viewElements : ( Model, Browser.Dom.Viewport ) -> Element Msg
