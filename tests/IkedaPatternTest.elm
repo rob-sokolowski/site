@@ -16,5 +16,10 @@ suite =
                     quadraticResidueSet 11
                         |> Expect.equal (Set.fromList [ 1, 3, 4, 5, 9 ])
                 )
+            , test "return empty set when p not in our list of primes"
+                (\_ ->
+                    quadraticResidueSet 16
+                        |> Expect.equal Set.empty
+                )
             ]
         ]
