@@ -107,14 +107,17 @@ tickPage1 model =
     let
         rotDeg : Float
         rotDeg =
+            -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
             toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
 
         a : Float
         a =
+            -- defines the "amplitude" of the sinusoidal function that determines n
             20
 
         n_ : Int
         n_ =
+            -- the dimension of the checkered pattern varies sinusoidally, with an amplitude of a, centered at n0
             round <| n0 + (a * Basics.sin (degrees rotDeg))
 
         -- recompute pattern if n has changed, otherwise don't bother since it'll be the same
