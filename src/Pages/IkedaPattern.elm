@@ -13,6 +13,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Gen.Params.IkedaPattern exposing (Params)
+import List.Extra as List
 import Page
 import Palette exposing (toAvhColor)
 import Request
@@ -67,11 +68,18 @@ page2N0 =
     53
 
 
+page3N0 =
+    101
+
+
 init : Shared.Model -> Int -> ( Model, Effect Msg )
 init shared pageNo =
     let
         ( n0, pattern ) =
             case pageNo of
+                3 ->
+                    ( page3N0, muraPattern2 page3N0 )
+
                 2 ->
                     ( page2N0, muraPattern page2N0 )
 
@@ -156,6 +164,21 @@ tickPage1 model =
     )
 
 
+tickPage3 : Model -> ( Model, Effect Msg )
+tickPage3 model =
+    let
+        rotDeg : Float
+        rotDeg =
+            -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+    in
+    ( { model
+        | rotDeg = rotDeg
+      }
+    , Effect.none
+    )
+
+
 tickPage2 : Model -> ( Model, Effect Msg )
 tickPage2 model =
     let
@@ -189,6 +212,9 @@ update msg ( model, viewport ) =
 
                 2 ->
                     tickPage2 model
+
+                3 ->
+                    tickPage3 model
 
                 _ ->
                     ( model, Effect.none )
@@ -256,6 +282,51 @@ view model =
             )
         ]
     }
+
+
+muraPattern2 : Int -> Array2D ( Float, Float, Color )
+muraPattern2 d =
+    let
+        quadraticResidues : Set Int
+        quadraticResidues =
+            quadraticResidueSet d
+
+        c : Int -> Int
+        c k =
+            if Set.member k quadraticResidues then
+                1
+
+            else
+                -1
+
+        a : ( Int, Int ) -> Int
+        a ( i, j ) =
+            if i == 0 then
+                0
+
+            else if j == 0 && i /= 0 then
+                1
+
+            else if c i * c j == 1 then
+                1
+
+            else
+                0
+    in
+    Array2D.fromListOfLists <|
+        List.map
+            (\i ->
+                List.map
+                    (\j ->
+                        if a ( i, j ) == 0 then
+                            ( dx * toFloat i, dx * toFloat j, Palette.white )
+
+                        else
+                            ( dx * toFloat i, dx * toFloat j, Palette.black )
+                    )
+                    (List.range 1 d)
+            )
+            (List.range 1 d)
 
 
 muraPattern : Int -> Array2D ( Float, Float, Color )
@@ -352,6 +423,11 @@ viewElements ( model, viewport ) =
                             [ Rotate model.rotDeg (vb_w / 2 + dx) (vb_h / 2 + dx / 2)
                             ]
 
+                    3 ->
+                        SA.transform
+                            [ Rotate model.rotDeg (vb_w / 2 + dx) (vb_h / 2 + dx / 2)
+                            ]
+
                     _ ->
                         SA.noFill
                 ]
@@ -391,6 +467,12 @@ primeSet =
     Set.fromList primes
 
 
+{-| Compute the quadratic residue set of a prime number p. Returns Set.empty when p is not in the above list of primes.
+While this list is incomplete, it should be sufficient for the purposes of drawing mura patterns
+
+<https://en.wikipedia.org/wiki/Quadratic_residue>
+
+-}
 quadraticResidueSet : Int -> Set Int
 quadraticResidueSet p =
     let
@@ -400,7 +482,6 @@ quadraticResidueSet p =
 
         res : Int -> Int
         res x =
-            -- source: https://en.wikipedia.org/wiki/Quadratic_residue
             modBy p (x * x)
 
         quadraticResidue_ : List Int -> Set Int -> Set Int
