@@ -11,8 +11,8 @@ import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
 import Gen.Params.SpeedReadDemo
-import Gen.Params.VegaLite
 import Gen.Params.WordleClone
+import Gen.Params.Stories.AccelerometerTest
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Gen.Model as Model
@@ -27,8 +27,8 @@ import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
 import Pages.SpeedReadDemo
-import Pages.VegaLite
 import Pages.WordleClone
+import Pages.Stories.AccelerometerTest
 import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 import Request exposing (Request)
@@ -73,11 +73,11 @@ init route =
         Route.SpeedReadDemo ->
             pages.speedReadDemo.init ()
     
-        Route.VegaLite ->
-            pages.vegaLite.init ()
-    
         Route.WordleClone ->
             pages.wordleClone.init ()
+    
+        Route.Stories__AccelerometerTest ->
+            pages.stories__accelerometerTest.init ()
     
         Route.Stories__ParableOfPolygonsQa ->
             pages.stories__parableOfPolygonsQa.init ()
@@ -110,11 +110,11 @@ update msg_ model_ =
         ( Msg.SpeedReadDemo msg, Model.SpeedReadDemo params model ) ->
             pages.speedReadDemo.update params msg model
     
-        ( Msg.VegaLite msg, Model.VegaLite params model ) ->
-            pages.vegaLite.update params msg model
-    
         ( Msg.WordleClone msg, Model.WordleClone params model ) ->
             pages.wordleClone.update params msg model
+    
+        ( Msg.Stories__AccelerometerTest msg, Model.Stories__AccelerometerTest params model ) ->
+            pages.stories__accelerometerTest.update params msg model
     
         ( Msg.Stories__ParableOfPolygonsQa msg, Model.Stories__ParableOfPolygonsQa params model ) ->
             pages.stories__parableOfPolygonsQa.update params msg model
@@ -153,11 +153,11 @@ view model_ =
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.view params model
     
-        Model.VegaLite params model ->
-            pages.vegaLite.view params model
-    
         Model.WordleClone params model ->
             pages.wordleClone.view params model
+    
+        Model.Stories__AccelerometerTest params model ->
+            pages.stories__accelerometerTest.view params model
     
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.view params model
@@ -196,11 +196,11 @@ subscriptions model_ =
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.subscriptions params model
     
-        Model.VegaLite params model ->
-            pages.vegaLite.subscriptions params model
-    
         Model.WordleClone params model ->
             pages.wordleClone.subscriptions params model
+    
+        Model.Stories__AccelerometerTest params model ->
+            pages.stories__accelerometerTest.subscriptions params model
     
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.subscriptions params model
@@ -222,8 +222,8 @@ pages :
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
     , scriptaDemo : Bundle Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model Pages.ScriptaDemo.Msg
     , speedReadDemo : Bundle Gen.Params.SpeedReadDemo.Params Pages.SpeedReadDemo.Model Pages.SpeedReadDemo.Msg
-    , vegaLite : Bundle Gen.Params.VegaLite.Params Pages.VegaLite.Model Pages.VegaLite.Msg
     , wordleClone : Bundle Gen.Params.WordleClone.Params Pages.WordleClone.Model Pages.WordleClone.Msg
+    , stories__accelerometerTest : Bundle Gen.Params.Stories.AccelerometerTest.Params Pages.Stories.AccelerometerTest.Model Pages.Stories.AccelerometerTest.Msg
     , stories__parableOfPolygonsQa : Bundle Gen.Params.Stories.ParableOfPolygonsQa.Params Pages.Stories.ParableOfPolygonsQa.Model Pages.Stories.ParableOfPolygonsQa.Msg
     , notFound : Static Gen.Params.NotFound.Params
     }
@@ -236,8 +236,8 @@ pages =
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops
     , scriptaDemo = bundle Pages.ScriptaDemo.page Model.ScriptaDemo Msg.ScriptaDemo
     , speedReadDemo = bundle Pages.SpeedReadDemo.page Model.SpeedReadDemo Msg.SpeedReadDemo
-    , vegaLite = bundle Pages.VegaLite.page Model.VegaLite Msg.VegaLite
     , wordleClone = bundle Pages.WordleClone.page Model.WordleClone Msg.WordleClone
+    , stories__accelerometerTest = bundle Pages.Stories.AccelerometerTest.page Model.Stories__AccelerometerTest Msg.Stories__AccelerometerTest
     , stories__parableOfPolygonsQa = bundle Pages.Stories.ParableOfPolygonsQa.page Model.Stories__ParableOfPolygonsQa Msg.Stories__ParableOfPolygonsQa
     , notFound = static Pages.NotFound.view Model.NotFound
     }
