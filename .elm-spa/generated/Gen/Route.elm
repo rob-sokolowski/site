@@ -12,8 +12,8 @@ import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
 import Gen.Params.SpeedReadDemo
-import Gen.Params.VegaLite
 import Gen.Params.WordleClone
+import Gen.Params.Stories.AccelerometerTest
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Url exposing (Url)
@@ -29,8 +29,8 @@ type Route
     | Pops
     | ScriptaDemo
     | SpeedReadDemo
-    | VegaLite
     | WordleClone
+    | Stories__AccelerometerTest
     | Stories__ParableOfPolygonsQa
     | NotFound
 
@@ -50,9 +50,9 @@ routes =
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
     , Parser.map SpeedReadDemo Gen.Params.SpeedReadDemo.parser
-    , Parser.map VegaLite Gen.Params.VegaLite.parser
     , Parser.map WordleClone Gen.Params.WordleClone.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
+    , Parser.map Stories__AccelerometerTest Gen.Params.Stories.AccelerometerTest.parser
     , Parser.map Stories__ParableOfPolygonsQa Gen.Params.Stories.ParableOfPolygonsQa.parser
     ]
 
@@ -89,11 +89,11 @@ toHref route =
         SpeedReadDemo ->
             joinAsHref [ "speed-read-demo" ]
     
-        VegaLite ->
-            joinAsHref [ "vega-lite" ]
-    
         WordleClone ->
             joinAsHref [ "wordle-clone" ]
+    
+        Stories__AccelerometerTest ->
+            joinAsHref [ "stories", "accelerometer-test" ]
     
         Stories__ParableOfPolygonsQa ->
             joinAsHref [ "stories", "parable-of-polygons-qa" ]
