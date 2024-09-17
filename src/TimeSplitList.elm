@@ -1,9 +1,12 @@
 module TimeSplitList exposing
-    ( Next(..)
+    ( LLNode(..)
+    , Next(..)
     , Node(..)
     , TimeSplitList
+    , appendll
     , newTimeSplitList
     , tailOf
+    , tailll
     )
 
 -- This TimeSplitList is intended to support the time-splitting animations of the bouncing ball applet. As of writing,
@@ -24,10 +27,10 @@ module TimeSplitList exposing
 --    proposed at this instant, on the control timeline. The result is, note how there is still exactly 1 undisturbed
 --    timeline, 0, and a new timeline, labeled 3:
 --
---                           /-----|| 2
---                  /-------x------|| 1
---                 |   /-----------|| 3
---       |---------x---x-----------|| 0
+--                           /-----|| split split
+--                  /-------x------|| split seq
+--                 |   /-----------|| seq split
+--       |---------x---x-----------|| seq seq
 --
 
 
@@ -119,15 +122,83 @@ tailOf (Node_ node) tlix =
             Just (Node_ node)
 
 
-append : TimeSplitList a -> List (Node a) -> Result TreeListErr (Node a)
-append tree nodes =
-    if tree.timelineCount == List.length nodes then
-        Result.Err "How do I do this?!?!?"
+append : TimeSplitList a -> ( List (Node a), TimelineIx ) -> TimeSplitList a
+append tree ( nodes, tix ) =
+    case nodes of
+        [] ->
+            tree
 
-    else
-        Result.Err "When appending to a TimeSplitList, the number of nodes to be append must equal the number of timelines"
+        n :: ns ->
+            append tree ( ns, tix + 1 )
 
 
-appendSub : TimeSplitList a -> TimelineIx -> Node a -> Result TreeListErr (Node a)
-appendSub tree tx node =
-    Result.Err "TODO!"
+appendAlongTimeline : Node a -> ( Node a, TimelineIx ) -> Node a
+appendAlongTimeline list ( nodeToAppend, tix ) =
+    case list of
+        Node_ node_ ->
+            case node_.next of
+                Just nextNode ->
+                    case nextNode of
+                        Seq node__ ->
+                            let
+                                n =
+                                    case node__ of
+                                        Node_ n_ ->
+                                            { n_ | next = Just (appendAlongTimeline node__ ( nodeToAppend, tix )) }
+                            in
+                            Node_ n
+
+                        Split ( seq, split ) ->
+                            { seq | next = Just (appendAlongTimeline split ( nodeToAppend, tix ) nodeToAppend) }
+
+                -- Recursively call append on the next node
+                Nothing ->
+                    -- Found the end of the list, append new value here
+                    Node_ { node_ | next = Just nodeToAppend }
+
+
+
+--case node.next of
+--    Just next ->
+--        case next of
+--            Seq node_ ->
+--                appendAlongTimeline node_ ( nodeToAppend, tix )
+--
+--            Split ( lhs, rhs ) ->
+--                appendAlongTimeline lhs ( nodeToAppend, tix )
+-- begin region: simpler case
+
+
+type LLNode a
+    = LLNode_
+        { val : a
+        , next : Maybe (LLNode a)
+        }
+
+
+appendll : LLNode b -> LLNode b -> LLNode b
+appendll list newVal =
+    case list of
+        LLNode_ node_ ->
+            case node_.next of
+                Just nextNode ->
+                    -- Recursively call append on the next node
+                    LLNode_ { node_ | next = Just (appendll nextNode newVal) }
+
+                Nothing ->
+                    -- Found the end of the list, append new value here
+                    LLNode_ { node_ | next = Just newVal }
+
+
+tailll : LLNode a -> LLNode a
+tailll (LLNode_ head) =
+    case head.next of
+        Nothing ->
+            LLNode_ head
+
+        Just next_ ->
+            tailll next_
+
+
+
+-- end region: simpler case
