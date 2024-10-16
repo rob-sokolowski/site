@@ -19,4 +19,4 @@ steps:
 
 options:
   pool:
-    name: 'projects/fir-sandbox-326008/locations/us-east4/workerPools/pool-1'
+    name: 'projects/fir-sandbox-326008/locations/us-east4/workerPools/fir'

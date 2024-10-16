@@ -10,6 +10,7 @@ import Gen.Params.ScriptaDemo
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
+import Gen.Params.Stories.IframeTest
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Pages.BouncingBall
@@ -22,6 +23,7 @@ import Pages.ScriptaDemo
 import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
+import Pages.Stories.IframeTest
 import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 
@@ -36,5 +38,6 @@ type Msg
     | SpeedReadDemo Pages.SpeedReadDemo.Msg
     | WordleClone Pages.WordleClone.Msg
     | Stories__AccelerometerTest Pages.Stories.AccelerometerTest.Msg
+    | Stories__IframeTest Pages.Stories.IframeTest.Msg
     | Stories__ParableOfPolygonsQa Pages.Stories.ParableOfPolygonsQa.Msg
 

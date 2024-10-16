@@ -13,6 +13,7 @@ import Gen.Params.ScriptaDemo
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
+import Gen.Params.Stories.IframeTest
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Gen.Model as Model
@@ -29,6 +30,7 @@ import Pages.ScriptaDemo
 import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
+import Pages.Stories.IframeTest
 import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 import Request exposing (Request)
@@ -79,6 +81,9 @@ init route =
         Route.Stories__AccelerometerTest ->
             pages.stories__accelerometerTest.init ()
     
+        Route.Stories__IframeTest ->
+            pages.stories__iframeTest.init ()
+    
         Route.Stories__ParableOfPolygonsQa ->
             pages.stories__parableOfPolygonsQa.init ()
     
@@ -115,6 +120,9 @@ update msg_ model_ =
     
         ( Msg.Stories__AccelerometerTest msg, Model.Stories__AccelerometerTest params model ) ->
             pages.stories__accelerometerTest.update params msg model
+    
+        ( Msg.Stories__IframeTest msg, Model.Stories__IframeTest params model ) ->
+            pages.stories__iframeTest.update params msg model
     
         ( Msg.Stories__ParableOfPolygonsQa msg, Model.Stories__ParableOfPolygonsQa params model ) ->
             pages.stories__parableOfPolygonsQa.update params msg model
@@ -159,6 +167,9 @@ view model_ =
         Model.Stories__AccelerometerTest params model ->
             pages.stories__accelerometerTest.view params model
     
+        Model.Stories__IframeTest params model ->
+            pages.stories__iframeTest.view params model
+    
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.view params model
     
@@ -202,6 +213,9 @@ subscriptions model_ =
         Model.Stories__AccelerometerTest params model ->
             pages.stories__accelerometerTest.subscriptions params model
     
+        Model.Stories__IframeTest params model ->
+            pages.stories__iframeTest.subscriptions params model
+    
         Model.Stories__ParableOfPolygonsQa params model ->
             pages.stories__parableOfPolygonsQa.subscriptions params model
     
@@ -224,6 +238,7 @@ pages :
     , speedReadDemo : Bundle Gen.Params.SpeedReadDemo.Params Pages.SpeedReadDemo.Model Pages.SpeedReadDemo.Msg
     , wordleClone : Bundle Gen.Params.WordleClone.Params Pages.WordleClone.Model Pages.WordleClone.Msg
     , stories__accelerometerTest : Bundle Gen.Params.Stories.AccelerometerTest.Params Pages.Stories.AccelerometerTest.Model Pages.Stories.AccelerometerTest.Msg
+    , stories__iframeTest : Bundle Gen.Params.Stories.IframeTest.Params Pages.Stories.IframeTest.Model Pages.Stories.IframeTest.Msg
     , stories__parableOfPolygonsQa : Bundle Gen.Params.Stories.ParableOfPolygonsQa.Params Pages.Stories.ParableOfPolygonsQa.Model Pages.Stories.ParableOfPolygonsQa.Msg
     , notFound : Static Gen.Params.NotFound.Params
     }
@@ -238,6 +253,7 @@ pages =
     , speedReadDemo = bundle Pages.SpeedReadDemo.page Model.SpeedReadDemo Msg.SpeedReadDemo
     , wordleClone = bundle Pages.WordleClone.page Model.WordleClone Msg.WordleClone
     , stories__accelerometerTest = bundle Pages.Stories.AccelerometerTest.page Model.Stories__AccelerometerTest Msg.Stories__AccelerometerTest
+    , stories__iframeTest = bundle Pages.Stories.IframeTest.page Model.Stories__IframeTest Msg.Stories__IframeTest
     , stories__parableOfPolygonsQa = bundle Pages.Stories.ParableOfPolygonsQa.page Model.Stories__ParableOfPolygonsQa Msg.Stories__ParableOfPolygonsQa
     , notFound = static Pages.NotFound.view Model.NotFound
     }

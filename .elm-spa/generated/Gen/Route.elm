@@ -14,6 +14,7 @@ import Gen.Params.ScriptaDemo
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
+import Gen.Params.Stories.IframeTest
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Url exposing (Url)
@@ -31,6 +32,7 @@ type Route
     | SpeedReadDemo
     | WordleClone
     | Stories__AccelerometerTest
+    | Stories__IframeTest
     | Stories__ParableOfPolygonsQa
     | NotFound
 
@@ -53,6 +55,7 @@ routes =
     , Parser.map WordleClone Gen.Params.WordleClone.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
     , Parser.map Stories__AccelerometerTest Gen.Params.Stories.AccelerometerTest.parser
+    , Parser.map Stories__IframeTest Gen.Params.Stories.IframeTest.parser
     , Parser.map Stories__ParableOfPolygonsQa Gen.Params.Stories.ParableOfPolygonsQa.parser
     ]
 
@@ -94,6 +97,9 @@ toHref route =
     
         Stories__AccelerometerTest ->
             joinAsHref [ "stories", "accelerometer-test" ]
+    
+        Stories__IframeTest ->
+            joinAsHref [ "stories", "iframe-test" ]
     
         Stories__ParableOfPolygonsQa ->
             joinAsHref [ "stories", "parable-of-polygons-qa" ]
