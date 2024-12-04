@@ -1,5 +1,6 @@
 module Pages.BouncingBall exposing (Model, Msg, RunningState(..), computeNextPos, page)
 
+import Browser.Events as BrowserEvents
 import Effect exposing (Effect)
 import Element as E exposing (..)
 import Element.Background as Background
@@ -13,7 +14,6 @@ import Page
 import Palette exposing (globalLayoutAttrs, toAvhColor)
 import Request
 import Shared
-import Time
 import TypedSvg as S
 import TypedSvg.Attributes as SA
 import TypedSvg.Core as SC exposing (Svg)
@@ -71,15 +71,6 @@ g =
 r : Float
 r =
     0.5
-
-
-dtMs : Float
-dtMs =
-    let
-        fps =
-            30
-    in
-    1000 / fps
 
 
 scaleXY : Float
@@ -172,7 +163,7 @@ type RunningState
 
 
 type Msg
-    = Tick Time.Posix
+    = Tick Float
     | UserClickedRefresh
     | UserToggledPause
     | TimelineSliderSlidTo Float
@@ -185,8 +176,8 @@ epsilon =
     1.0e-4
 
 
-computeNextPos : Model -> ( Pos, List Pos, Int )
-computeNextPos model =
+computeNextPos : Model -> Float -> ( Pos, List Pos, Int )
+computeNextPos model dt =
     let
         pos : Pos
         pos =
@@ -211,6 +202,10 @@ computeNextPos model =
         Playing ->
             if List.length hist == frameNo then
                 let
+                    dtMs : Float
+                    dtMs =
+                        dt
+
                     vy_ : Float
                     vy_ =
                         case model.ballPos.y + model.ballPos.ry >= meterMaxHeight of
@@ -317,10 +312,10 @@ update msg model =
             , Effect.none
             )
 
-        Tick _ ->
+        Tick dt ->
             let
                 ( newPos, newHist, newFrame ) =
-                    computeNextPos model
+                    computeNextPos model dt
             in
             ( { model
                 | ballPos = newPos
@@ -351,7 +346,7 @@ subscriptions model =
     case model.runningState of
         Playing ->
             Sub.batch
-                [ Time.every dtMs Tick
+                [ BrowserEvents.onAnimationFrameDelta Tick
                 ]
 
         Paused ->
