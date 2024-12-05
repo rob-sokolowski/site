@@ -3,7 +3,7 @@ module Pages.IkedaPattern exposing (Model, Msg, page, primes, quadraticResidueSe
 import Array2D exposing (Array2D)
 import Basics
 import Browser.Dom
-import Browser.Events as Events
+import Browser.Events as BrowserEvents
 import Dict
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -108,7 +108,7 @@ type ViewportStatus
 type Msg
     = Got_Viewport Browser.Dom.Viewport
     | Got_ResizeEvent Int Int
-    | Tick Time.Posix
+    | Tick Float
 
 
 update_ : Msg -> Model -> ( Model, Effect Msg )
@@ -128,13 +128,13 @@ update_ msg model =
             update msg ( model, viewport )
 
 
-tickPage1 : Model -> ( Model, Effect Msg )
-tickPage1 model =
+tickPage1 : Model -> Float -> ( Model, Effect Msg )
+tickPage1 model dt =
     let
         rotDeg : Float
         rotDeg =
             -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
-            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta dt)
 
         a : Float
         a =
@@ -164,13 +164,13 @@ tickPage1 model =
     )
 
 
-tickPage3 : Model -> ( Model, Effect Msg )
-tickPage3 model =
+tickPage3 : Model -> Float -> ( Model, Effect Msg )
+tickPage3 model dt =
     let
         rotDeg : Float
         rotDeg =
             -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
-            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta dt)
     in
     ( { model
         | rotDeg = rotDeg
@@ -179,13 +179,13 @@ tickPage3 model =
     )
 
 
-tickPage2 : Model -> ( Model, Effect Msg )
-tickPage2 model =
+tickPage2 : Model -> Float -> ( Model, Effect Msg )
+tickPage2 model dt =
     let
         rotDeg : Float
         rotDeg =
             -- continue rotation, mod 360 to avoid extraneous rotations (540 degrees is same as 180, for example)
-            toFloat <| modBy 360 (round <| model.rotDeg + dTheta)
+            toFloat <| modBy 360 (round <| model.rotDeg + dTheta dt)
     in
     ( { model
         | rotDeg = rotDeg
@@ -205,16 +205,16 @@ update msg ( model, viewport ) =
             , Effect.fromCmd <| Task.perform Got_Viewport Browser.Dom.getViewport
             )
 
-        Tick _ ->
+        Tick dt ->
             case model.pageNo of
                 1 ->
-                    tickPage1 model
+                    tickPage1 model dt
 
                 2 ->
-                    tickPage2 model
+                    tickPage2 model dt
 
                 3 ->
-                    tickPage3 model
+                    tickPage3 model dt
 
                 _ ->
                     ( model, Effect.none )
@@ -237,16 +237,10 @@ dx =
     10
 
 
-dTheta : Float
-dTheta =
+dTheta : Float -> Float
+dTheta dt =
     -- The rotation, in degrees, to apply each frame
-    1.0
-
-
-dtMs : number
-dtMs =
-    -- The target number of milliseconds between frames
-    60
+    dt / 30.0
 
 
 
@@ -256,8 +250,8 @@ dtMs =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Events.onResize Got_ResizeEvent
-        , Time.every dtMs Tick
+        [ BrowserEvents.onResize Got_ResizeEvent
+        , BrowserEvents.onAnimationFrameDelta Tick
         ]
 
 
