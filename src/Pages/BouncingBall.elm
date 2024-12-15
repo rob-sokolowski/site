@@ -1,5 +1,6 @@
-module Pages.BouncingBall exposing (Model, Msg, RunningState(..), computeNextPos, page)
+module Pages.BouncingBall exposing (ModelLoaded, Msg, RunningState(..), computeNextPos, page)
 
+import Browser.Dom
 import Browser.Events as BrowserEvents
 import Effect exposing (Effect)
 import Element as E exposing (..)
@@ -21,7 +22,7 @@ import TypedSvg.Types as ST
 import View exposing (View)
 
 
-page : Shared.Model -> Request.With Params -> Page.With Model Msg
+page : Shared.Model -> Request.With Params -> Page.With ModelLoaded Msg
 page shared req =
     Page.advanced
         { init = init
@@ -45,12 +46,23 @@ type alias Pos =
     }
 
 
-type alias Model =
+type Model
+    = PageMightBeLoading ModelLoading
+    | PageLoaded ModelLoaded
+
+
+type alias ModelLoading =
+    { viewport : Maybe Browser.Dom.Viewport
+    }
+
+
+type alias ModelLoaded =
     { ballPos : Pos
     , g : Float
     , runningState : RunningState
     , currentFrame : Int
     , hist : List Pos
+    , viewport : Browser.Dom.Viewport
     }
 
 
@@ -136,19 +148,19 @@ defaultPos =
     }
 
 
-refreshModel : Model
-refreshModel =
-    { ballPos = defaultPos
-    , g = g
-    , runningState = Playing
-    , currentFrame = 0
-    , hist = []
+restartAnimation : ModelLoaded -> ModelLoaded
+restartAnimation model =
+    { model
+        | ballPos = defaultPos
+        , runningState = Playing
+        , currentFrame = 0
+        , hist = []
     }
 
 
 init : ( Model, Effect Msg )
 init =
-    ( refreshModel
+    ( PageMightBeLoading { viewport = Nothing }
     , Effect.none
     )
 
@@ -176,7 +188,7 @@ epsilon =
     1.0e-4
 
 
-computeNextPos : Model -> Float -> ( Pos, List Pos, Int )
+computeNextPos : ModelLoaded -> Float -> ( Pos, List Pos, Int )
 computeNextPos model dt =
     let
         pos : Pos
@@ -273,6 +285,34 @@ computeNextPos model dt =
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
+    case model of
+        PageMightBeLoading model_ ->
+            let
+                ( newModel, effect ) =
+                    update_pageMightBeLoading msg model_
+            in
+            ( PageMightBeLoading newModel, effect )
+
+        PageLoaded model_ ->
+            let
+                ( newModel, effect ) =
+                    update_modelLoaded msg model_
+            in
+            ( PageLoaded newModel, effect )
+
+
+checkModelReady : ModelLoading -> Model
+checkModelReady model =
+    PageLoaded model
+
+
+update_pageMightBeLoading : Msg -> ModelLoading -> ( ModelLoading, Effect Msg )
+update_pageMightBeLoading msg model =
+    ( model, Effect.none )
+
+
+update_modelLoaded : Msg -> ModelLoaded -> ( ModelLoaded, Effect Msg )
+update_modelLoaded msg model =
     case msg of
         ProposeIntervention ->
             let
@@ -326,7 +366,9 @@ update msg model =
             )
 
         UserClickedRefresh ->
-            ( refreshModel, Effect.none )
+            ( PageLoaded <| restartAnimation model
+            , Effect.none
+            )
 
         UserToggledPause ->
             case model.runningState of
@@ -341,7 +383,7 @@ update msg model =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : ModelLoaded -> Sub Msg
 subscriptions model =
     case model.runningState of
         Playing ->
@@ -357,7 +399,7 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> View Msg
+view : ModelLoaded -> View Msg
 view model =
     { title = "Bouncing ball"
     , body =
@@ -368,7 +410,7 @@ view model =
     }
 
 
-viewControlPanel : Model -> Element Msg
+viewControlPanel : ModelLoaded -> Element Msg
 viewControlPanel model =
     let
         playPauseText : String
@@ -437,7 +479,7 @@ viewControlPanel model =
         ]
 
 
-viewSvgViewBox : Model -> Element Msg
+viewSvgViewBox : ModelLoaded -> Element Msg
 viewSvgViewBox model =
     let
         svgNodes : List (Svg Msg)
@@ -462,7 +504,7 @@ viewSvgViewBox model =
                 svgNodes
 
 
-viewCanvas : Model -> Element Msg
+viewCanvas : ModelLoaded -> Element Msg
 viewCanvas model =
     el
         [ centerX
@@ -473,7 +515,7 @@ viewCanvas model =
         (viewSvgViewBox model)
 
 
-viewElements : Model -> Element Msg
+viewElements : ModelLoaded -> Element Msg
 viewElements model =
     row
         [ centerX
@@ -502,7 +544,7 @@ viewElements model =
         ]
 
 
-viewDebugPanel : Model -> Element Msg
+viewDebugPanel : ModelLoaded -> Element Msg
 viewDebugPanel model =
     column
         [ width fill
@@ -534,7 +576,7 @@ viewDebugPanel model =
             , centerX
             , Events.onClick ProposeIntervention
             ]
-            (text "Intervene!")
+            (text "Intervene!!")
         ]
 
 

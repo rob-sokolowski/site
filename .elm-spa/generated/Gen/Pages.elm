@@ -228,7 +228,7 @@ subscriptions model_ =
 
 
 pages :
-    { bouncingBall : Bundle Gen.Params.BouncingBall.Params Pages.BouncingBall.Model Pages.BouncingBall.Msg
+    { bouncingBall : Bundle Gen.Params.BouncingBall.Params () Never
     , elmUiSvgIssue : Bundle Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model Pages.ElmUiSvgIssue.Msg
     , home_ : Static Gen.Params.Home_.Params
     , ikedaPattern : Bundle Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model Pages.IkedaPattern.Msg

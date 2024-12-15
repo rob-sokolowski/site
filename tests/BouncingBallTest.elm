@@ -1,7 +1,7 @@
 module BouncingBallTest exposing (..)
 
 import Expect
-import Pages.BouncingBall exposing (Model, RunningState(..), computeNextPos)
+import Pages.BouncingBall exposing (ModelLoaded, RunningState(..), computeNextPos)
 import Test exposing (..)
 
 
@@ -32,7 +32,7 @@ suite =
         ]
 
 
-case1 : Model
+case1 : ModelLoaded
 case1 =
     { ballPos =
         { x = 10
@@ -57,11 +57,11 @@ case1 =
     }
 
 
-case2 : Model
+case2 : ModelLoaded
 case2 =
     { case1 | runningState = Playing }
 
 
-case3 : Model
+case3 : ModelLoaded
 case3 =
     { case1 | runningState = Playing, currentFrame = 0 }

@@ -29,7 +29,7 @@ import Pages.NotFound
 
 
 type Msg
-    = BouncingBall Pages.BouncingBall.Msg
+    = BouncingBall Never
     | ElmUiSvgIssue Pages.ElmUiSvgIssue.Msg
     | IkedaPattern Pages.IkedaPattern.Msg
     | ParableOfPolygonsClone Pages.ParableOfPolygonsClone.Msg

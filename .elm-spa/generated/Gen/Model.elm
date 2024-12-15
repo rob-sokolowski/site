@@ -30,7 +30,7 @@ import Pages.NotFound
 
 type Model
     = Redirecting_
-    | BouncingBall Gen.Params.BouncingBall.Params Pages.BouncingBall.Model
+    | BouncingBall Gen.Params.BouncingBall.Params ()
     | ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model
     | Home_ Gen.Params.Home_.Params
     | IkedaPattern Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model
