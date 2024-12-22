@@ -11,6 +11,7 @@ import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
 import Gen.Params.Stories.IframeTest
+import Gen.Params.Stories.NycHoods
 import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Pages.BouncingBall
@@ -24,6 +25,7 @@ import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
 import Pages.Stories.IframeTest
+import Pages.Stories.NycHoods
 import Pages.Stories.ParableOfPolygonsQa
 import Pages.NotFound
 
@@ -39,5 +41,6 @@ type Msg
     | WordleClone Pages.WordleClone.Msg
     | Stories__AccelerometerTest Pages.Stories.AccelerometerTest.Msg
     | Stories__IframeTest Pages.Stories.IframeTest.Msg
+    | Stories__NycHoods Pages.Stories.NycHoods.Msg
     | Stories__ParableOfPolygonsQa Pages.Stories.ParableOfPolygonsQa.Msg
 
