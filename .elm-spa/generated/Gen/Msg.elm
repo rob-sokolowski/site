@@ -7,6 +7,7 @@ import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
+import Gen.Params.SmartSqueeze
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
@@ -20,6 +21,7 @@ import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
+import Pages.SmartSqueeze
 import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
@@ -35,6 +37,7 @@ type Msg
     | ParableOfPolygonsClone Pages.ParableOfPolygonsClone.Msg
     | Pops Pages.Pops.Msg
     | ScriptaDemo Pages.ScriptaDemo.Msg
+    | SmartSqueeze Pages.SmartSqueeze.Msg
     | SpeedReadDemo Pages.SpeedReadDemo.Msg
     | WordleClone Pages.WordleClone.Msg
     | Stories__AccelerometerTest Pages.Stories.AccelerometerTest.Msg

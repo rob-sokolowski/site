@@ -11,6 +11,7 @@ import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
+import Gen.Params.SmartSqueeze
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
@@ -29,6 +30,7 @@ type Route
     | ParableOfPolygonsClone
     | Pops
     | ScriptaDemo
+    | SmartSqueeze
     | SpeedReadDemo
     | WordleClone
     | Stories__AccelerometerTest
@@ -51,6 +53,7 @@ routes =
     , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
     , Parser.map ScriptaDemo Gen.Params.ScriptaDemo.parser
+    , Parser.map SmartSqueeze Gen.Params.SmartSqueeze.parser
     , Parser.map SpeedReadDemo Gen.Params.SpeedReadDemo.parser
     , Parser.map WordleClone Gen.Params.WordleClone.parser
     , Parser.map NotFound Gen.Params.NotFound.parser
@@ -88,6 +91,9 @@ toHref route =
     
         ScriptaDemo ->
             joinAsHref [ "scripta-demo" ]
+    
+        SmartSqueeze ->
+            joinAsHref [ "smart-squeeze" ]
     
         SpeedReadDemo ->
             joinAsHref [ "speed-read-demo" ]

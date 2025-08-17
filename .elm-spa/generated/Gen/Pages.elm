@@ -10,6 +10,7 @@ import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
+import Gen.Params.SmartSqueeze
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
@@ -27,6 +28,7 @@ import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
+import Pages.SmartSqueeze
 import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
@@ -72,6 +74,9 @@ init route =
         Route.ScriptaDemo ->
             pages.scriptaDemo.init ()
     
+        Route.SmartSqueeze ->
+            pages.smartSqueeze.init ()
+    
         Route.SpeedReadDemo ->
             pages.speedReadDemo.init ()
     
@@ -111,6 +116,9 @@ update msg_ model_ =
     
         ( Msg.ScriptaDemo msg, Model.ScriptaDemo params model ) ->
             pages.scriptaDemo.update params msg model
+    
+        ( Msg.SmartSqueeze msg, Model.SmartSqueeze params model ) ->
+            pages.smartSqueeze.update params msg model
     
         ( Msg.SpeedReadDemo msg, Model.SpeedReadDemo params model ) ->
             pages.speedReadDemo.update params msg model
@@ -158,6 +166,9 @@ view model_ =
         Model.ScriptaDemo params model ->
             pages.scriptaDemo.view params model
     
+        Model.SmartSqueeze params model ->
+            pages.smartSqueeze.view params model
+    
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.view params model
     
@@ -204,6 +215,9 @@ subscriptions model_ =
         Model.ScriptaDemo params model ->
             pages.scriptaDemo.subscriptions params model
     
+        Model.SmartSqueeze params model ->
+            pages.smartSqueeze.subscriptions params model
+    
         Model.SpeedReadDemo params model ->
             pages.speedReadDemo.subscriptions params model
     
@@ -235,6 +249,7 @@ pages :
     , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
     , pops : Bundle Gen.Params.Pops.Params Pages.Pops.Model Pages.Pops.Msg
     , scriptaDemo : Bundle Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model Pages.ScriptaDemo.Msg
+    , smartSqueeze : Bundle Gen.Params.SmartSqueeze.Params Pages.SmartSqueeze.Model Pages.SmartSqueeze.Msg
     , speedReadDemo : Bundle Gen.Params.SpeedReadDemo.Params Pages.SpeedReadDemo.Model Pages.SpeedReadDemo.Msg
     , wordleClone : Bundle Gen.Params.WordleClone.Params Pages.WordleClone.Model Pages.WordleClone.Msg
     , stories__accelerometerTest : Bundle Gen.Params.Stories.AccelerometerTest.Params Pages.Stories.AccelerometerTest.Model Pages.Stories.AccelerometerTest.Msg
@@ -250,6 +265,7 @@ pages =
     , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
     , pops = bundle Pages.Pops.page Model.Pops Msg.Pops
     , scriptaDemo = bundle Pages.ScriptaDemo.page Model.ScriptaDemo Msg.ScriptaDemo
+    , smartSqueeze = bundle Pages.SmartSqueeze.page Model.SmartSqueeze Msg.SmartSqueeze
     , speedReadDemo = bundle Pages.SpeedReadDemo.page Model.SpeedReadDemo Msg.SpeedReadDemo
     , wordleClone = bundle Pages.WordleClone.page Model.WordleClone Msg.WordleClone
     , stories__accelerometerTest = bundle Pages.Stories.AccelerometerTest.page Model.Stories__AccelerometerTest Msg.Stories__AccelerometerTest
