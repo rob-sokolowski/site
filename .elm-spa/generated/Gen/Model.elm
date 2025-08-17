@@ -7,6 +7,7 @@ import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
 import Gen.Params.Pops
 import Gen.Params.ScriptaDemo
+import Gen.Params.SmartSqueeze
 import Gen.Params.SpeedReadDemo
 import Gen.Params.WordleClone
 import Gen.Params.Stories.AccelerometerTest
@@ -20,6 +21,7 @@ import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
 import Pages.Pops
 import Pages.ScriptaDemo
+import Pages.SmartSqueeze
 import Pages.SpeedReadDemo
 import Pages.WordleClone
 import Pages.Stories.AccelerometerTest
@@ -37,6 +39,7 @@ type Model
     | ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model
     | Pops Gen.Params.Pops.Params Pages.Pops.Model
     | ScriptaDemo Gen.Params.ScriptaDemo.Params Pages.ScriptaDemo.Model
+    | SmartSqueeze Gen.Params.SmartSqueeze.Params Pages.SmartSqueeze.Model
     | SpeedReadDemo Gen.Params.SpeedReadDemo.Params Pages.SpeedReadDemo.Model
     | WordleClone Gen.Params.WordleClone.Params Pages.WordleClone.Model
     | Stories__AccelerometerTest Gen.Params.Stories.AccelerometerTest.Params Pages.Stories.AccelerometerTest.Model
