@@ -51,7 +51,7 @@ import Basics exposing (e)
 import Browser
 import Effect exposing (Effect)
 import Gen.Params.SmartSqueeze exposing (Params)
-import Html exposing (Attribute, Html, button, div, h2, h3, input, label, p, span, text)
+import Html exposing (Attribute, Html, button, div, h2, h3, input, label, li, p, span, text, ul)
 import Html.Attributes as A
 import Html.Events as E
 import Page
@@ -461,6 +461,13 @@ viewBody m =
     in
     div []
         [ h2 [] [ text "The Smart Squeeze — Interactive Micro-Model" ]
+        , p []
+            [ text "Import note: I didn't do shit here, all credit goes to "
+            , Html.a [ A.href "https://x.com/hypersoren", A.target "_blank", A.style "color" "#0074d9" ] [ text "@hypersoren" ]
+            , text ", his brilliant "
+            , Html.a [ A.href "https://hypersoren.xyz/posts/smart-squeeze/", A.target "_blank", A.style "color" "#0074d9" ] [ text "Smart Squeeze" ]
+            , text " post, and ChatGPT 5"
+            ]
         , p [] [ text "Tweak parameters to see floor/ceiling, optimal J*, margins, disintermediation pressure, and curves." ]
         , presetsBar
         , controls m
@@ -493,6 +500,7 @@ viewBody m =
                 )
             ]
         , chartPanel m
+        , chartExplanation
         , if m.advanced then
             advancedPanel m
 
@@ -630,9 +638,9 @@ chartPanel m =
             -- flip Y for SVG
             y1 - (y / yMax) * (y1 - y0)
 
-        pathOf : (Basics.Int -> Basics.Float) -> String.String
+        pathOf : (Basics.Float -> Basics.Float) -> String.String
         pathOf f =
-            pathFromPoints (List.map (\j -> ( toX j, toY (f j) )) (List.map (\f_ -> round f_) js))
+            pathFromPoints (List.map (\j -> ( toX j, toY (f <| toFloat j) )) (List.map (\f_ -> round f_) js))
 
         jA =
             jStarApp m
@@ -648,9 +656,7 @@ chartPanel m =
                     , SA.y1 (sf (toFloat padT))
                     , SA.y2 (sf (toFloat h - padB))
                     , SA.stroke "#bbb"
-
-                    -- TODO: This is a hallucination, not a real SVG attribute.. how to inject as custom??
-                    --, SA.attributeName "stroke-dasharray" "4 4"
+                    , SA.strokeDasharray "4 4"
                     ]
                     []
                 , Svg.text_
@@ -710,15 +716,32 @@ chartPanel m =
                             ]
                     )
                     yAxisTicks
-                ++ []
-             --[ -- curves (retain default colors)
-             --     Svg.path [ SA.d (pathOf (r m)), SA.fill "none", SA.strokeWidth "2" ] []
-             --   , Svg.path [ SA.d (pathOf (piFun m)), SA.fill "none", SA.strokeWidth "2" ] []
-             --   , Svg.path [ SA.d (pathOf (\j -> pEff m * j)), SA.fill "none", SA.strokeWidth "2" ] []
-             --   , marker (toX <| round jA) ("J* app = " ++ formatK jA)
-             --   , marker (toX <| round jD) ("J* direct = " ++ formatK jD)
-             --   , legend (padL + 8) (padT + 8)
-             -- ]
+                ++ [ -- curves (retain default colors)
+                     Svg.path
+                        [ SA.d (pathOf (r m))
+                        , SA.fill "none"
+                        , SA.strokeWidth "2"
+                        , SA.stroke "#1f77b4" -- <— add this
+                        ]
+                        []
+                   , Svg.path
+                        [ SA.d (pathOf (piFun m))
+                        , SA.fill "none"
+                        , SA.strokeWidth "2"
+                        , SA.stroke "#2ca02c" -- <— add this
+                        ]
+                        []
+                   , Svg.path
+                        [ SA.d (pathOf (\j -> pEff m * j))
+                        , SA.fill "none"
+                        , SA.strokeWidth "2"
+                        , SA.stroke "#555" -- <— add this
+                        ]
+                        []
+                   , marker (toX <| round jA) ("J* app = " ++ formatK jA)
+                   , marker (toX <| round jD) ("J* direct = " ++ formatK jD)
+                   , legend (padL + 600) (padT + 8)
+                   ]
             )
         ]
 
@@ -726,13 +749,65 @@ chartPanel m =
 legend : Int -> Int -> Svg msg
 legend x y =
     Svg.g []
-        [ Svg.rect [ SA.x (si x), SA.y (si y), SA.rx "8", SA.ry "8", SA.width "172", SA.height "64", SA.fill "white", SA.stroke "#e5e7eb" ] []
-        , Svg.circle [ SA.cx (si (x + 14)), SA.cy (si (y + 18)), SA.r "4" ] []
-        , Svg.text_ [ SA.x (si (x + 28)), SA.y (si (y + 22)), SA.fontSize "12px", SA.fill "#333" ] [ Svg.text "R(J)" ]
-        , Svg.circle [ SA.cx (si (x + 14)), SA.cy (si (y + 38)), SA.r "4" ] []
-        , Svg.text_ [ SA.x (si (x + 28)), SA.y (si (y + 42)), SA.fontSize "12px", SA.fill "#333" ] [ Svg.text "Π(J)" ]
-        , Svg.circle [ SA.cx (si (x + 14)), SA.cy (si (y + 58)), SA.r "4" ] []
-        , Svg.text_ [ SA.x (si (x + 28)), SA.y (si (y + 62)), SA.fontSize "12px", SA.fill "#333" ] [ Svg.text "p_eff · J" ]
+        [ Svg.rect
+            [ SA.x (si x)
+            , SA.y (si y)
+            , SA.rx "8"
+            , SA.ry "8"
+            , SA.width "180"
+            , SA.height "72"
+            , SA.fill "white"
+            , SA.stroke "#e5e7eb"
+            ]
+            []
+
+        -- R(J)
+        , Svg.circle
+            [ SA.cx (si (x + 14))
+            , SA.cy (si (y + 18))
+            , SA.r "4"
+            , SA.fill "#1f77b4"
+            ]
+            []
+        , Svg.text_
+            [ SA.x (si (x + 28))
+            , SA.y (si (y + 22))
+            , SA.fontSize "12px"
+            , SA.fill "#333"
+            ]
+            [ Svg.text "R(J)" ]
+
+        -- Π(J)
+        , Svg.circle
+            [ SA.cx (si (x + 14))
+            , SA.cy (si (y + 38))
+            , SA.r "4"
+            , SA.fill "#2ca02c"
+            ]
+            []
+        , Svg.text_
+            [ SA.x (si (x + 28))
+            , SA.y (si (y + 42))
+            , SA.fontSize "12px"
+            , SA.fill "#333"
+            ]
+            [ Svg.text "Π(J)" ]
+
+        -- p_eff · J
+        , Svg.circle
+            [ SA.cx (si (x + 14))
+            , SA.cy (si (y + 58))
+            , SA.r "4"
+            , SA.fill "#555555"
+            ]
+            []
+        , Svg.text_
+            [ SA.x (si (x + 28))
+            , SA.y (si (y + 62))
+            , SA.fontSize "12px"
+            , SA.fill "#333"
+            ]
+            [ Svg.text "p_eff · J" ]
         ]
 
 
@@ -937,3 +1012,75 @@ ticks n maxV =
             maxV / m
     in
     List.map (\i -> step * toFloat i) (List.range 0 n)
+
+
+chartExplanation : Html msg
+chartExplanation =
+    div [ A.style "margin-top" "12px", A.style "font-size" "14px", A.style "line-height" "1.45" ]
+        [ h3 [ A.style "margin" "0 0 6px 0" ] [ text "What the chart shows" ]
+        , ul [ A.style "margin" "0 0 6px 18px", A.style "padding" "0" ]
+            [ li []
+                [ span
+                    [ A.style "display" "inline-block"
+                    , A.style "width" "10px"
+                    , A.style "height" "10px"
+                    , A.style "border-radius" "9999px"
+                    , A.style "background" "#1f77b4"
+                    , A.style "margin-right" "8px"
+                    ]
+                    []
+                , strong_ "R(J): "
+                , text "App revenue from delivering J units of intelligence — rises fast at first, then flattens (diminishing returns)."
+                ]
+            , li []
+                [ span
+                    [ A.style "display" "inline-block"
+                    , A.style "width" "10px"
+                    , A.style "height" "10px"
+                    , A.style "border-radius" "9999px"
+                    , A.style "background" "#2ca02c"
+                    , A.style "margin-right" "8px"
+                    ]
+                    []
+                , strong_ "Π(J): "
+                , text "End-user value from consuming J — also increasing with diminishing returns (typically above R(J))."
+                ]
+            , li []
+                [ span
+                    [ A.style "display" "inline-block"
+                    , A.style "width" "10px"
+                    , A.style "height" "10px"
+                    , A.style "border-radius" "9999px"
+                    , A.style "background" "#555555"
+                    , A.style "margin-right" "8px"
+                    ]
+                    []
+                , strong_ "p_eff · J: "
+                , text "Lab cost to supply J (effective price per unit × J) — a straight line from the origin."
+                ]
+            , li []
+                [ span
+                    [ A.style "display" "inline-block"
+                    , A.style "width" "10px"
+                    , A.style "height" "10px"
+                    , A.style "border-radius" "2px"
+                    , A.style "background" "repeating-linear-gradient(90deg, #bbb 0 6px, transparent 6px 12px)"
+                    , A.style "margin-right" "8px"
+                    ]
+                    []
+                , strong_ "Vertical dashed lines (J*): "
+                , text "Bookmarks for optimal choices. J* (app) marks where the app’s marginal revenue equals lab marginal cost; J* (direct) marks where the end-user’s marginal value equals lab marginal cost."
+                ]
+            ]
+        , p [ A.style "margin" "6px 0 0 0", A.style "opacity" "0.8" ]
+            [ text "Rule of thumb: if J*direct ≫ J*app, the user wants far more intelligence than the app provides — disintermediation pressure is high." ]
+        ]
+
+
+
+-- small helper for bold inline labels
+
+
+strong_ : String -> Html msg
+strong_ s =
+    span [ A.style "font-weight" "600" ] [ text s ]
