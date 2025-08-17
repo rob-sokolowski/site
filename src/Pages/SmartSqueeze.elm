@@ -114,21 +114,32 @@ type alias Model =
 
 init : ( Model, Effect Msg )
 init =
-    ( { p = 0.004
-      , k = 5.0
+    ( { -- Labs / capability (sets the floor p_eff = p / sigma(K))
+        p = 0.003 -- lab price per raw token ($)
+      , k = 4.0 -- capability index (improves σ, lowers p_eff)
       , sigmaBase = 1.0
-      , sigmaGain = 5.0
-      , sigmaSlope = 0.35
-      , rA = 50.0
-      , rB = 0.002
-      , piA = 120.0
-      , piB = 0.0025
-      , vScale = 20.0
-      , vDecay = 0.0008
-      , tau = 3000.0
-      , jCap = 2.0e6
+      , sigmaGain = 6.0
+      , sigmaSlope = 0.4
+
+      -- App revenue: R(J) = rA * ln(1 + rB * J)
+      , rA = 400.0 -- revenue scale (keeps J*app < J*direct)
+      , rB = 0.0008 -- growth rate (diminishing returns still hold)
+
+      -- End-user profit: Π(J) = piA * ln(1 + piB * J)
+      , piA = 1200.0 -- end-user value scale (ensures Π can beat cost)
+      , piB = 0.0012 -- growth rate
+
+      -- App wrapper value: V(J) = vScale * (1 - e^{-vDecay * J})
+      , vScale = 40.0 -- total wrapper value ceiling (finite-J noticeable)
+      , vDecay = 0.0005 -- marginal wrapper value fades with J (squeeze)
+
+      -- Friction to go direct
+      , tau = 1500.0 -- not trivial, not overwhelming
+
+      -- Display / guards
+      , jCap = 5.0e6 -- allow larger optima without clipping
       , advanced = False
-      , jMaxView = 1.0e6
+      , jMaxView = 1.2e6 -- chart x-axis default
       }
     , Effect.none
     )
