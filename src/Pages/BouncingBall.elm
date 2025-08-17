@@ -375,10 +375,10 @@ viewControlPanel model =
         playPauseText =
             case model.runningState of
                 Playing ->
-                    "▶"
+                    "||"
 
                 Paused ->
-                    "||"
+                    "▶"
 
         sliderProps : SliderProps Msg
         sliderProps =
