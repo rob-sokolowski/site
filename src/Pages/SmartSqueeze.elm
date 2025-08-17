@@ -1,19 +1,17 @@
 module Pages.SmartSqueeze exposing (Model, Msg, page)
 
---
---
 --The Smart Squeeze — Interactive Micro-Model (Elm)
 --
 --Maps post variables → Elm:
 --
 --  I          : raw tokens (implicit via J and sigma)
 --  K          : model capability index (slider)
---  sigma(K)   : effective intelligence per token (concave ↑)
+--  sigma(K)   : effective intelligence per token (concave down, ↑ with K, diminishing returns)
 --  p          : lab price per token (slider)
 --  J          : effective intelligence units (decision variable)
---  R(J)       : app revenue from delivering J (concave ↑)
---  Π(J)       : end-user profit from J (concave ↑)
---  V(J)       : app value-add (with decreasing marginal value; V'(J) ≥ 0, V''(J) ≤ 0)
+--  R(J)       : app revenue from delivering J (increasing, concave down)
+--  Π(J)       : end-user profit from J (increasing, concave down)
+--  V(J)       : app value-add (increasing, concave down; V′(J) > 0 but ↓ toward 0)
 --  τ          : one-time integration cost to go direct (slider)
 --
 --App chooses J to maximize:
@@ -22,34 +20,32 @@ module Pages.SmartSqueeze exposing (Model, Msg, page)
 --User can go direct, bounding app price per unit:
 --  p_app ≤ p/σ(K) + (V(J) + τ)/J     (finite-J bound)
 --
---Asymptotically (large J): p_app ≤ p/σ(K) + V'(J)
+--Asymptotically (large J): p_app ≤ p/σ(K) + V′(J)
 --
 --This app:
---  • Picks closed-form J* from FOC R'(J) = p/σ(K) (with our R form)
+--  • Picks closed-form J* from FOC R′(J) = p/σ(K) (with our R form)
 --  • Computes price floor, ceiling, margin, app profit
 --  • Compares end-user profit via app vs optimal direct J_direct*
 --  • Lets you change functional parameters for σ, R, Π, V
 --
---Default functional forms (simple, concave, closed-form FOCs):
+--Default functional forms (simple, increasing, concave down, closed-form FOCs):
 --
---  σ(K)  = σ_base + σ_gain * (1 - e^{-σ_slope K})          (↑, concave)
---  R(J)  = rA * ln(1 + rB J)                               (↑, concave)
---  Π(J)  = piA * ln(1 + piB J)                             (↑, concave)
---  V(J)  = vScale * (1 - e^{-vDecay J})                    (↑, concave, V'(J) ≥ 0, V'(J) → 0)
+--  σ(K)  = σ_base + σ_gain * (1 - e^{-σ_slope K})          (↑, concave down)
+--  R(J)  = rA * ln(1 + rB J)                               (↑, concave down)
+--  Π(J)  = piA * ln(1 + piB J)                             (↑, concave down)
+--  V(J)  = vScale * (1 - e^{-vDecay J})                    (↑, concave down, V′(J) > 0, V′(J) → 0)
 --
 --FOCs / closed forms:
---  R'(J)  = rA * rB / (1 + rB J)
---  ⇒ R'(J*) = p_eff   where p_eff = p / σ(K)
+--  R′(J)  = rA * rB / (1 + rB J)
+--  ⇒ R′(J*) = p_eff   where p_eff = p / σ(K)
 --  ⇒ J* = max(0, (rA*rB / p_eff - 1) / rB)
 --
---  Π'(J)  = piA * piB / (1 + piB J)
+--  Π′(J)  = piA * piB / (1 + piB J)
 --  ⇒ J_direct* = max(0, (piA*piB / p_eff - 1) / piB)
 --
 --Notes:
 --  • If J* ≈ 0, finite bound (V(J)+τ)/J blows up; UI shows "∞".
 --  • We clamp negatives to 0 where economically necessary.
---
----
 
 import Basics exposing (e)
 import Browser
