@@ -462,7 +462,7 @@ viewBody m =
     div []
         [ h2 [] [ text "The Smart Squeeze — Interactive Micro-Model" ]
         , p []
-            [ text "Import note: I didn't do shit here, all credit goes to "
+            [ text "Important note: I didn't do much here, all credit goes to "
             , Html.a [ A.href "https://x.com/hypersoren", A.target "_blank", A.style "color" "#0074d9" ] [ text "@hypersoren" ]
             , text ", his brilliant "
             , Html.a [ A.href "https://hypersoren.xyz/posts/smart-squeeze/", A.target "_blank", A.style "color" "#0074d9" ] [ text "Smart Squeeze" ]
