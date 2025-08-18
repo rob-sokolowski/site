@@ -471,6 +471,22 @@ viewBody m =
         , p [] [ text "Tweak parameters to see floor/ceiling, optimal J*, margins, disintermediation pressure, and curves." ]
         , presetsBar
         , controls m
+        , if m.advanced then
+            advancedPanel m
+
+          else
+            text ""
+        , p []
+            [ strong
+                (if willDisintermediate then
+                    "⚠ End-user goes direct (at their optimum)"
+
+                 else
+                    "✅ End-user stays with app (given pricing bound)"
+                )
+            ]
+        , chartPanel m
+        , chartExplanation
         , h3 [] [ text "Derived (at app optimum J*)" ]
         , row
             [ stat "σ(K)" (fixed 3 sigmaVal)
@@ -490,22 +506,6 @@ viewBody m =
             , stat "EU profit via app @J*" ("$" ++ fixed 2 euViaApp)
             , stat "EU profit direct @J*_direct" ("$" ++ fixed 2 euDirOpt)
             ]
-        , p []
-            [ strong
-                (if willDisintermediate then
-                    "⚠ End-user goes direct (at their optimum)"
-
-                 else
-                    "✅ End-user stays with app (given pricing bound)"
-                )
-            ]
-        , chartPanel m
-        , chartExplanation
-        , if m.advanced then
-            advancedPanel m
-
-          else
-            text ""
         , p [ A.style "margin-top" "16px", A.style "font-size" "12px", A.style "opacity" "0.8" ]
             [ text "Model forms: σ(K)=σ0+σg(1-e^{-σsK}), R(J)=rA ln(1+rB J), Π(J)=πA ln(1+πB J), V(J)=v(1-e^{-dJ}). Bounds: finite p_app ≤ p/σ + (V(J)+τ)/J; asym p_app ≤ p/σ + V'(J)." ]
         ]
