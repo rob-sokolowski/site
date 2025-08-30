@@ -452,7 +452,7 @@ viewBody m =
             euDirOpt > euViaApp + 1.0e-6
     in
     div []
-        [ h2 [] [ text "The Smart Squeeze: Watch Apps Get Crushed" ]
+        [ h2 [] [ text "The Smart Squeeze — Interactive Micro-Model" ]
         , p []
             [ text "Important note: I didn't do much here, all credit goes to "
             , Html.a [ A.href "https://x.com/hypersoren", A.target "_blank", A.style "color" "#0074d9" ] [ text "@hypersoren" ]
@@ -466,8 +466,6 @@ viewBody m =
             storyModeIndicator m
           else
             text ""
-        , squeezeVisualization m
-        , disintermediationDecision m
         , div []
             [ button 
                 [ E.onClick ToggleControls
@@ -495,6 +493,8 @@ viewBody m =
 
           else
             text ""
+        , squeezeVisualization m
+        , disintermediationDecision m
         , chartPanel m
         , squeezeMeter m
         ]
@@ -508,20 +508,20 @@ storyModeIndicator m =
             case m.activeStory of
                 Just ModelEvolution ->
                     ( "Model Capability (K)"
-                    , fixed 1 m.k
-                    , "Watch: Intelligence gap grows, margins shrink, app gets squeezed"
+                    , fixed 1 m.k  
+                    , "Better AI → cheaper intelligence → users want far more than apps can profitably provide"
                     )
                 
                 Just PriceWar ->
                     ( "Token Price (p)"
                     , "$" ++ fixed 4 m.p
-                    , "Watch: Lower prices → more intelligence demanded → bigger gaps"
+                    , "Cheaper tokens let users afford more intelligence, widening the app-user gap"
                     )
                 
                 Just MoatErosion ->
                     ( "Integration Cost (τ)"
                     , "$" ++ formatK m.tau
-                    , "Watch: Lower setup costs make going direct more attractive"
+                    , "As integration gets easier, the app's convenience becomes less valuable"
                     )
                 
                 _ ->
@@ -1573,9 +1573,9 @@ squeezeMeter m =
                 , div [ A.style "font-size" "12px", A.style "opacity" "0.8", A.style "margin-left" "8px" ]
                     [ text "→ More would reduce their profit" ]
                 , div [ A.style "font-size" "13px", A.style "opacity" "0.9", A.style "margin-top" "4px" ]
-                    [ strong "User: ", text ("Would buy up to " ++ formatK jD ++ " units") ]
+                    [ strong "User: ", text ("Would buy up to " ++ formatK jD ++ " units if direct") ]
                 , div [ A.style "font-size" "12px", A.style "opacity" "0.8", A.style "margin-left" "8px" ]
-                    [ text "→ Value exceeds cost up to this point" ]
+                    [ text "→ But may stay with app due to τ + V(J)" ]
                 ]
             , div [ A.style "background" "#f3f4f6", A.style "padding" "16px 24px", A.style "border-radius" "12px", A.style "flex" "1" ]
                 [ div [ A.style "font-size" "18px", A.style "font-weight" "600" ]
@@ -1589,6 +1589,8 @@ squeezeMeter m =
                     [ text "App profit per intelligence unit" ]
                 ]
             ]
+        , div [ A.style "font-size" "12px", A.style "color" "#6b7280", A.style "margin-top" "8px", A.style "line-height" "1.5" ]
+            [ text "Note: A large intelligence gap doesn't guarantee disintermediation. Users may stay with the app if τ (integration cost) and V(J) (wrapper value) outweigh the benefits of getting more intelligence directly." ]
         ]
 
 
@@ -1606,38 +1608,69 @@ squeezeVisualization m =
         euDirect = euProfitDirectAt m jD
         willDisintermediate = euDirect > euViaApp + 1.0e-6
         
-        -- Visual dimensions
-        boxWidth = 600
-        boxHeight = 300
+        -- Chart dimensions
+        w = 700
+        h = 350
+        padL = 60
+        padR = 20
+        padT = 40
+        padB = 40
         
-        -- Create profit comparison bars
-        profitMax = max (abs euViaApp) (abs euDirect) * 1.2
+        -- X-axis range: show enough to see both J* values
+        jMax = max jA jD * 1.3
         
-        -- Colors based on decision
-        appColor = if willDisintermediate then "#94a3b8" else "#3b82f6"
-        directColor = if willDisintermediate then "#dc2626" else "#94a3b8"
+        -- Sample points for curves
+        js = sampleRange 0 jMax 200
         
-        -- Bar heights (normalized to 250px max)
-        appBarHeight = if profitMax > 0 then (euViaApp / profitMax * 250) else 0
-        directBarHeight = if profitMax > 0 then (euDirect / profitMax * 250) else 0
+        -- Calculate profit curves
+        profitsViaApp = List.map (euProfitViaAppAt m) js
+        profitsDirect = List.map (euProfitDirectAt m) js
+        
+        -- Find Y range
+        allProfits = profitsViaApp ++ profitsDirect
+        yMin = Maybe.withDefault 0 (List.minimum allProfits) * 1.1
+        yMax = Maybe.withDefault 100 (List.maximum allProfits) * 1.1
+        yRange = yMax - yMin
+        
+        -- Conversion functions
+        toX j =
+            let
+                x0 = toFloat padL
+                x1 = toFloat (w - padR)
+            in
+            x0 + (j / jMax) * (x1 - x0)
+        
+        toY y =
+            let
+                y0 = toFloat padT
+                y1 = toFloat (h - padB)
+            in
+            y1 - ((y - yMin) / yRange) * (y1 - y0)
+        
+        -- Create path strings
+        pathViaApp = 
+            pathFromPoints (List.map2 (\j p -> (toX j, toY p)) js profitsViaApp)
+        
+        pathDirect = 
+            pathFromPoints (List.map2 (\j p -> (toX j, toY p)) js profitsDirect)
     in
     div [ A.style "margin" "20px 0", A.style "padding" "20px", A.style "background" "#f9fafb", A.style "border-radius" "12px" ]
         [ h3 [ A.style "margin" "0 0 16px 0", A.style "text-align" "center" ] 
             [ text "Why Users Switch: The Profit Comparison" ]
         
-        -- Main profit comparison visualization
+        -- Main profit curves visualization
         , div [ A.style "display" "flex", A.style "justify-content" "center", A.style "margin-bottom" "20px" ]
             [ Svg.svg 
-                [ SA.viewBox ("0 0 " ++ String.fromInt boxWidth ++ " " ++ String.fromInt boxHeight)
-                , SA.width (String.fromInt boxWidth)
-                , SA.height (String.fromInt boxHeight)
+                [ SA.viewBox ("0 0 " ++ String.fromInt w ++ " " ++ String.fromInt h)
+                , SA.width "100%"
+                , SA.height (String.fromInt h ++ "px")
                 ]
                 [ -- Background
                   Svg.rect
                     [ SA.x "0"
                     , SA.y "0"
-                    , SA.width (String.fromInt boxWidth)
-                    , SA.height (String.fromInt boxHeight)
+                    , SA.width (String.fromInt w)
+                    , SA.height (String.fromInt h)
                     , SA.fill "white"
                     , SA.stroke "#e5e7eb"
                     , SA.strokeWidth "2"
@@ -1645,137 +1678,180 @@ squeezeVisualization m =
                     ]
                     []
                 
-                -- Title
-                , Svg.text_
-                    [ SA.x (String.fromInt (boxWidth // 2))
-                    , SA.y "25"
-                    , SA.textAnchor "middle"
-                    , SA.fontSize "14px"
-                    , SA.fontWeight "600"
-                    , SA.fill "#374151"
-                    ]
-                    [ Svg.text "User's Net Profit Comparison" ]
-                
-                -- Zero line
+                -- Axes
                 , Svg.line
-                    [ SA.x1 "50"
-                    , SA.x2 (String.fromInt (boxWidth - 50))
-                    , SA.y1 "270"
-                    , SA.y2 "270"
-                    , SA.stroke "#9ca3af"
-                    , SA.strokeWidth "1"
+                    [ SA.x1 (String.fromInt padL)
+                    , SA.y1 (String.fromInt (h - padB))
+                    , SA.x2 (String.fromInt (w - padR))
+                    , SA.y2 (String.fromInt (h - padB))
+                    , SA.stroke "#888"
+                    ]
+                    []
+                , Svg.line
+                    [ SA.x1 (String.fromInt padL)
+                    , SA.y1 (String.fromInt padT)
+                    , SA.x2 (String.fromInt padL)
+                    , SA.y2 (String.fromInt (h - padB))
+                    , SA.stroke "#888"
                     ]
                     []
                 
-                -- Via App bar
-                , if appBarHeight > 0 then
-                    Svg.rect
-                        [ SA.x "150"
-                        , SA.y (String.fromFloat (270 - appBarHeight))
-                        , SA.width "100"
-                        , SA.height (String.fromFloat appBarHeight)
-                        , SA.fill appColor
-                        , SA.rx "4"
+                -- Zero line if needed
+                , if yMin < 0 then
+                    Svg.line
+                        [ SA.x1 (String.fromInt padL)
+                        , SA.x2 (String.fromInt (w - padR))
+                        , SA.y1 (String.fromFloat (toY 0))
+                        , SA.y2 (String.fromFloat (toY 0))
+                        , SA.stroke "#ccc"
+                        , SA.strokeDasharray "2 2"
                         ]
                         []
                   else
-                    Svg.rect
-                        [ SA.x "150"
-                        , SA.y "270"
-                        , SA.width "100"
-                        , SA.height (String.fromFloat (abs appBarHeight))
-                        , SA.fill "#ef4444"
-                        , SA.rx "4"
+                    Svg.g [] []
+                
+                -- Via App profit curve
+                , Svg.path
+                    [ SA.d pathViaApp
+                    , SA.fill "none"
+                    , SA.stroke "#3b82f6"
+                    , SA.strokeWidth "3"
+                    ]
+                    []
+                
+                -- Direct profit curve
+                , Svg.path
+                    [ SA.d pathDirect
+                    , SA.fill "none"
+                    , SA.stroke "#dc2626"
+                    , SA.strokeWidth "3"
+                    ]
+                    []
+                
+                -- J* app marker
+                , Svg.g []
+                    [ Svg.line
+                        [ SA.x1 (String.fromFloat (toX jA))
+                        , SA.x2 (String.fromFloat (toX jA))
+                        , SA.y1 (String.fromInt padT)
+                        , SA.y2 (String.fromInt (h - padB))
+                        , SA.stroke "#3b82f6"
+                        , SA.strokeWidth "2"
+                        , SA.strokeDasharray "4 4"
+                        , SA.opacity "0.5"
                         ]
                         []
-                
-                -- Via App label
-                , Svg.text_
-                    [ SA.x "200"
-                    , SA.y "290"
-                    , SA.textAnchor "middle"
-                    , SA.fontSize "12px"
-                    , SA.fontWeight "600"
-                    , SA.fill "#374151"
-                    ]
-                    [ Svg.text "Via App" ]
-                
-                -- Via App value
-                , Svg.text_
-                    [ SA.x "200"
-                    , SA.y (if appBarHeight > 20 then String.fromFloat (270 - appBarHeight + 15) else "260")
-                    , SA.textAnchor "middle"
-                    , SA.fontSize "14px"
-                    , SA.fontWeight "700"
-                    , SA.fill (if appBarHeight > 20 then "white" else "#374151")
-                    ]
-                    [ Svg.text ("$" ++ formatK euViaApp) ]
-                
-                -- Direct bar
-                , if directBarHeight > 0 then
-                    Svg.rect
-                        [ SA.x "350"
-                        , SA.y (String.fromFloat (270 - directBarHeight))
-                        , SA.width "100"
-                        , SA.height (String.fromFloat directBarHeight)
-                        , SA.fill directColor
-                        , SA.rx "4"
-                        ]
-                        []
-                  else
-                    Svg.rect
-                        [ SA.x "350"
-                        , SA.y "270"
-                        , SA.width "100"
-                        , SA.height (String.fromFloat (abs directBarHeight))
-                        , SA.fill "#ef4444"
-                        , SA.rx "4"
-                        ]
-                        []
-                
-                -- Direct label
-                , Svg.text_
-                    [ SA.x "400"
-                    , SA.y "290"
-                    , SA.textAnchor "middle"
-                    , SA.fontSize "12px"
-                    , SA.fontWeight "600"
-                    , SA.fill "#374151"
-                    ]
-                    [ Svg.text "Go Direct" ]
-                
-                -- Direct value
-                , Svg.text_
-                    [ SA.x "400"
-                    , SA.y (if directBarHeight > 20 then String.fromFloat (270 - directBarHeight + 15) else "260")
-                    , SA.textAnchor "middle"
-                    , SA.fontSize "14px"
-                    , SA.fontWeight "700"
-                    , SA.fill (if directBarHeight > 20 then "white" else "#374151")
-                    ]
-                    [ Svg.text ("$" ++ formatK euDirect) ]
-                
-                -- Winner indicator
-                , if willDisintermediate then
-                    Svg.text_
-                        [ SA.x "400"
-                        , SA.y "50"
-                        , SA.textAnchor "middle"
-                        , SA.fontSize "18px"
-                        , SA.fontWeight "700"
-                        , SA.fill "#dc2626"
-                        ]
-                        [ Svg.text "User Goes Direct!" ]
-                  else
-                    Svg.text_
-                        [ SA.x "200"
-                        , SA.y "50"
-                        , SA.textAnchor "middle"
-                        , SA.fontSize "18px"
-                        , SA.fontWeight "700"
+                    , Svg.circle
+                        [ SA.cx (String.fromFloat (toX jA))
+                        , SA.cy (String.fromFloat (toY euViaApp))
+                        , SA.r "6"
                         , SA.fill "#3b82f6"
                         ]
-                        [ Svg.text "App Survives!" ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromFloat (toX jA + 8))
+                        , SA.y (String.fromFloat (toY euViaApp - 10))
+                        , SA.fill "#3b82f6"
+                        , SA.fontSize "12px"
+                        , SA.fontWeight "600"
+                        ]
+                        [ Svg.text ("J* app = " ++ formatK jA) ]
+                    ]
+                
+                -- J* direct marker  
+                , Svg.g []
+                    [ Svg.line
+                        [ SA.x1 (String.fromFloat (toX jD))
+                        , SA.x2 (String.fromFloat (toX jD))
+                        , SA.y1 (String.fromInt padT)
+                        , SA.y2 (String.fromInt (h - padB))
+                        , SA.stroke "#dc2626"
+                        , SA.strokeWidth "2"
+                        , SA.strokeDasharray "4 4"
+                        , SA.opacity "0.5"
+                        ]
+                        []
+                    , Svg.circle
+                        [ SA.cx (String.fromFloat (toX jD))
+                        , SA.cy (String.fromFloat (toY euDirect))
+                        , SA.r "6"
+                        , SA.fill "#dc2626"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromFloat (toX jD + 8))
+                        , SA.y (String.fromFloat (toY euDirect + 15))
+                        , SA.fill "#dc2626"
+                        , SA.fontSize "12px"
+                        , SA.fontWeight "600"
+                        ]
+                        [ Svg.text ("J* direct = " ++ formatK jD) ]
+                    ]
+                
+                -- Legend
+                , Svg.g []
+                    [ Svg.rect
+                        [ SA.x (String.fromInt (w - 180))
+                        , SA.y "10"
+                        , SA.width "170"
+                        , SA.height "60"
+                        , SA.fill "white"
+                        , SA.stroke "#e5e7eb"
+                        , SA.rx "4"
+                        ]
+                        []
+                    , Svg.line
+                        [ SA.x1 (String.fromInt (w - 170))
+                        , SA.y1 "25"
+                        , SA.x2 (String.fromInt (w - 140))
+                        , SA.y2 "25"
+                        , SA.stroke "#3b82f6"
+                        , SA.strokeWidth "3"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromInt (w - 135))
+                        , SA.y "30"
+                        , SA.fontSize "12px"
+                        , SA.fill "#333"
+                        ]
+                        [ Svg.text "Profit via App" ]
+                    , Svg.line
+                        [ SA.x1 (String.fromInt (w - 170))
+                        , SA.y1 "50"
+                        , SA.x2 (String.fromInt (w - 140))
+                        , SA.y2 "50"
+                        , SA.stroke "#dc2626"
+                        , SA.strokeWidth "3"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromInt (w - 135))
+                        , SA.y "55"
+                        , SA.fontSize "12px"
+                        , SA.fill "#333"
+                        ]
+                        [ Svg.text "Profit Direct" ]
+                    ]
+                
+                -- Axis labels
+                , Svg.text_
+                    [ SA.x (String.fromInt (w // 2))
+                    , SA.y (String.fromInt (h - 5))
+                    , SA.textAnchor "middle"
+                    , SA.fontSize "12px"
+                    , SA.fill "#666"
+                    ]
+                    [ Svg.text "Intelligence Units (J)" ]
+                , Svg.text_
+                    [ SA.x "15"
+                    , SA.y (String.fromInt (h // 2))
+                    , SA.textAnchor "middle"
+                    , SA.fontSize "12px"
+                    , SA.fill "#666"
+                    , SA.transform ("rotate(-90 15 " ++ String.fromInt (h // 2) ++ ")")
+                    ]
+                    [ Svg.text "User Profit ($)" ]
                 ]
             ]
         
@@ -1783,16 +1859,10 @@ squeezeVisualization m =
         , div [ A.style "text-align" "center", A.style "margin-bottom" "16px" ]
             [ if willDisintermediate then
                 div [ A.style "font-size" "16px", A.style "color" "#dc2626", A.style "font-weight" "600" ]
-                    [ text "❌ USER GOES DIRECT: App is completely bypassed!" ]
-              else if ratio > 3 then
-                div [ A.style "font-size" "16px", A.style "color" "#f97316", A.style "font-weight" "600" ]
-                    [ text ("⚠️ SEVERE UNDERSERVING: App provides only " ++ fixed 0 (100 / ratio) ++ "% of what users want") ]
-              else if ratio > 2 then
-                div [ A.style "font-size" "16px", A.style "color" "#eab308", A.style "font-weight" "600" ]
-                    [ text "⚡ MODERATE GAP: Intelligence mismatch growing" ]
+                    [ text "❌ USER GOES DIRECT: Red curve is higher at J*direct!" ]
               else
-                div [ A.style "font-size" "16px", A.style "color" "#22c55e", A.style "font-weight" "600" ]
-                    [ text "✓ WELL ALIGNED: App serves most of user demand" ]
+                div [ A.style "font-size" "16px", A.style "color" "#3b82f6", A.style "font-weight" "600" ]
+                    [ text "✓ APP SURVIVES: Blue curve is higher at J*app" ]
             ]
         
         -- Key insight
