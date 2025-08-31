@@ -51,7 +51,7 @@ import Basics exposing (e)
 import Browser
 import Effect exposing (Effect)
 import Gen.Params.SmartSqueeze exposing (Params)
-import Html exposing (Attribute, Html, button, div, h2, h3, input, label, li, p, span, text, ul)
+import Html exposing (Attribute, Html, button, div, h2, h3, h4, input, label, li, p, span, text, ul)
 import Html.Attributes as A
 import Html.Events as E
 import Page
@@ -75,7 +75,7 @@ page shared req =
 
 view : Model -> View Msg
 view model =
-    { title = "Soren's Smart Squeeze"
+    { title = "The Smart Squeeze: Watch Apps Get Crushed"
     , body =
         [ viewBody model ]
     }
@@ -108,8 +108,16 @@ type alias Model =
     , tau : Float
     , jCap : Float
     , advanced : Bool
-    , jMaxView : Float
+    , activeStory : Maybe StoryMode
+    , storyStep : Int
+    , controlsExpanded : Bool
     }
+
+
+type StoryMode
+    = ModelEvolution
+    | PriceWar
+    | MoatErosion
 
 
 init : ( Model, Effect Msg )
@@ -122,128 +130,31 @@ init =
       , sigmaSlope = 0.4
 
       -- App revenue: R(J) = rA * ln(1 + rB * J)
-      , rA = 400.0 -- revenue scale (keeps J*app < J*direct)
-      , rB = 0.0008 -- growth rate (diminishing returns still hold)
+      , rA = 800.0 -- revenue scale (closer to user value)
+      , rB = 0.001 -- growth rate (diminishing returns still hold)
 
       -- End-user profit: Π(J) = piA * ln(1 + piB * J)
-      , piA = 1200.0 -- end-user value scale (ensures Π can beat cost)
-      , piB = 0.0012 -- growth rate
+      , piA = 1000.0 -- end-user value scale (not too much higher than rA)
+      , piB = 0.001 -- growth rate
 
       -- App wrapper value: V(J) = vScale * (1 - e^{-vDecay * J})
-      , vScale = 40.0 -- total wrapper value ceiling (finite-J noticeable)
-      , vDecay = 0.0005 -- marginal wrapper value fades with J (squeeze)
+      , vScale = 200.0 -- high wrapper value to make app attractive
+      , vDecay = 0.0001 -- slower decay so value persists
 
       -- Friction to go direct
-      , tau = 1500.0 -- not trivial, not overwhelming
+      , tau = 5000.0 -- high integration cost
 
       -- Display / guards
-      , jCap = 5.0e6 -- allow larger optima without clipping
+      , jCap = 50.0e6 -- allow larger optima without clipping
       , advanced = False
-      , jMaxView = 1.2e6 -- chart x-axis default
+      , activeStory = Nothing
+      , storyStep = 0
+      , controlsExpanded = False
       }
     , Effect.none
     )
 
 
-
--- PRESETS
-
-
-type Preset
-    = SmartAppSqueezed
-    | DumbMoneyWorkflow
-    | HighTauMoat
-    | FallingModelPrices
-    | HighVPrimeEarly
-
-
-applyPreset : Preset -> Model -> Model
-applyPreset p m =
-    case p of
-        SmartAppSqueezed ->
-            { m
-                | p = 0.004
-                , k = 7.0
-                , sigmaBase = 1.0
-                , sigmaGain = 6.0
-                , sigmaSlope = 0.4
-                , rA = 40.0
-                , rB = 0.0016
-                , piA = 140.0
-                , piB = 0.003
-                , vScale = 12.0
-                , vDecay = 0.0006
-                , tau = 800.0
-                , jMaxView = 1.2e6
-            }
-
-        DumbMoneyWorkflow ->
-            { m
-                | p = 0.004
-                , k = 5.0
-                , sigmaBase = 1.0
-                , sigmaGain = 5.0
-                , sigmaSlope = 0.35
-                , rA = 50.0
-                , rB = 0.002
-                , piA = 120.0
-                , piB = 0.0025
-                , vScale = 60.0 -- big wrapper value (workspace/network/trust)
-                , vDecay = 0.0002 -- slow decay → sustained V'(J)
-                , tau = 6000.0 -- meaningful switching cost
-                , jMaxView = 1.0e6
-            }
-
-        HighTauMoat ->
-            { m
-                | p = 0.0035
-                , k = 6.0
-                , sigmaBase = 1.0
-                , sigmaGain = 5.0
-                , sigmaSlope = 0.35
-                , rA = 55.0
-                , rB = 0.002
-                , piA = 130.0
-                , piB = 0.0028
-                , vScale = 18.0
-                , vDecay = 0.0007
-                , tau = 20000.0 -- very high τ (hard to replace)
-                , jMaxView = 1.0e6
-            }
-
-        FallingModelPrices ->
-            { m
-                | p = 0.0012 -- lab price drop
-                , k = 8.0 -- capability up
-                , sigmaBase = 1.0
-                , sigmaGain = 7.0
-                , sigmaSlope = 0.45
-                , rA = 45.0
-                , rB = 0.0022
-                , piA = 150.0
-                , piB = 0.0032
-                , vScale = 14.0
-                , vDecay = 0.0006
-                , tau = 1200.0
-                , jMaxView = 1.5e6
-            }
-
-        HighVPrimeEarly ->
-            { m
-                | p = 0.004
-                , k = 5.0
-                , sigmaBase = 1.0
-                , sigmaGain = 5.0
-                , sigmaSlope = 0.35
-                , rA = 48.0
-                , rB = 0.002
-                , piA = 120.0
-                , piB = 0.0025
-                , vScale = 25.0
-                , vDecay = 0.0035 -- wrapper helps a lot early; decays fast
-                , tau = 1500.0
-                , jMaxView = 6.0e5
-            }
 
 
 
@@ -253,8 +164,10 @@ applyPreset p m =
 type Msg
     = SetFloat (Model -> Float) (Float -> Model -> Model) String
     | ToggleAdvanced
-    | UsePreset Preset
-    | SetJMax String
+    | StartStory StoryMode
+    | StepStory
+    | StopStory
+    | ToggleControls
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -270,18 +183,99 @@ update msg model =
 
         ToggleAdvanced ->
             ( { model | advanced = not model.advanced }, Effect.none )
-
-        UsePreset p ->
-            ( applyPreset p model, Effect.none )
-
-        SetJMax raw ->
-            case String.toFloat raw of
-                Just v ->
-                    ( { model | jMaxView = clampPos v }, Effect.none )
-
+        
+        StartStory mode ->
+            ( storyStepModel mode 0 { model | activeStory = Just mode, storyStep = 0 }, Effect.none )
+        
+        StepStory ->
+            case model.activeStory of
+                Just mode ->
+                    let
+                        nextStep =
+                            model.storyStep + 1
+                        
+                        maxSteps =
+                            4
+                        
+                        updatedModel =
+                            if nextStep < maxSteps then
+                                storyStepModel mode nextStep model
+                            else
+                                { model | activeStory = Nothing, storyStep = 0 }
+                    in
+                    ( updatedModel, Effect.none )
+                
                 Nothing ->
                     ( model, Effect.none )
+        
+        StopStory ->
+            ( { model | activeStory = Nothing, storyStep = 0 }, Effect.none )
+        
+        ToggleControls ->
+            ( { model | controlsExpanded = not model.controlsExpanded }, Effect.none )
 
+
+
+storyStepModel : StoryMode -> Int -> Model -> Model
+storyStepModel mode step model =
+    let
+        updatedModel =
+            { model | storyStep = step }
+    in
+    case mode of
+        ModelEvolution ->
+            -- Show AI improvement effect ONLY (need higher K to trigger flip)
+            case step of
+                0 ->
+                    { updatedModel | k = 2.0 }  -- Moderate AI
+                
+                1 ->
+                    { updatedModel | k = 4.0 }  -- Better AI
+                
+                2 ->
+                    { updatedModel | k = 6.0 }  -- Advanced AI
+                
+                3 ->
+                    { updatedModel | k = 8.0 }  -- Very advanced AI (should flip)
+                
+                _ ->
+                    updatedModel
+        
+        PriceWar ->
+            -- Step p from 0.01→0.005→0.002→0.0005
+            case step of
+                0 ->
+                    { updatedModel | p = 0.01 }
+                
+                1 ->
+                    { updatedModel | p = 0.005 }
+                
+                2 ->
+                    { updatedModel | p = 0.002 }
+                
+                3 ->
+                    { updatedModel | p = 0.0005 }
+                
+                _ ->
+                    updatedModel
+        
+        MoatErosion ->
+            -- Show integration cost reduction
+            case step of
+                0 ->
+                    { updatedModel | tau = 8000 }   -- High integration cost
+                
+                1 ->
+                    { updatedModel | tau = 4000 }   -- Dropping
+                
+                2 ->
+                    { updatedModel | tau = 2000 }   -- Getting easier
+                
+                3 ->
+                    { updatedModel | tau = 500 }    -- Very low cost
+                
+                _ ->
+                    updatedModel
 
 
 -- ECON HELPERS
@@ -379,19 +373,12 @@ asymBoundMargin m j =
 
 chosenPapp : Model -> Float -> Float
 chosenPapp m j =
-    let
-        base =
-            pEff m
-
-        finite =
-            finiteBoundMargin m j
-    in
-    case finite of
-        Just margin ->
-            base + margin
-
-        Nothing ->
-            base + asymBoundMargin m j
+    -- The app charges based on its revenue function R(J)
+    -- Price = Revenue/Quantity = R(J)/J
+    if j > 0 then
+        r m j / j
+    else
+        pEff m
 
 
 appProfitAt : Model -> Float -> Float
@@ -401,6 +388,11 @@ appProfitAt m j =
             chosenPapp m j - pEff m
     in
     max 0 margin * j
+
+
+profitAt : Model -> Float -> Float
+profitAt m j =
+    r m j - pEff m * j
 
 
 euProfitViaAppAt : Model -> Float -> Float
@@ -469,56 +461,161 @@ viewBody m =
             , text " post, and ChatGPT 5"
             ]
         , p [] [ text "Tweak parameters to see floor/ceiling, optimal J*, margins, disintermediation pressure, and curves." ]
-        , presetsBar
-        , controls m
-        , if m.advanced then
+        , storyBar m
+        , if m.activeStory /= Nothing then
+            storyModeIndicator m
+          else
+            text ""
+        , div []
+            [ button 
+                [ E.onClick ToggleControls
+                , A.style "margin" "16px 0 8px 0"
+                , A.style "padding" "8px 16px"
+                , A.style "background" "#f0f0f0"
+                , A.style "border" "1px solid #ddd"
+                , A.style "border-radius" "4px"
+                , A.style "cursor" "pointer"
+                , A.style "font-size" "14px"
+                , A.style "display" "flex"
+                , A.style "align-items" "center"
+                , A.style "gap" "8px"
+                ]
+                [ text (if m.controlsExpanded then "▼" else "▶")
+                , text "Parameter Controls"
+                ]
+            , if m.controlsExpanded then
+                controls m
+              else
+                text ""
+            ]
+        , if m.advanced && m.controlsExpanded then
             advancedPanel m
 
           else
             text ""
-        , p []
-            [ strong
-                (if willDisintermediate then
-                    "⚠ End-user goes direct (at their optimum)"
-
-                 else
-                    "✅ End-user stays with app (given pricing bound)"
-                )
-            ]
+        , squeezeVisualization m
+        , disintermediationDecision m
         , chartPanel m
-        , chartExplanation
-        , h3 [] [ text "Derived (at app optimum J*)" ]
-        , row
-            [ stat "σ(K)" (fixed 3 sigmaVal)
-            , stat "p_eff = p / σ(K)" ("$" ++ fixed 6 pe)
-            , stat "J* (app)" (fixed 0 jA)
-            , stat "J* (direct)" (fixed 0 jD)
-            ]
-        , row
-            [ stat "App price floor" ("$" ++ fixed 6 pe)
-            , stat "Ceiling (finite-J): p_app − floor" marginFiniteStr
-            , stat "Ceiling (asym): V'(J*)" boundAsymStr
-            , stat "Chosen p_app" ("$" ++ fixed 6 pApp)
-            ]
-        , row
-            [ stat "App margin per unit" ("$" ++ fixed 6 (max 0 (pApp - pe)))
-            , stat "App profit = margin×J*" ("$" ++ fixed 2 (appProfitAt m jA))
-            , stat "EU profit via app @J*" ("$" ++ fixed 2 euViaApp)
-            , stat "EU profit direct @J*_direct" ("$" ++ fixed 2 euDirOpt)
-            ]
-        , p [ A.style "margin-top" "16px", A.style "font-size" "12px", A.style "opacity" "0.8" ]
-            [ text "Model forms: σ(K)=σ0+σg(1-e^{-σsK}), R(J)=rA ln(1+rB J), Π(J)=πA ln(1+πB J), V(J)=v(1-e^{-dJ}). Bounds: finite p_app ≤ p/σ + (V(J)+τ)/J; asym p_app ≤ p/σ + V'(J)." ]
+        , squeezeMeter m
         ]
 
 
-presetsBar : Html Msg
-presetsBar =
-    row
-        [ pill "Smart App Squeezed" (UsePreset SmartAppSqueezed)
-        , pill "Dumb Money Workflow" (UsePreset DumbMoneyWorkflow)
-        , pill "High-τ Moat" (UsePreset HighTauMoat)
-        , pill "Falling Model Prices" (UsePreset FallingModelPrices)
-        , pill "High V'(J) Early Only" (UsePreset HighVPrimeEarly)
+
+storyModeIndicator : Model -> Html Msg
+storyModeIndicator m =
+    let
+        (paramName, currentValue, watchFor) =
+            case m.activeStory of
+                Just ModelEvolution ->
+                    ( "Model Capability (K)"
+                    , fixed 1 m.k  
+                    , "Better AI → cheaper intelligence → users want far more than apps can profitably provide"
+                    )
+                
+                Just PriceWar ->
+                    ( "Token Price (p)"
+                    , "$" ++ fixed 4 m.p
+                    , "Cheaper tokens let users afford more intelligence, widening the app-user gap"
+                    )
+                
+                Just MoatErosion ->
+                    ( "Integration Cost (τ)"
+                    , "$" ++ formatK m.tau
+                    , "As integration gets easier, the app's convenience becomes less valuable"
+                    )
+                
+                _ ->
+                    ( "", "", "" )
+    in
+    div [ A.style "background" "#fef3c7", A.style "border" "2px solid #f59e0b", A.style "border-radius" "8px", A.style "padding" "12px", A.style "margin" "12px 0" ]
+        [ div [ A.style "display" "flex", A.style "align-items" "center", A.style "gap" "16px" ]
+            [ div [ A.style "font-size" "20px", A.style "font-weight" "700", A.style "color" "#d97706" ]
+                [ text paramName ]
+            , div [ A.style "font-size" "28px", A.style "font-weight" "700", A.style "color" "#dc2626", A.style "background" "white", A.style "padding" "4px 12px", A.style "border-radius" "6px" ]
+                [ text currentValue ]
+            , div [ A.style "flex" "1", A.style "font-size" "14px", A.style "color" "#92400e" ]
+                [ text watchFor ]
+            ]
+        ]
+
+
+storyBar : Model -> Html Msg
+storyBar m =
+    let
+        storyButton label mode =
+            let
+                isActive =
+                    m.activeStory == Just mode
+                
+                ( bgColor, borderColor, textColor ) =
+                    if isActive then
+                        ( "#3b82f6", "#3b82f6", "white" )
+                    else
+                        ( "white", "#e5e7eb", "#333" )
+            in
+            button
+                [ E.onClick
+                    (if isActive then
+                        StepStory
+                    else
+                        StartStory mode
+                    )
+                , A.style "border" ("2px solid " ++ borderColor)
+                , A.style "border-radius" "8px"
+                , A.style "padding" "12px 20px"
+                , A.style "background" bgColor
+                , A.style "color" textColor
+                , A.style "font-weight" "600"
+                , A.style "cursor" "pointer"
+                , A.style "transition" "all 0.2s"
+                ]
+                [ if isActive then
+                    div []
+                        [ div [ A.style "font-size" "16px" ] [ text label ]
+                        , div [ A.style "font-size" "12px", A.style "margin-top" "4px" ] 
+                            [ text ("Step " ++ String.fromInt (m.storyStep + 1) ++ "/4 - Click to continue →") ]
+                        ]
+                  else
+                    text label
+                ]
+    in
+    div [ A.style "margin" "16px 0" ]
+        [ div [ A.style "margin-bottom" "8px", A.style "font-weight" "600", A.style "color" "#4b5563" ]
+            [ text "Interactive Scenarios: Watch the squeeze happen step-by-step" ]
+        , div [ A.style "margin-bottom" "12px", A.style "font-size" "14px", A.style "color" "#6b7280" ]
+            [ text "Each scenario shows how different market forces squeeze app profits. Click to start, then advance through 4 steps." ]
+        , row
+            [ div [ A.style "flex" "1" ]
+                [ storyButton "AI Model Evolution" ModelEvolution
+                , div [ A.style "font-size" "12px", A.style "color" "#6b7280", A.style "margin-top" "4px" ]
+                    [ text "AI models get smarter (K: 2→8)" ]
+                ]
+            , div [ A.style "flex" "1" ]
+                [ storyButton "Price War (p: $0.01→$0.0005)" PriceWar
+                , div [ A.style "font-size" "12px", A.style "color" "#6b7280", A.style "margin-top" "4px" ]
+                    [ text "Token prices collapse as competition heats up" ]
+                ]
+            , div [ A.style "flex" "1" ]
+                [ storyButton "Moat Erosion (τ: $8k→$500)" MoatErosion
+                , div [ A.style "font-size" "12px", A.style "color" "#6b7280", A.style "margin-top" "4px" ]
+                    [ text "Integration costs gradually fall" ]
+                ]
+            , if m.activeStory /= Nothing then
+                button
+                    [ E.onClick StopStory
+                    , A.style "border" "2px solid #ef4444"
+                    , A.style "border-radius" "8px"
+                    , A.style "padding" "12px 20px"
+                    , A.style "background" "white"
+                    , A.style "color" "#ef4444"
+                    , A.style "font-weight" "600"
+                    , A.style "cursor" "pointer"
+                    , A.style "margin-left" "20px"
+                    ]
+                    [ text "Stop Story" ]
+              else
+                text ""
+            ]
         ]
 
 
@@ -528,14 +625,14 @@ controls m =
         [ group "Labs / Capability"
             [ slider "p  (price per raw token, $)" 0.0001 0.02 0.0001 m.p (\s -> SetFloat .p (\v md -> { md | p = v }) s)
             , slider "K  (capability index)" 0 10 0.1 m.k (\s -> SetFloat .k (\v md -> { md | k = v }) s)
-            , slider "σ_base" 0.5 5 0.1 m.sigmaBase (\s -> SetFloat .sigmaBase (\v md -> { md | sigmaBase = v }) s)
-            , slider "σ_gain" 0 20 0.5 m.sigmaGain (\s -> SetFloat .sigmaGain (\v md -> { md | sigmaGain = v }) s)
-            , slider "σ_slope" 0.05 1.0 0.01 m.sigmaSlope (\s -> SetFloat .sigmaSlope (\v md -> { md | sigmaSlope = v }) s)
+            , slider "σ_base  (floor: intelligence per token at K=0)" 0.5 5 0.1 m.sigmaBase (\s -> SetFloat .sigmaBase (\v md -> { md | sigmaBase = v }) s)
+            , slider "σ_gain  (ceiling - floor: max improvement possible)" 0 20 0.5 m.sigmaGain (\s -> SetFloat .sigmaGain (\v md -> { md | sigmaGain = v }) s)
+            , slider "σ_slope  (how quickly K improves intelligence)" 0.05 1.0 0.01 m.sigmaSlope (\s -> SetFloat .sigmaSlope (\v md -> { md | sigmaSlope = v }) s)
             ]
         , group "Value & Frictions"
             [ slider "τ  (one-time integration cost, $)" 0 40000 100 m.tau (\s -> SetFloat .tau (\v md -> { md | tau = v }) s)
-            , slider "V scale (vScale)" 0 200 1 m.vScale (\s -> SetFloat .vScale (\v md -> { md | vScale = v }) s)
-            , slider "V decay (vDecay)" 0.0001 0.01 0.0001 m.vDecay (\s -> SetFloat .vDecay (\v md -> { md | vDecay = v }) s)
+            , slider "V scale  (max $ value to end-user)" 0 200 1 m.vScale (\s -> SetFloat .vScale (\v md -> { md | vScale = v }) s)
+            , slider "V decay  (how fast value diminishes)" 0.0001 0.01 0.0001 m.vDecay (\s -> SetFloat .vDecay (\v md -> { md | vDecay = v }) s)
             , button [ A.style "margin-top" "12px", E.onClick ToggleAdvanced ]
                 [ text
                     (if m.advanced then
@@ -579,6 +676,9 @@ chartPanel m =
         h =
             300
 
+        h2 =
+            200  -- height for profit chart
+
         padL =
             60
 
@@ -591,8 +691,18 @@ chartPanel m =
         padB =
             34
 
+        -- Dynamic jMax: calculate based on J* values to ensure they're visible
         jMax =
-            clampPos m.jMaxView |> min m.jCap
+            let
+                -- Get J* values
+                jApp = jStarApp m
+                jDir = jStarDirect m
+                maxJ = max jApp jDir
+                -- Always show at least to the larger J*, plus 10% padding
+                -- This ensures markers are always visible
+                withPadding = maxJ * 1.1
+            in
+            clampPos withPadding |> min m.jCap
 
         -- sample curve to determine y-max for scaling
         js =
@@ -607,6 +717,9 @@ chartPanel m =
         costs =
             List.map (\j -> pEff m * j) js
 
+        profits =
+            List.map (profitAt m) js
+
         yMaxRaw =
             List.maximum (rs ++ pis ++ costs) |> Maybe.withDefault 1
 
@@ -617,6 +730,16 @@ chartPanel m =
             else
                 yMaxRaw
 
+        -- For profit chart Y-axis scaling
+        profitMaxRaw =
+            List.maximum (List.map Basics.abs profits) |> Maybe.withDefault 1
+        
+        profitMax =
+            if profitMaxRaw <= 0 then
+                1
+            else
+                profitMaxRaw * 1.2  -- Add some padding
+
         toX j =
             let
                 x0 =
@@ -626,6 +749,16 @@ chartPanel m =
                     toFloat w - toFloat padR
             in
             x0 + toFloat j / jMax * (x1 - x0)
+        
+        toXFloat jf =
+            let
+                x0 =
+                    toFloat padL
+
+                x1 =
+                    toFloat w - toFloat padR
+            in
+            x0 + jf / jMax * (x1 - x0)
 
         toY y =
             let
@@ -638,6 +771,17 @@ chartPanel m =
             -- flip Y for SVG
             y1 - (y / yMax) * (y1 - y0)
 
+        toYProfit y =
+            let
+                y0 =
+                    toFloat padT
+
+                y1 =
+                    toFloat h2 - toFloat padB
+            in
+            -- Center the zero line and flip Y for SVG
+            (y0 + y1) / 2 - (y / profitMax) * ((y1 - y0) / 2)
+
         pathOf : (Basics.Float -> Basics.Float) -> String.String
         pathOf f =
             pathFromPoints (List.map (\j -> ( toX j, toY (f <| toFloat j) )) (List.map (\f_ -> round f_) js))
@@ -648,20 +792,35 @@ chartPanel m =
         jD =
             jStarDirect m
 
-        marker x lbl =
+        marker x lbl color =
             Svg.g []
                 [ Svg.line
                     [ SA.x1 (sf x)
                     , SA.x2 (sf x)
                     , SA.y1 (sf (toFloat padT))
                     , SA.y2 (sf (toFloat h - padB))
-                    , SA.stroke "#bbb"
+                    , SA.stroke color
+                    , SA.strokeWidth "3"
                     , SA.strokeDasharray "4 4"
                     ]
                     []
                 , Svg.text_
-                    [ SA.x (sf (x + 6)), SA.y (sf (toFloat padT + 14)), SA.fill "#555", SA.fontSize "12px" ]
+                    [ SA.x (sf (x + 6)), SA.y (sf (toFloat padT + 14)), SA.fill color, SA.fontSize "14px", SA.fontWeight "600" ]
                     [ Svg.text lbl ]
+                ]
+
+        markerProfit x lbl =
+            Svg.g []
+                [ Svg.line
+                    [ SA.x1 (sf x)
+                    , SA.x2 (sf x)
+                    , SA.y1 (sf (toFloat padT))
+                    , SA.y2 (sf (toFloat h2 - padB))
+                    , SA.stroke "#0074d9"
+                    , SA.strokeWidth "2"
+                    , SA.strokeDasharray "4 4"
+                    ]
+                    []
                 ]
 
         xAxisTicks =
@@ -672,22 +831,11 @@ chartPanel m =
     in
     div [ A.style "margin-top" "10px" ]
         [ h3 [] [ text "Curves" ]
-        , row
-            [ stat "J axis max" (prettyVal jMax)
-            , div []
-                [ input
-                    [ A.type_ "range"
-                    , A.min "10000"
-                    , A.max "3000000"
-                    , A.step "10000"
-                    , A.value (String.fromFloat jMax)
-                    , E.onInput SetJMax
-                    , A.style "width" "240px"
-                    ]
-                    []
-                ]
-            ]
-        , Svg.svg [ SA.viewBox ("0 0 " ++ String.fromInt w ++ " " ++ String.fromInt h), SA.width "100%", SA.height "300px", SA.style "background:#fff;border:1px solid #e5e7eb;border-radius:10px" ]
+        , div [ A.style "display" "flex", A.style "gap" "20px" ]
+            [ div [ A.style "flex" "1" ]
+                [ div [ A.style "font-size" "14px", A.style "color" "#6b7280", A.style "margin" "0 0 12px 0", A.style "line-height" "1.5" ]
+                    [ text "The charts show app revenue and profit across different intelligence levels. See the blue box for detailed definitions." ]
+                , Svg.svg [ SA.viewBox ("0 0 " ++ String.fromInt w ++ " " ++ String.fromInt h), SA.width "100%", SA.height "300px", SA.style "background:#fff;border:1px solid #e5e7eb;border-radius:10px" ]
             ([ -- axes
                Svg.line [ SA.x1 (sf padL), SA.y1 (sf (h - padB)), SA.x2 (sf (w - padR)), SA.y2 (sf (h - padB)), SA.stroke "#888" ] []
              , Svg.line [ SA.x1 (sf padL), SA.y1 (sf padT), SA.x2 (sf padL), SA.y2 (sf (h - padB)), SA.stroke "#888" ] []
@@ -738,11 +886,70 @@ chartPanel m =
                         , SA.stroke "#555" -- <— add this
                         ]
                         []
-                   , marker (toX <| round jA) ("J* app = " ++ formatK jA)
-                   , marker (toX <| round jD) ("J* direct = " ++ formatK jD)
-                   , legend (padL + 600) (padT + 8)
+                   , marker (toX <| round jA) ("J* app = " ++ formatK jA) "#0074d9"
+                   , marker (toX <| round jD) ("J* direct = " ++ formatK jD) "#f97316"
+                   ]
+                ++ (if jD / max 0.001 jA > 2 then
+                        let
+                            xA =
+                                toX (round jA)
+                            
+                            xD =
+                                toX (round jD)
+                            
+                            -- Constrain xD to chart bounds
+                            xDClamped =
+                                min xD (toFloat w - toFloat padR - 20)
+                            
+                            bracketY =
+                                toFloat h / 2  -- Place in middle of chart
+                            
+                            showBracket =
+                                xDClamped - xA > 20  -- Only show if there's enough space
+                        in
+                        if showBracket then
+                            [ -- Connecting bracket
+                              Svg.path
+                                [ SA.d ("M " ++ sf xA ++ " " ++ sf (bracketY - 5)
+                                        ++ " L " ++ sf xA ++ " " ++ sf (bracketY + 5)
+                                        ++ " L " ++ sf xDClamped ++ " " ++ sf (bracketY + 5)
+                                        ++ " L " ++ sf xDClamped ++ " " ++ sf (bracketY - 5))
+                                , SA.fill "none"
+                                , SA.stroke "#dc2626"
+                                , SA.strokeWidth "2"
+                                ]
+                                []
+                            , Svg.text_
+                                [ SA.x (sf ((xA + xDClamped) / 2))
+                                , SA.y (sf (bracketY - 10))
+                                , SA.textAnchor "middle"
+                                , SA.fill "#dc2626"
+                                , SA.fontSize "14px"
+                                , SA.fontWeight "600"
+                                ]
+                                [ Svg.text ("Gap: " ++ fixed 1 (jD / max 0.001 jA) ++ "x") ]
+                            ]
+                        else
+                            []
+                    else
+                        []
+                   )
+                ++ [ legend (padL + 600) (padT + 8)
                    ]
             )
+                
+                    -- Profit Visualization Strip
+                    , h3 [ A.style "margin-top" "20px" ] [ text "App Profit" ]
+                    , div [ A.style "font-size" "13px", A.style "color" "#6b7280", A.style "margin" "4px 0 8px 0" ]
+                        [ text "Shows app's profit for different amounts of intelligence units sold (J): Revenue - Cost. "
+                        , span [ A.style "color" "#10b981", A.style "font-weight" "600" ] [ text "Green" ]
+                        , text " = profitable. J* marks the peak profit point."
+                        ]
+                    , profitChart m w h2 padL padR padT padB jMax toXFloat toYProfit profitMax js jA
+                    ]
+            , div [ A.style "flex" "0 0 300px", A.style "padding-left" "20px" ]
+                [ sigmaExplanationCompact m ]
+            ]
         ]
 
 
@@ -825,10 +1032,20 @@ group title items =
 
 slider : String -> Float -> Float -> Float -> Float -> (String -> Msg) -> Html Msg
 slider label_ minV maxV stepV val mkMsg =
+    sliderWithTooltip label_ "" minV maxV stepV val mkMsg
+
+
+sliderWithTooltip : String -> String -> Float -> Float -> Float -> Float -> (String -> Msg) -> Html Msg
+sliderWithTooltip label_ tooltip minV maxV stepV val mkMsg =
     div [ A.style "display" "grid", A.style "grid-template-columns" "1fr auto", A.style "align-items" "center", A.style "gap" "8px", A.style "margin" "6px 0" ]
-        [ div []
+        [ div [ A.style "position" "relative" ]
             [ label [] [ text (label_ ++ "  ") ]
             , span [ A.style "font-variant-numeric" "tabular-nums", A.style "opacity" "0.8" ] [ text (prettyVal val) ]
+            , if tooltip /= "" then
+                div [ A.style "margin-top" "4px", A.style "font-size" "12px", A.style "color" "#6b7280", A.style "line-height" "1.4" ]
+                    [ text tooltip ]
+              else
+                text ""
             ]
         , input
             [ A.type_ "range"
@@ -860,10 +1077,14 @@ pill : String -> Msg -> Html Msg
 pill label_ msg =
     button
         [ E.onClick msg
-        , A.style "border" "1px solid #e5e7eb"
+        , A.style "border" "2px solid #e5e7eb"
         , A.style "border-radius" "999px"
-        , A.style "padding" "6px 10px"
+        , A.style "padding" "10px 16px"
         , A.style "background" "white"
+        , A.style "font-weight" "600"
+        , A.style "cursor" "pointer"
+        , A.style "transition" "all 0.2s"
+        , A.style "font-size" "14px"
         ]
         [ text label_ ]
 
@@ -1014,67 +1235,157 @@ ticks n maxV =
     List.map (\i -> step * toFloat i) (List.range 0 n)
 
 
-chartExplanation : Html msg
-chartExplanation =
-    div [ A.style "margin-top" "12px", A.style "font-size" "14px", A.style "line-height" "1.45" ]
-        [ h3 [ A.style "margin" "0 0 6px 0" ] [ text "What the chart shows" ]
-        , ul [ A.style "margin" "0 0 6px 18px", A.style "padding" "0" ]
-            [ li []
-                [ span
-                    [ A.style "display" "inline-block"
-                    , A.style "width" "10px"
-                    , A.style "height" "10px"
-                    , A.style "border-radius" "9999px"
-                    , A.style "background" "#1f77b4"
-                    , A.style "margin-right" "8px"
-                    ]
+profitChart : Model -> Int -> Int -> Int -> Int -> Int -> Int -> Float -> (Float -> Float) -> (Float -> Float) -> Float -> List Float -> Float -> Html msg
+profitChart m w h padL padR padT padB jMax toX toYProfit profitMax js jA =
+    let
+        -- Create filled areas for positive and negative profit
+        profitPoints =
+            List.map (\j -> ( toX j, toYProfit (profitAt m j) )) js
+        
+        zeroY =
+            toYProfit 0
+        
+        -- Split points into positive and negative segments
+        createArea points fillColor =
+            case points of
+                [] ->
                     []
-                , strong_ "R(J): "
-                , text "App revenue from delivering J units of intelligence — rises fast at first, then flattens (diminishing returns)."
-                ]
-            , li []
-                [ span
-                    [ A.style "display" "inline-block"
-                    , A.style "width" "10px"
-                    , A.style "height" "10px"
-                    , A.style "border-radius" "9999px"
-                    , A.style "background" "#2ca02c"
-                    , A.style "margin-right" "8px"
+                
+                first :: _ ->
+                    let
+                        pathData =
+                            "M " ++ sf (Tuple.first first) ++ " " ++ sf zeroY
+                                ++ concatMap (\( x, y ) -> " L " ++ sf x ++ " " ++ sf y) points
+                                ++ " L " ++ sf (Tuple.first (List.reverse points |> List.head |> Maybe.withDefault first)) ++ " " ++ sf zeroY
+                                ++ " Z"
+                    in
+                    [ Svg.path
+                        [ SA.d pathData
+                        , SA.fill fillColor
+                        , SA.opacity "0.7"
+                        ]
+                        []
                     ]
-                    []
-                , strong_ "Π(J): "
-                , text "End-user value from consuming J — also increasing with diminishing returns (typically above R(J))."
-                ]
-            , li []
-                [ span
-                    [ A.style "display" "inline-block"
-                    , A.style "width" "10px"
-                    , A.style "height" "10px"
-                    , A.style "border-radius" "9999px"
-                    , A.style "background" "#555555"
-                    , A.style "margin-right" "8px"
-                    ]
-                    []
-                , strong_ "p_eff · J: "
-                , text "Lab cost to supply J (effective price per unit × J) — a straight line from the origin."
-                ]
-            , li []
-                [ span
-                    [ A.style "display" "inline-block"
-                    , A.style "width" "10px"
-                    , A.style "height" "10px"
-                    , A.style "border-radius" "2px"
-                    , A.style "background" "repeating-linear-gradient(90deg, #bbb 0 6px, transparent 6px 12px)"
-                    , A.style "margin-right" "8px"
-                    ]
-                    []
-                , strong_ "Vertical dashed lines (J*): "
-                , text "Bookmarks for optimal choices. J* (app) marks where the app’s marginal revenue equals lab marginal cost; J* (direct) marks where the end-user’s marginal value equals lab marginal cost."
-                ]
-            ]
-        , p [ A.style "margin" "6px 0 0 0", A.style "opacity" "0.8" ]
-            [ text "Rule of thumb: if J*direct ≫ J*app, the user wants far more intelligence than the app provides — disintermediation pressure is high." ]
+        
+        -- Find where profit crosses zero to split areas
+        profitAreas =
+            let
+                profitVals =
+                    List.map2 (\j ppt -> ( j, profitAt m j, ppt )) js profitPoints
+                
+                positiveSegs =
+                    profitVals
+                        |> List.filter (\( _, profit, _ ) -> profit >= 0)
+                        |> List.map (\( _, _, ppt ) -> ppt)
+                
+                negativeSegs =
+                    profitVals
+                        |> List.filter (\( _, profit, _ ) -> profit < 0)
+                        |> List.map (\( _, _, ppt ) -> ppt)
+            in
+            createArea positiveSegs "#22c55e" ++ createArea negativeSegs "#ef4444"
+        
+        -- Y-axis ticks for profit
+        profitTicks =
+            if profitMax > 100 then
+                [ -profitMax * 0.8, -profitMax * 0.4, 0, profitMax * 0.4, profitMax * 0.8 ]
+            else
+                [ -profitMax * 0.5, 0, profitMax * 0.5 ]
+        
+        xAxisTicks =
+            ticks 5 jMax
+    in
+    Svg.svg 
+        [ SA.viewBox ("0 0 " ++ String.fromInt w ++ " " ++ String.fromInt h)
+        , SA.width "100%"
+        , SA.height (String.fromInt h ++ "px")
+        , SA.style "background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-top:10px"
         ]
+        ([ -- axes
+           Svg.line [ SA.x1 (sf (toFloat padL)), SA.y1 (sf zeroY), SA.x2 (sf (toFloat (w - padR))), SA.y2 (sf zeroY), SA.stroke "#888", SA.strokeWidth "1" ] []
+         , Svg.line [ SA.x1 (sf (toFloat padL)), SA.y1 (sf (toFloat padT)), SA.x2 (sf (toFloat padL)), SA.y2 (sf (toFloat (h - padB))), SA.stroke "#888" ] []
+         ]
+         ++ profitAreas
+         ++ [ -- Profit curve line
+              Svg.path
+                [ SA.d (pathFromPoints profitPoints)
+                , SA.fill "none"
+                , SA.stroke "#333"
+                , SA.strokeWidth "2"
+                ]
+                []
+            ]
+         ++ List.map
+            (\t ->
+                let
+                    x =
+                        toX t
+                in
+                Svg.g []
+                    [ Svg.line [ SA.x1 (sf x), SA.x2 (sf x), SA.y1 (sf (toFloat (h - padB))), SA.y2 (sf (toFloat (h - padB + 6))), SA.stroke "#888" ] []
+                    , Svg.text_ [ SA.x (sf x), SA.y (sf (toFloat (h - padB + 20))), SA.textAnchor "middle", SA.fill "#666", SA.fontSize "11px" ] [ Svg.text (formatK t) ]
+                    ]
+            )
+            xAxisTicks
+         ++ List.map
+            (\t ->
+                let
+                    y =
+                        toYProfit t
+                in
+                Svg.g []
+                    [ Svg.line [ SA.x1 (sf (toFloat (padL - 6))), SA.x2 (sf (toFloat padL)), SA.y1 (sf y), SA.y2 (sf y), SA.stroke "#888" ] []
+                    , Svg.text_ [ SA.x (sf (toFloat (padL - 10))), SA.y (sf (y + 4)), SA.textAnchor "end", SA.fill "#666", SA.fontSize "11px" ] [ Svg.text ("$" ++ formatK t) ]
+                    ]
+            )
+            profitTicks
+         ++ [ -- J* marker
+              Svg.line
+                [ SA.x1 (sf (toX jA))
+                , SA.x2 (sf (toX jA))
+                , SA.y1 (sf (toFloat padT))
+                , SA.y2 (sf (toFloat (h - padB)))
+                , SA.stroke "#0074d9"
+                , SA.strokeWidth "3"
+                , SA.strokeDasharray "4 4"
+                ]
+                []
+            , Svg.text_
+                [ SA.x (sf (toX jA + 6))
+                , SA.y (sf (toFloat (padT + 14)))
+                , SA.fill "#0074d9"
+                , SA.fontSize "14px"
+                , SA.fontWeight "600"
+                ]
+                [ Svg.text "J* (peak)" ]
+            -- Add formula label in top-right corner
+            , Svg.text_
+                [ SA.x (sf (toFloat (w - padR - 10)))
+                , SA.y (sf (toFloat (padT + 20)))
+                , SA.textAnchor "end"
+                , SA.fill "#6b7280"
+                , SA.fontSize "11px"
+                , SA.fontStyle "italic"
+                ]
+                [ Svg.text "π(J) = R(J) - (p/σ)·J" ]
+            ]
+        )
+
+
+intelligenceGapExplanation : Html msg
+intelligenceGapExplanation =
+    div [ A.style "margin" "0 auto 20px", A.style "max-width" "600px", A.style "font-size" "14px", A.style "color" "#4b5563", A.style "text-align" "center" ]
+        [ p [] 
+            [ strong_ "Intelligence Gap = J*_direct / J*_app", 
+              text " — The ratio of how much AI intelligence users would buy directly vs through the app."
+            ]
+        , p [ A.style "margin-top" "8px" ] 
+            [ text "Apps choose J* to maximize revenue R(J) - cost, while users choose J* to maximize value Π(J) - cost. "
+            , text "The gap grows when apps can't capture the full value they create."
+            ]
+        ]
+
+
 
 
 
@@ -1084,3 +1395,488 @@ chartExplanation =
 strong_ : String -> Html msg
 strong_ s =
     span [ A.style "font-weight" "600" ] [ text s ]
+
+
+sigmaExplanation : Model -> Html Msg
+sigmaExplanation m =
+    let
+        currentSigma =
+            sigma m
+    in
+    div [ A.style "margin" "16px 0", A.style "padding" "12px", A.style "background" "#e0f2fe", A.style "border-radius" "8px", A.style "font-size" "14px" ]
+        [ strong_ ("σ(K) = " ++ fixed 2 currentSigma ++ " intelligence units per token")
+        , text " — Think of this as 'how much work each token can do'"
+        , ul [ A.style "margin" "8px 0 0 16px", A.style "font-size" "13px" ]
+            [ li [] [ text "Intelligence formula: σ(K) = σ_base + σ_gain × (1 - e^(-σ_slope × K))" ]
+            , li [] [ text "At K=0 (worst model): σ = ", text (fixed 2 m.sigmaBase), text " (just the floor)" ]
+            , li [] [ text "At K=∞ (best possible): σ = ", text (fixed 2 (m.sigmaBase + m.sigmaGain)), text " (floor + ceiling)" ]
+            , li [] [ text "Current effective price: p/σ(K) = $", text (fixed 6 (pEff m)), text " per intelligence unit" ]
+            ]
+        ]
+
+
+disintermediationDecision : Model -> Html Msg
+disintermediationDecision m =
+    let
+        jA = jStarApp m
+        jD = jStarDirect m
+        
+        -- Via App calculations
+        pApp = chosenPapp m jA
+        costViaApp = pApp * jA
+        valueViaApp = piFun m jA + vFun m jA
+        profitViaApp = valueViaApp - costViaApp
+        
+        -- Direct calculations
+        costDirect = pEff m * jD + m.tau
+        valueDirect = piFun m jD
+        profitDirect = valueDirect - costDirect
+        
+        -- Which is better?
+        directIsBetter = profitDirect > profitViaApp + 1.0e-6
+        
+        optionStyle selected =
+            A.style "flex" "1" ::
+            A.style "padding" "16px" ::
+            A.style "border-radius" "8px" ::
+            A.style "border" (if selected then "3px solid #3b82f6" else "2px solid #e5e7eb") ::
+            A.style "background" (if selected then "#eff6ff" else "white") ::
+            []
+            
+        valueRow label value color =
+            div [ A.style "display" "flex", A.style "justify-content" "space-between", A.style "margin" "4px 0", A.style "font-size" "14px" ]
+                [ span [ A.style "color" "#6b7280" ] [ text label ]
+                , span [ A.style "font-weight" "600", A.style "color" color ] [ text value ]
+                ]
+    in
+    div [ A.style "margin" "20px 0" ]
+        [ h3 [ A.style "margin" "0 0 12px 0", A.style "font-size" "18px" ] [ text "End-User's Choice: App or Direct?" ]
+        , p [ A.style "margin" "0 0 12px 0", A.style "font-size" "13px", A.style "color" "#6b7280" ] 
+            [ text "Comparing user's best outcome with each option (at their respective optimal J* values)" ]
+        , div [ A.style "display" "flex", A.style "gap" "16px" ]
+            [ div (optionStyle (not directIsBetter))
+                [ h4 [ A.style "margin" "0 0 12px 0", A.style "color" "#1e40af" ] [ text "Via App (at J* app)" ]
+                , valueRow "Intelligence units:" (formatK jA) "#333"
+                , valueRow "Pay to app:" ("$" ++ fixed 2 costViaApp) "#dc2626"
+                , valueRow "Value received:" ("$" ++ fixed 2 valueViaApp) "#059669"
+                , div [ A.style "border-top" "1px solid #e5e7eb", A.style "margin" "8px 0" ] []
+                , valueRow "Net benefit:" ("$" ++ fixed 2 profitViaApp) (if directIsBetter then "#6b7280" else "#059669")
+                ]
+            , div (optionStyle directIsBetter)
+                [ h4 [ A.style "margin" "0 0 12px 0", A.style "color" "#ea580c" ] [ text "Go Direct (at J* direct)" ]
+                , valueRow "Intelligence units:" (formatK jD) "#333"
+                , valueRow "Pay to lab:" ("$" ++ fixed 2 (pEff m * jD)) "#dc2626"
+                , valueRow "One-time setup (τ):" ("$" ++ fixed 2 m.tau) "#dc2626"
+                , valueRow "Value received:" ("$" ++ fixed 2 valueDirect) "#059669"
+                , div [ A.style "border-top" "1px solid #e5e7eb", A.style "margin" "8px 0" ] []
+                , valueRow "Net benefit:" ("$" ++ fixed 2 profitDirect) (if directIsBetter then "#059669" else "#6b7280")
+                ]
+            ]
+        , if directIsBetter then
+            p [ A.style "text-align" "center", A.style "margin-top" "12px", A.style "font-size" "14px", A.style "color" "#dc2626", A.style "font-weight" "600" ]
+                [ text ("Going direct is $" ++ fixed 2 (profitDirect - profitViaApp) ++ " better — the app is squeezed out!") ]
+          else
+            p [ A.style "text-align" "center", A.style "margin-top" "12px", A.style "font-size" "14px", A.style "color" "#059669" ]
+                [ text ("Using the app is $" ++ fixed 2 (profitViaApp - profitDirect) ++ " better — the app survives.") ]
+        ]
+
+
+sigmaExplanationCompact : Model -> Html Msg
+sigmaExplanationCompact m =
+    let
+        currentSigma =
+            sigma m
+        currentPrice = 
+            pEff m
+    in
+    div [ A.style "background" "#e0f2fe", A.style "border-radius" "8px", A.style "padding" "16px" ]
+        [ h4 [ A.style "margin" "0 0 12px 0", A.style "font-size" "16px" ] [ text "Intelligence Multiplier" ]
+        , div [ A.style "font-size" "24px", A.style "font-weight" "700", A.style "margin-bottom" "8px" ]
+            [ text ("σ(K) = " ++ fixed 2 currentSigma) ]
+        , div [ A.style "font-size" "14px", A.style "color" "#1e40af", A.style "margin-bottom" "16px" ]
+            [ text "intelligence units per token" ]
+        
+        , div [ A.style "font-size" "13px", A.style "line-height" "1.6" ]
+            [ p [ A.style "margin" "0 0 8px 0" ]
+                [ text "Higher σ means smarter models that deliver more intelligence per token." ]
+            , p [ A.style "margin" "0 0 12px 0" ]
+                [ text ("Formula: σ(K) = " ++ fixed 1 m.sigmaBase ++ " + " ++ fixed 1 m.sigmaGain ++ " × (1 - e^(-" ++ fixed 2 m.sigmaSlope ++ "×K))") ]
+            
+            , div [ A.style "background" "white", A.style "border-radius" "6px", A.style "padding" "12px", A.style "margin-bottom" "12px" ]
+                [ div [ A.style "font-size" "18px", A.style "font-weight" "600", A.style "color" "#1e40af" ]
+                    [ text ("$" ++ fixed 6 currentPrice) ]
+                , div [ A.style "font-size" "12px", A.style "color" "#64748b" ]
+                    [ text "Effective price per intelligence unit" ]
+                , div [ A.style "font-size" "11px", A.style "color" "#94a3b8", A.style "margin-top" "4px" ]
+                    [ text "= p / σ(K)" ]
+                ]
+            
+            , p [ A.style "margin" "0 0 12px 0", A.style "font-size" "12px", A.style "color" "#64748b" ]
+                [ text "As K increases, σ grows and effective price falls, creating the squeeze." ]
+            
+            , div [ A.style "border-top" "1px solid #cbd5e1", A.style "padding-top" "12px", A.style "margin-top" "12px" ]
+                [ div [ A.style "margin" "0 0 8px 0", A.style "font-size" "14px", A.style "font-weight" "600" ] [ text "Chart Definitions" ]
+                , p [ A.style "margin" "0 0 6px 0", A.style "font-size" "12px", A.style "line-height" "1.5" ]
+                    [ strong "J axis:", text " Effective intelligence units delivered (not raw tokens). J = σ(K) × I, where I = raw tokens" ]
+                , p [ A.style "margin" "0 0 4px 0", A.style "font-size" "12px", A.style "line-height" "1.5" ]
+                    [ span [ A.style "color" "#2563eb", A.style "font-weight" "600" ] [ text "J* app (blue):" ], text " Optimal point for app, found where the slope of R(J) equals the cost line slope" ]
+                , p [ A.style "margin" "0 0 8px 0", A.style "font-size" "12px", A.style "line-height" "1.5" ]
+                    [ span [ A.style "color" "#ea580c", A.style "font-weight" "600" ] [ text "J* direct (orange):" ], text " Optimal point for user going direct, where the slope of Π(J) equals the cost line slope" ]
+                , div [ A.style "background" "white", A.style "border-radius" "4px", A.style "padding" "8px", A.style "margin-top" "8px", A.style "font-size" "11px", A.style "color" "#64748b" ]
+                    [ text "💡 These points maximize profit: where marginal benefit = marginal cost (slope matching)" ]
+                ]
+            ]
+        ]
+
+
+squeezeMeter : Model -> Html Msg
+squeezeMeter m =
+    let
+        jA =
+            jStarApp m
+
+        jD =
+            jStarDirect m
+        
+        -- Intelligence gap ratio
+        ratio =
+            if jA > 0 then
+                jD / jA
+            else
+                999.0
+        
+        -- Calculate margin change
+        currentMargin =
+            appProfitAt m jA / max 0.0001 jA
+        
+        -- Color thresholds are illustrative, not derived from theory
+        ( bgColor, textColor ) =
+            if ratio < 2 then
+                ( "#22c55e", "white" )  -- Green: App captures decent value
+            else if ratio < 5 then
+                ( "#eab308", "white" )  -- Yellow: Significant underserving
+            else if ratio < 10 then
+                ( "#f97316", "white" )  -- Orange: Major misalignment
+            else
+                ( "#ef4444", "white" )  -- Red: Extreme squeeze
+        
+        willDisintermediate =
+            euProfitDirectAt m jD > euProfitViaAppAt m jA + 1.0e-6
+    in
+    div [ A.style "margin" "20px 0" ]
+        [ row
+            [ div [ A.style "background" bgColor, A.style "color" textColor, A.style "padding" "16px 24px", A.style "border-radius" "12px", A.style "flex" "1" ]
+                [ div [ A.style "font-size" "24px", A.style "font-weight" "700" ]
+                    [ text ("Intelligence Gap: " ++ fixed 2 ratio ++ "x") ]
+                , div [ A.style "font-size" "13px", A.style "opacity" "0.9", A.style "margin-top" "4px" ]
+                    [ strong "App: ", text ("Stops selling at " ++ formatK jA ++ " units") ]
+                , div [ A.style "font-size" "12px", A.style "opacity" "0.8", A.style "margin-left" "8px" ]
+                    [ text "→ More would reduce their profit" ]
+                , div [ A.style "font-size" "13px", A.style "opacity" "0.9", A.style "margin-top" "4px" ]
+                    [ strong "User: ", text ("Would buy up to " ++ formatK jD ++ " units if direct") ]
+                , div [ A.style "font-size" "12px", A.style "opacity" "0.8", A.style "margin-left" "8px" ]
+                    [ text "→ But may stay with app due to τ + V(J)" ]
+                ]
+            , div [ A.style "background" "#f3f4f6", A.style "padding" "16px 24px", A.style "border-radius" "12px", A.style "flex" "1" ]
+                [ div [ A.style "font-size" "18px", A.style "font-weight" "600" ]
+                    [ text ("Margin: $" ++ fixed 4 currentMargin ++ "/unit")
+                    , if ratio > 2 then
+                        span [ A.style "margin-left" "8px", A.style "color" "#dc2626" ] [ text "↓" ]
+                      else
+                        text ""
+                    ]
+                , div [ A.style "font-size" "14px", A.style "color" "#6b7280", A.style "margin-top" "4px" ]
+                    [ text "App profit per intelligence unit" ]
+                ]
+            ]
+        , div [ A.style "font-size" "12px", A.style "color" "#6b7280", A.style "margin-top" "8px", A.style "line-height" "1.5" ]
+            [ text "Note: A large intelligence gap doesn't guarantee disintermediation. Users may stay with the app if τ (integration cost) and V(J) (wrapper value) outweigh the benefits of getting more intelligence directly." ]
+        ]
+
+
+squeezeVisualization : Model -> Html Msg
+squeezeVisualization m =
+    let
+        jA = jStarApp m
+        jD = jStarDirect m
+        
+        -- Calculate squeeze metrics
+        ratio = if jA > 0 then jD / jA else 999.0
+        
+        -- Determine if user goes direct
+        euViaApp = euProfitViaAppAt m jA
+        euDirect = euProfitDirectAt m jD
+        willDisintermediate = euDirect > euViaApp + 1.0e-6
+        
+        -- Chart dimensions
+        w = 700
+        h = 350
+        padL = 60
+        padR = 20
+        padT = 40
+        padB = 40
+        
+        -- X-axis range: show enough to see both J* values
+        jMax = max jA jD * 1.3
+        
+        -- Sample points for curves
+        js = sampleRange 0 jMax 200
+        
+        -- Calculate profit curves
+        profitsViaApp = List.map (euProfitViaAppAt m) js
+        profitsDirect = List.map (euProfitDirectAt m) js
+        
+        -- Find Y range
+        allProfits = profitsViaApp ++ profitsDirect
+        yMin = Maybe.withDefault 0 (List.minimum allProfits) * 1.1
+        yMax = Maybe.withDefault 100 (List.maximum allProfits) * 1.1
+        yRange = yMax - yMin
+        
+        -- Conversion functions
+        toX j =
+            let
+                x0 = toFloat padL
+                x1 = toFloat (w - padR)
+            in
+            x0 + (j / jMax) * (x1 - x0)
+        
+        toY y =
+            let
+                y0 = toFloat padT
+                y1 = toFloat (h - padB)
+            in
+            y1 - ((y - yMin) / yRange) * (y1 - y0)
+        
+        -- Create path strings
+        pathViaApp = 
+            pathFromPoints (List.map2 (\j p -> (toX j, toY p)) js profitsViaApp)
+        
+        pathDirect = 
+            pathFromPoints (List.map2 (\j p -> (toX j, toY p)) js profitsDirect)
+    in
+    div [ A.style "margin" "20px 0", A.style "padding" "20px", A.style "background" "#f9fafb", A.style "border-radius" "12px" ]
+        [ h3 [ A.style "margin" "0 0 16px 0", A.style "text-align" "center" ] 
+            [ text "Why Users Switch: The Profit Comparison" ]
+        
+        -- Main profit curves visualization
+        , div [ A.style "display" "flex", A.style "justify-content" "center", A.style "margin-bottom" "20px" ]
+            [ Svg.svg 
+                [ SA.viewBox ("0 0 " ++ String.fromInt w ++ " " ++ String.fromInt h)
+                , SA.width "100%"
+                , SA.height (String.fromInt h ++ "px")
+                ]
+                [ -- Background
+                  Svg.rect
+                    [ SA.x "0"
+                    , SA.y "0"
+                    , SA.width (String.fromInt w)
+                    , SA.height (String.fromInt h)
+                    , SA.fill "white"
+                    , SA.stroke "#e5e7eb"
+                    , SA.strokeWidth "2"
+                    , SA.rx "8"
+                    ]
+                    []
+                
+                -- Axes
+                , Svg.line
+                    [ SA.x1 (String.fromInt padL)
+                    , SA.y1 (String.fromInt (h - padB))
+                    , SA.x2 (String.fromInt (w - padR))
+                    , SA.y2 (String.fromInt (h - padB))
+                    , SA.stroke "#888"
+                    ]
+                    []
+                , Svg.line
+                    [ SA.x1 (String.fromInt padL)
+                    , SA.y1 (String.fromInt padT)
+                    , SA.x2 (String.fromInt padL)
+                    , SA.y2 (String.fromInt (h - padB))
+                    , SA.stroke "#888"
+                    ]
+                    []
+                
+                -- Zero line if needed
+                , if yMin < 0 then
+                    Svg.line
+                        [ SA.x1 (String.fromInt padL)
+                        , SA.x2 (String.fromInt (w - padR))
+                        , SA.y1 (String.fromFloat (toY 0))
+                        , SA.y2 (String.fromFloat (toY 0))
+                        , SA.stroke "#ccc"
+                        , SA.strokeDasharray "2 2"
+                        ]
+                        []
+                  else
+                    Svg.g [] []
+                
+                -- Via App profit curve
+                , Svg.path
+                    [ SA.d pathViaApp
+                    , SA.fill "none"
+                    , SA.stroke "#3b82f6"
+                    , SA.strokeWidth "3"
+                    ]
+                    []
+                
+                -- Direct profit curve
+                , Svg.path
+                    [ SA.d pathDirect
+                    , SA.fill "none"
+                    , SA.stroke "#dc2626"
+                    , SA.strokeWidth "3"
+                    ]
+                    []
+                
+                -- J* app marker
+                , Svg.g []
+                    [ Svg.line
+                        [ SA.x1 (String.fromFloat (toX jA))
+                        , SA.x2 (String.fromFloat (toX jA))
+                        , SA.y1 (String.fromInt padT)
+                        , SA.y2 (String.fromInt (h - padB))
+                        , SA.stroke "#3b82f6"
+                        , SA.strokeWidth "2"
+                        , SA.strokeDasharray "4 4"
+                        , SA.opacity "0.5"
+                        ]
+                        []
+                    , Svg.circle
+                        [ SA.cx (String.fromFloat (toX jA))
+                        , SA.cy (String.fromFloat (toY euViaApp))
+                        , SA.r "6"
+                        , SA.fill "#3b82f6"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromFloat (toX jA + 8))
+                        , SA.y (String.fromFloat (toY euViaApp - 10))
+                        , SA.fill "#3b82f6"
+                        , SA.fontSize "12px"
+                        , SA.fontWeight "600"
+                        ]
+                        [ Svg.text ("J* app = " ++ formatK jA) ]
+                    ]
+                
+                -- J* direct marker  
+                , Svg.g []
+                    [ Svg.line
+                        [ SA.x1 (String.fromFloat (toX jD))
+                        , SA.x2 (String.fromFloat (toX jD))
+                        , SA.y1 (String.fromInt padT)
+                        , SA.y2 (String.fromInt (h - padB))
+                        , SA.stroke "#dc2626"
+                        , SA.strokeWidth "2"
+                        , SA.strokeDasharray "4 4"
+                        , SA.opacity "0.5"
+                        ]
+                        []
+                    , Svg.circle
+                        [ SA.cx (String.fromFloat (toX jD))
+                        , SA.cy (String.fromFloat (toY euDirect))
+                        , SA.r "6"
+                        , SA.fill "#dc2626"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromFloat (toX jD + 8))
+                        , SA.y (String.fromFloat (toY euDirect + 15))
+                        , SA.fill "#dc2626"
+                        , SA.fontSize "12px"
+                        , SA.fontWeight "600"
+                        ]
+                        [ Svg.text ("J* direct = " ++ formatK jD) ]
+                    ]
+                
+                -- Legend
+                , Svg.g []
+                    [ Svg.rect
+                        [ SA.x (String.fromInt (w - 180))
+                        , SA.y "10"
+                        , SA.width "170"
+                        , SA.height "60"
+                        , SA.fill "white"
+                        , SA.stroke "#e5e7eb"
+                        , SA.rx "4"
+                        ]
+                        []
+                    , Svg.line
+                        [ SA.x1 (String.fromInt (w - 170))
+                        , SA.y1 "25"
+                        , SA.x2 (String.fromInt (w - 140))
+                        , SA.y2 "25"
+                        , SA.stroke "#3b82f6"
+                        , SA.strokeWidth "3"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromInt (w - 135))
+                        , SA.y "30"
+                        , SA.fontSize "12px"
+                        , SA.fill "#333"
+                        ]
+                        [ Svg.text "Profit via App" ]
+                    , Svg.line
+                        [ SA.x1 (String.fromInt (w - 170))
+                        , SA.y1 "50"
+                        , SA.x2 (String.fromInt (w - 140))
+                        , SA.y2 "50"
+                        , SA.stroke "#dc2626"
+                        , SA.strokeWidth "3"
+                        ]
+                        []
+                    , Svg.text_
+                        [ SA.x (String.fromInt (w - 135))
+                        , SA.y "55"
+                        , SA.fontSize "12px"
+                        , SA.fill "#333"
+                        ]
+                        [ Svg.text "Profit Direct" ]
+                    ]
+                
+                -- Axis labels
+                , Svg.text_
+                    [ SA.x (String.fromInt (w // 2))
+                    , SA.y (String.fromInt (h - 5))
+                    , SA.textAnchor "middle"
+                    , SA.fontSize "12px"
+                    , SA.fill "#666"
+                    ]
+                    [ Svg.text "Intelligence Units (J)" ]
+                , Svg.text_
+                    [ SA.x "15"
+                    , SA.y (String.fromInt (h // 2))
+                    , SA.textAnchor "middle"
+                    , SA.fontSize "12px"
+                    , SA.fill "#666"
+                    , SA.transform ("rotate(-90 15 " ++ String.fromInt (h // 2) ++ ")")
+                    ]
+                    [ Svg.text "User Profit ($)" ]
+                ]
+            ]
+        
+        -- Explanation text
+        , div [ A.style "text-align" "center", A.style "margin-bottom" "16px" ]
+            [ if willDisintermediate then
+                div [ A.style "font-size" "16px", A.style "color" "#dc2626", A.style "font-weight" "600" ]
+                    [ text "❌ USER GOES DIRECT: Red curve is higher at J*direct!" ]
+              else
+                div [ A.style "font-size" "16px", A.style "color" "#3b82f6", A.style "font-weight" "600" ]
+                    [ text "✓ APP SURVIVES: Blue curve is higher at J*app" ]
+            ]
+        
+        -- Key insight
+        , div [ A.style "background" "white", A.style "border" "1px solid #e5e7eb", A.style "border-radius" "8px", A.style "padding" "16px", A.style "margin-top" "16px" ]
+            [ div [ A.style "font-size" "14px", A.style "line-height" "1.6", A.style "color" "#374151" ]
+                [ p [ A.style "margin" "0 0 8px 0" ]
+                    [ strong "The Squeeze: "
+                    , text "Apps maximize profit by stopping at J*app, but users would buy up to J*direct if they could. "
+                    , text "This gap represents unserved demand."
+                    ]
+                , p [ A.style "margin" "0" ]
+                    [ strong "Why it matters: "
+                    , text "As AI improves (higher K) or integration costs fall (lower τ), this gap grows until users find it profitable to bypass the app entirely."
+                    ]
+                ]
+            ]
+        ]
