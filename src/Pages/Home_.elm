@@ -76,6 +76,30 @@ elements =
                 }
             ]
         , text " "
+        , paragraph [] [ el h3Attrs (text "The Smart Squeeze") ]
+        , paragraph []
+            [ text """Watch apps get crushed in this interactive explanation of Soren Larson's """
+            , link [ Font.color blue ]
+                { url = "https://hypersoren.xyz/posts/smart-squeeze/"
+                , label = text "The Smart Squeeze"
+                }
+            , text "."
+            ]
+        , paragraph []
+            [ text "Live demo: "
+            , link [ Font.color blue ]
+                { url = "/smart-squeeze"
+                , label = text "The Smart Squeeze"
+                }
+            ]
+        , paragraph []
+            [ text "Source code: "
+            , link [ Font.color blue ]
+                { url = "https://github.com/rob-sokolowski/site/blob/main/src/Pages/SmartSqueeze.elm"
+                , label = text "SmartSqueeze.elm"
+                }
+            ]
+        , text " "
         , paragraph [] [ el h3Attrs (text "Hippo") ]
         , paragraph []
             [ text """Yet another flashcard app. Generate flashcards with """
@@ -98,13 +122,6 @@ elements =
             , link [ Font.color blue ]
                 { url = "https://hippo.lamdera.app"
                 , label = text "Hippo"
-                }
-            ]
-        , paragraph []
-            [ text "Source code: "
-            , link [ Font.color blue ]
-                { url = "https://github.com/project-fir/hippo-lamdera"
-                , label = text "hippo-lamdera"
                 }
             ]
         , text " "
