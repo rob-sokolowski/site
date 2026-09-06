@@ -2,6 +2,7 @@ module Gen.Msg exposing (Msg(..))
 
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
+import Gen.Params.GeoguessrScoringViz
 import Gen.Params.Home_
 import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
@@ -16,6 +17,7 @@ import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
+import Pages.GeoguessrScoringViz
 import Pages.Home_
 import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
@@ -33,6 +35,7 @@ import Pages.NotFound
 type Msg
     = BouncingBall Pages.BouncingBall.Msg
     | ElmUiSvgIssue Pages.ElmUiSvgIssue.Msg
+    | GeoguessrScoringViz Pages.GeoguessrScoringViz.Msg
     | IkedaPattern Pages.IkedaPattern.Msg
     | ParableOfPolygonsClone Pages.ParableOfPolygonsClone.Msg
     | Pops Pages.Pops.Msg

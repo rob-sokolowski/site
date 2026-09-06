@@ -5,6 +5,7 @@ import Effect exposing (Effect)
 import ElmSpa.Page
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
+import Gen.Params.GeoguessrScoringViz
 import Gen.Params.Home_
 import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
@@ -23,6 +24,7 @@ import Gen.Route as Route exposing (Route)
 import Page exposing (Page)
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
+import Pages.GeoguessrScoringViz
 import Pages.Home_
 import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
@@ -58,6 +60,9 @@ init route =
     
         Route.ElmUiSvgIssue ->
             pages.elmUiSvgIssue.init ()
+    
+        Route.GeoguessrScoringViz ->
+            pages.geoguessrScoringViz.init ()
     
         Route.Home_ ->
             pages.home_.init ()
@@ -105,6 +110,9 @@ update msg_ model_ =
         ( Msg.ElmUiSvgIssue msg, Model.ElmUiSvgIssue params model ) ->
             pages.elmUiSvgIssue.update params msg model
     
+        ( Msg.GeoguessrScoringViz msg, Model.GeoguessrScoringViz params model ) ->
+            pages.geoguessrScoringViz.update params msg model
+    
         ( Msg.IkedaPattern msg, Model.IkedaPattern params model ) ->
             pages.ikedaPattern.update params msg model
     
@@ -150,6 +158,9 @@ view model_ =
     
         Model.ElmUiSvgIssue params model ->
             pages.elmUiSvgIssue.view params model
+    
+        Model.GeoguessrScoringViz params model ->
+            pages.geoguessrScoringViz.view params model
     
         Model.Home_ params ->
             pages.home_.view params ()
@@ -200,6 +211,9 @@ subscriptions model_ =
         Model.ElmUiSvgIssue params model ->
             pages.elmUiSvgIssue.subscriptions params model
     
+        Model.GeoguessrScoringViz params model ->
+            pages.geoguessrScoringViz.subscriptions params model
+    
         Model.Home_ params ->
             pages.home_.subscriptions params ()
     
@@ -244,6 +258,7 @@ subscriptions model_ =
 pages :
     { bouncingBall : Bundle Gen.Params.BouncingBall.Params Pages.BouncingBall.Model Pages.BouncingBall.Msg
     , elmUiSvgIssue : Bundle Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model Pages.ElmUiSvgIssue.Msg
+    , geoguessrScoringViz : Bundle Gen.Params.GeoguessrScoringViz.Params Pages.GeoguessrScoringViz.Model Pages.GeoguessrScoringViz.Msg
     , home_ : Static Gen.Params.Home_.Params
     , ikedaPattern : Bundle Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model Pages.IkedaPattern.Msg
     , parableOfPolygonsClone : Bundle Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model Pages.ParableOfPolygonsClone.Msg
@@ -260,6 +275,7 @@ pages :
 pages =
     { bouncingBall = bundle Pages.BouncingBall.page Model.BouncingBall Msg.BouncingBall
     , elmUiSvgIssue = bundle Pages.ElmUiSvgIssue.page Model.ElmUiSvgIssue Msg.ElmUiSvgIssue
+    , geoguessrScoringViz = bundle Pages.GeoguessrScoringViz.page Model.GeoguessrScoringViz Msg.GeoguessrScoringViz
     , home_ = static Pages.Home_.view Model.Home_
     , ikedaPattern = bundle Pages.IkedaPattern.page Model.IkedaPattern Msg.IkedaPattern
     , parableOfPolygonsClone = bundle Pages.ParableOfPolygonsClone.page Model.ParableOfPolygonsClone Msg.ParableOfPolygonsClone
