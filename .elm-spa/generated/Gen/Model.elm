@@ -2,6 +2,7 @@ module Gen.Model exposing (Model(..))
 
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
+import Gen.Params.GeoguessrScoringViz
 import Gen.Params.Home_
 import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
@@ -16,6 +17,7 @@ import Gen.Params.Stories.ParableOfPolygonsQa
 import Gen.Params.NotFound
 import Pages.BouncingBall
 import Pages.ElmUiSvgIssue
+import Pages.GeoguessrScoringViz
 import Pages.Home_
 import Pages.IkedaPattern
 import Pages.ParableOfPolygonsClone
@@ -34,6 +36,7 @@ type Model
     = Redirecting_
     | BouncingBall Gen.Params.BouncingBall.Params Pages.BouncingBall.Model
     | ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.Params Pages.ElmUiSvgIssue.Model
+    | GeoguessrScoringViz Gen.Params.GeoguessrScoringViz.Params Pages.GeoguessrScoringViz.Model
     | Home_ Gen.Params.Home_.Params
     | IkedaPattern Gen.Params.IkedaPattern.Params Pages.IkedaPattern.Model
     | ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.Params Pages.ParableOfPolygonsClone.Model

@@ -6,6 +6,7 @@ module Gen.Route exposing
 
 import Gen.Params.BouncingBall
 import Gen.Params.ElmUiSvgIssue
+import Gen.Params.GeoguessrScoringViz
 import Gen.Params.Home_
 import Gen.Params.IkedaPattern
 import Gen.Params.ParableOfPolygonsClone
@@ -25,6 +26,7 @@ import Url.Parser as Parser exposing ((</>), Parser)
 type Route
     = BouncingBall
     | ElmUiSvgIssue
+    | GeoguessrScoringViz
     | Home_
     | IkedaPattern
     | ParableOfPolygonsClone
@@ -49,6 +51,7 @@ routes =
     [ Parser.map Home_ Gen.Params.Home_.parser
     , Parser.map BouncingBall Gen.Params.BouncingBall.parser
     , Parser.map ElmUiSvgIssue Gen.Params.ElmUiSvgIssue.parser
+    , Parser.map GeoguessrScoringViz Gen.Params.GeoguessrScoringViz.parser
     , Parser.map IkedaPattern Gen.Params.IkedaPattern.parser
     , Parser.map ParableOfPolygonsClone Gen.Params.ParableOfPolygonsClone.parser
     , Parser.map Pops Gen.Params.Pops.parser
@@ -76,6 +79,9 @@ toHref route =
     
         ElmUiSvgIssue ->
             joinAsHref [ "elm-ui-svg-issue" ]
+    
+        GeoguessrScoringViz ->
+            joinAsHref [ "geoguessr-scoring-viz" ]
     
         Home_ ->
             joinAsHref []
